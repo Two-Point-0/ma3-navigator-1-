@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   MapPin, Navigation, Clock, Wallet, Star, X,
   CheckCircle, Phone, MessageCircle,
-  Bike, Car, Crown, Users, Share2, Package, Info, Plus,
+  Bike, Car, Crown, Users, Share2, Package, Info, Plus, UserRound,
 } from "lucide-react";
 import { toast } from "sonner";
 import maplibregl from "maplibre-gl";
@@ -24,25 +24,37 @@ const RIDE_TYPES = [
 ];
 
 const POPULAR = [
-  { name: "JKIA Airport",    icon: "✈️" },
-  { name: "Two Rivers Mall",  icon: "🛍️" },
-  { name: "The Hub Karen",    icon: "🛍️" },
-  { name: "Westgate Mall",    icon: "🛍️" },
-  { name: "CBD Kencom",       icon: "🏙️" },
-  { name: "KNH Hospital",     icon: "🏥" },
+  { name: "JKIA Airport", Icon: Navigation },
+  { name: "Two Rivers Mall", Icon: MapPin },
+  { name: "The Hub Karen", Icon: MapPin },
+  { name: "Westgate Mall", Icon: MapPin },
+  { name: "CBD Kencom", Icon: MapPin },
+  { name: "KNH Hospital", Icon: MapPin },
 ];
 
 const DRIVERS = [
-  { name: "James K.", plate: "KDA 456B", rating: 4.9, eta: 3, photo: "👨🏾" },
-  { name: "Mary W.",  plate: "KCA 882C", rating: 4.7, eta: 5, photo: "👩🏾" },
-  { name: "David M.", plate: "KCB 211A", rating: 4.8, eta: 7, photo: "👨🏿" },
+  { name: "James K.", plate: "KDA 456B", rating: 4.9, eta: 3, Icon: UserRound },
+  { name: "Mary W.",  plate: "KCA 882C", rating: 4.7, eta: 5, Icon: UserRound },
+  { name: "David M.", plate: "KCB 211A", rating: 4.8, eta: 7, Icon: UserRound },
 ];
 
 const ROUTES = MA3_GTFS.routes;
+const FUEL_PRICE_PER_LITRE = 190;
+const AVERAGE_FUEL_LITRES_PER_100KM = 8;
+const DAILY_CARPOOL_LIMIT = 2;
+const CARPOOL_DAILY_KEY = "ma3_carpool_daily_posts";
+
+function estimateFuelCost(distanceKm: number) {
+  return Math.ceil((distanceKm / 100) * AVERAGE_FUEL_LITRES_PER_100KM * FUEL_PRICE_PER_LITRE);
+}
+
+function passengerFuelShare(distanceKm: number, passengerCount: number) {
+  return Math.ceil(estimateFuelCost(distanceKm) / (passengerCount + 1));
+}
 interface CarpoolOffer {
   id: string;
   driverName: string;
-  photo: string;
+  Icon: typeof UserRound;
   plate: string;
   carModel: string;
   fromArea: string;
@@ -50,6 +62,8 @@ interface CarpoolOffer {
   departTime: string;
   seatsAvailable: number;
   contribution: number;
+  distanceKm: number;
+  fuelCost: number;
   rating: number;
   routeId: string;
 }
@@ -57,18 +71,20 @@ interface CarpoolOffer {
 function buildCarpoolOffers(): CarpoolOffer[] {
   const names = ["Peter N.", "Grace W.", "Samuel K.", "Faith M.", "Brian O.", "Nancy A."];
   const cars = ["Toyota Axio", "Mazda Demio", "Subaru Forester", "Toyota Premio", "Nissan Note", "Honda Fit"];
-  const photos = ["👨🏽", "👩🏾", "👨🏿", "👩🏽", "👨🏾", "👩🏿"];
+  const distances = [12, 16, 21, 14, 18, 25];
   return ROUTES.slice(0, 6).map((r, i) => ({
     id: `cp${i}`,
     driverName: names[i],
-    photo: photos[i],
+    Icon: UserRound,
     plate: `K${["C","D","B"][i % 3]}${String.fromCharCode(65 + i)} ${100 + i * 11}${String.fromCharCode(70 + i)}`,
     carModel: cars[i],
     fromArea: r.ln.split("–")[0]?.trim() || "CBD",
     toArea: r.hs,
     departTime: ["06:45", "07:00", "07:15", "07:30", "06:30", "07:10"][i],
     seatsAvailable: 1 + (i % 3),
-    contribution: 100 + i * 30,
+    contribution: passengerFuelShare(distances[i], 1 + (i % 3)),
+    distanceKm: distances[i],
+    fuelCost: estimateFuelCost(distances[i]),
     rating: 4.3 + (i % 5) * 0.1,
     routeId: r.id,
   }));
@@ -93,9 +109,15 @@ export default function NdaiPage() {
   const [offerTo, setOfferTo]       = useState("");
   const [offerTime, setOfferTime]   = useState("07:30");
   const [offerSeats, setOfferSeats] = useState(2);
-  const [offerAmt, setOfferAmt]     = useState(150);
+  const [offerDistance, setOfferDistance] = useState(15);
   const [myOffers, setMyOffers]     = useState<CarpoolOffer[]>([]);
   const [bookedCarpool, setBookedCarpool] = useState<CarpoolOffer | null>(null);
+  const [dailyOffers, setDailyOffers] = useState(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem(CARPOOL_DAILY_KEY) || "null");
+      return saved?.date === new Date().toISOString().slice(0, 10) ? Number(saved.count) || 0 : 0;
+    } catch { return 0; }
+  });
 
   const [delFrom, setDelFrom] = useState("");
   const [delTo, setDelTo]     = useState("");
@@ -105,6 +127,8 @@ export default function NdaiPage() {
   const selected = RIDE_TYPES.find(r => r.id === rideId)!;
   const fare = selected.base + Math.floor(Math.random() * 80);
   const DELIVERY_PRICES = { small: 150, medium: 250, large: 400 };
+  const estimatedOfferFuel = estimateFuelCost(offerDistance);
+  const estimatedOfferShare = passengerFuelShare(offerDistance, offerSeats);
 
   const handleSearch = () => {
     if (!pickup || !dest) { toast("Enter pickup and destination"); return; }
@@ -116,7 +140,7 @@ export default function NdaiPage() {
     if (!pay(fare)) { toast("Insufficient wallet balance — top up in Profile"); return; }
     setDriver(d);
     setStage("booked");
-    toast(`🚕 ${d.name} is on the way!`);
+    toast(`${d.name} is on the way`);
   };
 
   const handleCancel = () => { setStage("idle"); setDriver(null); setPickup(""); setDest(""); };
@@ -124,20 +148,22 @@ export default function NdaiPage() {
   const bookCarpool = (offer: CarpoolOffer) => {
     if (!pay(offer.contribution)) { toast("Insufficient wallet balance — top up in Profile"); return; }
     setBookedCarpool(offer);
-    toast(`✅ Seat reserved with ${offer.driverName} — KES ${offer.contribution} cost-share paid`);
+    toast(`Seat reserved with ${offer.driverName} — KES ${offer.contribution} cost-share paid`);
   };
 
   const postOffer = () => {
     if (!offerFrom || !offerTo) { toast("Enter your route"); return; }
+    if (dailyOffers >= DAILY_CARPOOL_LIMIT) { toast("Daily carpool limit reached — this feature is for cost-sharing, not profit"); return; }
     const newOffer: CarpoolOffer = {
-      id: `mine${Date.now()}`, driverName: "You", photo: "🧑", plate: "Your car",
+      id: `mine${Date.now()}`, driverName: "You", Icon: UserRound, plate: "Your car",
       carModel: "Your vehicle", fromArea: offerFrom, toArea: offerTo,
-      departTime: offerTime, seatsAvailable: offerSeats, contribution: offerAmt,
-      rating: 5.0, routeId: ROUTES[0].id,
+      departTime: offerTime, seatsAvailable: offerSeats, contribution: estimatedOfferShare,
+      distanceKm: offerDistance, fuelCost: estimatedOfferFuel, rating: 5.0, routeId: ROUTES[0].id,
     };
     setMyOffers(p => [...p, newOffer]);
+    setDailyOffers(count => { const next = count + 1; localStorage.setItem(CARPOOL_DAILY_KEY, JSON.stringify({ date: new Date().toISOString().slice(0, 10), count: next })); return next; });
     setShowOfferForm(false);
-    toast("📍 Your commute is now visible to nearby passengers");
+    toast("Your commute is now visible to nearby passengers");
   };
 
   const bookDelivery = () => {
@@ -145,7 +171,7 @@ export default function NdaiPage() {
     const price = DELIVERY_PRICES[delSize];
     if (!pay(price)) { toast("Insufficient wallet balance"); return; }
     setDelStage("booked");
-    toast(`📦 Courier assigned — KES ${price} paid`);
+    toast(`Courier assigned — KES ${price} paid`);
   };
 
   return (
@@ -171,7 +197,7 @@ export default function NdaiPage() {
         {tab === "ride" && stage !== "booked" && (
           <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }}
             transition={{ type: "spring", damping: 28, stiffness: 300 }}
-            style={{ position: "absolute", bottom: 0, left: 0, right: 0, zIndex: 200, background: "rgba(10,10,18,.97)", backdropFilter: "blur(20px)", borderRadius: "22px 22px 0 0", border: "1px solid var(--border2)", borderTop: "3px solid var(--ready)" }}>
+            style={{ position: "absolute", bottom: 0, left: 0, right: 0, zIndex: 200, background: "rgba(10,10,18,.72)", backdropFilter: "blur(28px) saturate(145%)", borderRadius: "22px 22px 0 0", border: "1px solid var(--border2)", borderTop: "3px solid var(--ready)" }}>
             <div style={{ display: "flex", justifyContent: "center", padding: "10px 0 4px" }}>
               <div className="handle" />
             </div>
@@ -205,7 +231,7 @@ export default function NdaiPage() {
                   {POPULAR.map(p => (
                     <button key={p.name} onClick={() => setDest(p.name)}
                       style={{ display: "flex", alignItems: "center", gap: 5, padding: "6px 12px", borderRadius: 99, background: "var(--glass2)", border: "1px solid var(--border)", color: "var(--muted2)", fontSize: ".65rem", fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0 }}>
-                      <span>{p.icon}</span>{p.name}
+                      <p.Icon size={12} />{p.name}
                     </button>
                   ))}
                 </div>
@@ -248,7 +274,7 @@ export default function NdaiPage() {
                     <motion.div key={d.name} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.12 }}
                       style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: 14, background: "var(--glass)", border: "1px solid var(--border2)", marginBottom: 7 }}>
                       <div style={{ width: 44, height: 44, borderRadius: 14, background: "rgba(217,119,6,.16)", border: "1.5px solid rgba(217,119,6,.3)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.5rem", flexShrink: 0 }}>
-                        {d.photo}
+                        <d.Icon size={22} style={{ color: "var(--ready)" }} />
                       </div>
                       <div style={{ flex: 1 }}>
                         <p style={{ fontWeight: 700, fontSize: ".82rem" }}>{d.name}</p>
@@ -279,7 +305,7 @@ export default function NdaiPage() {
       <AnimatePresence>
         {tab === "ride" && stage === "booked" && driver && (
           <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} transition={{ type: "spring", damping: 26, stiffness: 300 }}
-            style={{ position: "absolute", bottom: 0, left: 0, right: 0, zIndex: 200, background: "rgba(10,10,18,.97)", backdropFilter: "blur(20px)", borderRadius: "22px 22px 0 0", border: "1px solid var(--border2)", padding: "1rem 1rem 2rem" }}>
+            style={{ position: "absolute", bottom: 0, left: 0, right: 0, zIndex: 200, background: "rgba(10,10,18,.72)", backdropFilter: "blur(28px) saturate(145%)", borderRadius: "22px 22px 0 0", border: "1px solid var(--border2)", padding: "1rem 1rem 2rem" }}>
             <div className="handle" />
             <div style={{ textAlign: "center", marginBottom: 16 }}>
               <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring", stiffness: 260 }}>
@@ -290,7 +316,7 @@ export default function NdaiPage() {
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", borderRadius: 16, background: "var(--glass)", border: "1px solid var(--border2)", marginBottom: 14 }}>
               <div style={{ width: 52, height: 52, borderRadius: 16, background: "rgba(217,119,6,.16)", border: "1.5px solid rgba(217,119,6,.35)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.6rem", flexShrink: 0 }}>
-                {driver.photo}
+                <driver.Icon size={24} style={{ color: "var(--ready)" }} />
               </div>
               <div style={{ flex: 1 }}>
                 <p style={{ fontWeight: 700, fontSize: ".9rem" }}>{driver.name}</p>
@@ -301,10 +327,10 @@ export default function NdaiPage() {
                 </div>
               </div>
               <div style={{ display: "flex", gap: 6 }}>
-                <button onClick={() => toast("📞 Calling driver…")} style={{ width: 38, height: 38, borderRadius: 12, background: "rgba(22,163,74,.14)", border: "1px solid rgba(22,163,74,.3)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
+                <button onClick={() => toast("Calling driver…")} style={{ width: 38, height: 38, borderRadius: 12, background: "rgba(22,163,74,.14)", border: "1px solid rgba(22,163,74,.3)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
                   <Phone size={15} style={{ color: "var(--go)" }} />
                 </button>
-                <button onClick={() => toast("💬 Opening chat…")} style={{ width: 38, height: 38, borderRadius: 12, background: "rgba(217,119,6,.14)", border: "1px solid rgba(217,119,6,.3)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
+                <button onClick={() => toast("Opening chat…")} style={{ width: 38, height: 38, borderRadius: 12, background: "rgba(217,119,6,.14)", border: "1px solid rgba(217,119,6,.3)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
                   <MessageCircle size={15} style={{ color: "var(--ready)" }} />
                 </button>
               </div>
@@ -342,7 +368,7 @@ export default function NdaiPage() {
               <div style={{ display: "flex", gap: 7, padding: "8px 10px", borderRadius: 10, background: "rgba(217,119,6,.06)", border: "1px solid rgba(217,119,6,.2)", marginBottom: 8 }}>
                 <Info size={13} style={{ color: "var(--ready)", flexShrink: 0, marginTop: 1 }} />
                 <p style={{ fontSize: ".6rem", color: "var(--muted2)", lineHeight: 1.5 }}>
-                  This is cost-sharing between commuters heading the same way — drivers set a flat fuel-cost contribution, not a metered taxi fare. Not a PSV/TNC commercial ride.
+                  Cost-sharing only: the estimate is based on route distance, fuel assumptions and available passenger seats. Driver-set profit is not allowed. Each driver can publish up to {DAILY_CARPOOL_LIMIT} commutes per day. This is not a PSV/TNC commercial ride.
                 </p>
               </div>
             </div>
@@ -351,19 +377,20 @@ export default function NdaiPage() {
               {showOfferForm && (
                 <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} style={{ overflow: "hidden", padding: "0 14px" }}>
                   <div className="card" style={{ padding: 12, marginBottom: 10, borderColor: "rgba(22,163,74,.25)" }}>
-                    <p style={{ fontSize: ".74rem", fontWeight: 700, marginBottom: 8 }}>I'm driving to work — post my route</p>
+                    <p style={{ fontSize: ".74rem", fontWeight: 700, marginBottom: 8 }}>I'm driving to work — post my commute</p>
                     <div style={{ display: "flex", flexDirection: "column", gap: 7, marginBottom: 8 }}>
                       <input className="finput" placeholder="From (e.g. Rongai)" value={offerFrom} onChange={e => setOfferFrom(e.target.value)} />
                       <input className="finput" placeholder="To (e.g. CBD / Westlands)" value={offerTo} onChange={e => setOfferTo(e.target.value)} />
                       <div style={{ display: "flex", gap: 7 }}>
                         <input type="time" className="finput" value={offerTime} onChange={e => setOfferTime(e.target.value)} style={{ flex: 1 }} />
                         <select className="finput" value={offerSeats} onChange={e => setOfferSeats(Number(e.target.value))} style={{ width: 90 }}>
-                          {[1,2,3].map(n => <option key={n} value={n}>{n} seat{n>1?"s":""}</option>)}
+                          {[1,2,3].map(n => <option key={n} value={n}>{n} passenger {n > 1 ? "seats" : "seat"}</option>)}
                         </select>
                       </div>
-                      <div>
-                        <label style={{ marginBottom: 4, display: "block" }}>Cost-share per passenger (KES)</label>
-                        <input type="number" className="finput" value={offerAmt} onChange={e => setOfferAmt(Number(e.target.value))} />
+                      <label style={{ marginBottom: 4, display: "block" }}>Estimated one-way distance</label>
+                      <input type="number" min={1} max={100} className="finput" value={offerDistance} onChange={e => setOfferDistance(Math.max(1, Number(e.target.value)))} />
+                      <div className="ios-glass" style={{ padding: 10, fontSize: ".68rem", color: "var(--muted2)" }}>
+                        <b style={{ color: "var(--go)" }}>Fuel cost-share only.</b> Estimated trip fuel: KES {estimatedOfferFuel}. Passenger share: KES {estimatedOfferShare}. The driver cannot set a profit margin.
                       </div>
                     </div>
                     <button className="btn btn-go" style={{ width: "100%", padding: 10, justifyContent: "center" }} onClick={postOffer}>
@@ -381,7 +408,7 @@ export default function NdaiPage() {
                   className="card" style={{ padding: 12, marginBottom: 8 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
                     <div style={{ width: 42, height: 42, borderRadius: 13, background: "rgba(22,163,74,.12)", border: "1.5px solid rgba(22,163,74,.3)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.3rem", flexShrink: 0 }}>
-                      {offer.photo}
+                      <offer.Icon size={22} style={{ color: "var(--go)" }} />
                     </div>
                     <div style={{ flex: 1 }}>
                       <p style={{ fontWeight: 700, fontSize: ".8rem" }}>{offer.driverName}</p>
@@ -401,7 +428,7 @@ export default function NdaiPage() {
                     <span style={{ marginLeft: "auto", color: "var(--muted)", fontFamily: "var(--font-mono)" }}>{offer.departTime}</span>
                   </div>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <span style={{ fontSize: ".64rem", color: "var(--muted2)" }}>{offer.seatsAvailable} seat{offer.seatsAvailable > 1 ? "s" : ""} left</span>
+                      <span style={{ fontSize: ".64rem", color: "var(--muted2)" }}>{offer.seatsAvailable} passenger {offer.seatsAvailable > 1 ? "seats" : "seat"} left</span>
                     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                       <span style={{ fontFamily: "var(--font-mono)", fontSize: ".82rem", color: "var(--ready)", fontWeight: 700 }}>KES {offer.contribution}</span>
                       <button onClick={() => bookCarpool(offer)}
@@ -421,7 +448,7 @@ export default function NdaiPage() {
       <AnimatePresence>
         {tab === "carpool" && bookedCarpool && (
           <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} transition={{ type: "spring", damping: 26, stiffness: 300 }}
-            style={{ position: "absolute", bottom: 0, left: 0, right: 0, zIndex: 200, background: "rgba(10,10,18,.97)", backdropFilter: "blur(20px)", borderRadius: "22px 22px 0 0", border: "1px solid var(--border2)", padding: "1rem 1rem 2rem" }}>
+            style={{ position: "absolute", bottom: 0, left: 0, right: 0, zIndex: 200, background: "rgba(10,10,18,.72)", backdropFilter: "blur(28px) saturate(145%)", borderRadius: "22px 22px 0 0", border: "1px solid var(--border2)", padding: "1rem 1rem 2rem" }}>
             <div className="handle" />
             <div style={{ textAlign: "center", marginBottom: 14 }}>
               <CheckCircle size={40} style={{ color: "var(--go)", margin: "0 auto 8px" }} />
@@ -431,12 +458,12 @@ export default function NdaiPage() {
               </p>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: 14, background: "var(--glass)", border: "1px solid var(--border2)", marginBottom: 12 }}>
-              <span style={{ fontSize: "1.4rem" }}>{bookedCarpool.photo}</span>
+                    <bookedCarpool.Icon size={24} style={{ color: "var(--ready)" }} />
               <div style={{ flex: 1 }}>
                 <p style={{ fontSize: ".8rem", fontWeight: 700 }}>{bookedCarpool.carModel}</p>
                 <p style={{ fontSize: ".62rem", color: "var(--muted)", fontFamily: "var(--font-mono)" }}>{bookedCarpool.plate}</p>
               </div>
-              <button onClick={() => toast("📞 Calling driver…")} style={{ width: 36, height: 36, borderRadius: 11, background: "rgba(22,163,74,.14)", border: "1px solid rgba(22,163,74,.3)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
+              <button onClick={() => toast("Calling driver…")} style={{ width: 36, height: 36, borderRadius: 11, background: "rgba(22,163,74,.14)", border: "1px solid rgba(22,163,74,.3)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
                 <Phone size={14} style={{ color: "var(--go)" }} />
               </button>
             </div>
@@ -453,7 +480,7 @@ export default function NdaiPage() {
         {tab === "delivery" && delStage === "idle" && (
           <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }}
             transition={{ type: "spring", damping: 28, stiffness: 300 }}
-            style={{ position: "absolute", bottom: 0, left: 0, right: 0, zIndex: 200, background: "rgba(10,10,18,.97)", backdropFilter: "blur(20px)", borderRadius: "22px 22px 0 0", border: "1px solid var(--border2)", padding: "1rem 1rem 1.6rem" }}>
+            style={{ position: "absolute", bottom: 0, left: 0, right: 0, zIndex: 200, background: "rgba(10,10,18,.72)", backdropFilter: "blur(28px) saturate(145%)", borderRadius: "22px 22px 0 0", border: "1px solid var(--border2)", padding: "1rem 1rem 1.6rem" }}>
             <div className="handle" />
             <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 12 }}>
               <Package size={16} style={{ color: "var(--ready)" }} />
@@ -486,7 +513,7 @@ export default function NdaiPage() {
         )}
         {tab === "delivery" && delStage === "booked" && (
           <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} transition={{ type: "spring", damping: 26, stiffness: 300 }}
-            style={{ position: "absolute", bottom: 0, left: 0, right: 0, zIndex: 200, background: "rgba(10,10,18,.97)", backdropFilter: "blur(20px)", borderRadius: "22px 22px 0 0", border: "1px solid var(--border2)", padding: "1rem 1rem 2rem", textAlign: "center" }}>
+            style={{ position: "absolute", bottom: 0, left: 0, right: 0, zIndex: 200, background: "rgba(10,10,18,.72)", backdropFilter: "blur(28px) saturate(145%)", borderRadius: "22px 22px 0 0", border: "1px solid var(--border2)", padding: "1rem 1rem 2rem", textAlign: "center" }}>
             <div className="handle" />
             <CheckCircle size={40} style={{ color: "var(--go)", margin: "10px auto" }} />
             <p style={{ fontFamily: "var(--font-display)", fontSize: "1rem", fontWeight: 900, color: "var(--go)", marginBottom: 4 }}>Courier On The Way</p>
