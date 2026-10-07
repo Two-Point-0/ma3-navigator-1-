@@ -72,7 +72,7 @@ html, body { margin:0; padding:0; background:var(--ink); color:var(--white);
 .bottom-nav { position:fixed; bottom:0; left:0; right:0; z-index:900; height:var(--nav-h);
   background:rgba(8,8,16,.97); backdrop-filter:blur(24px);
   border-top:1px solid var(--border2);
-  display:grid; grid-template-columns:repeat(7,1fr); align-items:center; }
+  display:grid; grid-template-columns:repeat(auto-fit,minmax(0,1fr)); align-items:center; }
 .bn { cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:2px;
   padding:5px 0; color:var(--muted); border:none; background:none; font-family:var(--font); }
 .bn.on { color:var(--ready); }

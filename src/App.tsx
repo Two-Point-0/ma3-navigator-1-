@@ -2,7 +2,7 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import { Switch, Route, Router as WouterRouter, Link, useLocation } from "wouter";
 import { Toaster, toast } from "sonner";
 import { motion } from "framer-motion";
-import { Bus, Car, Plane, Home, Store, MapPin, Gamepad2, Bell, Zap, HelpCircle } from "lucide-react";
+import { Bus, Car, Plane, Home, Store, MapPin, Gamepad2, Bell, Zap, HelpCircle, Navigation } from "lucide-react";
 import { useState, useEffect } from "react";
 import { WalletProvider, useWallet } from "@/lib/wallet";
 import { AuthProvider, useAuthContext } from "@/context/AuthContext";
@@ -19,11 +19,13 @@ import MarketPage from "@/pages/Market";
 import MirthPage from "@/pages/Mirth";
 import ExplorePage from "@/pages/Explore";
 import ProfilePage from "@/pages/Profile";
+import DriverPage from "@/pages/Driver";
 import NotFound from "@/pages/NotFound";
 
 const NAV_ITEMS = [
   { href: "/ma3", label: "Ma3", Icon: Bus },
   { href: "/ndai", label: "Ndai", Icon: Car },
+  { href: "/driver", label: "Drive", Icon: Navigation },
   { href: "/fly", label: "Fly", Icon: Plane },
   { href: "/", label: "Home", Icon: Home },
   { href: "/market", label: "Market", Icon: Store },
@@ -80,12 +82,14 @@ function TopBar() {
 
 function BottomNav() {
   const [location] = useLocation();
+  const role = localStorage.getItem("ma3_user_role");
+  const visibleItems = NAV_ITEMS.filter(item => item.href !== "/driver" || role === "matatu-driver" || role === "carpool-driver");
   const isActive = (href: string) =>
     href === "/" ? location === "/" || location === "" : location.startsWith(href);
 
   return (
     <nav className="bottom-nav">
-      {NAV_ITEMS.map(({ href, label, Icon }) => {
+      {visibleItems.map(({ href, label, Icon }) => {
         const active = isActive(href);
         return (
           <Link key={href} href={href}>
@@ -182,6 +186,7 @@ function AppShell() {
           <Route path="/mirth" component={MirthPage} />
           <Route path="/explore" component={ExplorePage} />
           <Route path="/profile" component={ProfilePage} />
+          <Route path="/driver" component={DriverPage} />
           <Route component={NotFound} />
         </Switch>
       </div>
