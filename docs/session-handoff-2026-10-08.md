@@ -1,19 +1,11 @@
 
 
-## Unified backend handover update — 8 October 2026
+## Move and Market UX update — 8 October 2026
 
-The attached implementation brief was reviewed and the safe MVP portion was implemented. The repository now contains a single-backend Supabase path while retaining the existing Firebase scaffolding temporarily for compatibility. Supabase is optional during local development: if `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` are absent, the app uses clearly labelled local demo data.
+The latest UX request was implemented. Move now keeps the map as the primary surface with a compact top control set: Search and Live. The separate Plan, Matatu and Train top buttons were removed. Searching can return matatu routes, bus stops and mapped railway stations. Selecting a route exposes Start and Destination fields inside the bottom sheet. The user can also request browser location; Ma3 finds the nearest mapped stop and adds the walking-to-stop start context.
 
-New backend files:
+Bottom sheets use a smaller default height and a clickable handle to lower the sheet without closing it. Train stations open the train sheet from search. Live remains the entry point for nearby simulated matatus. Train geometry now includes a filtered HOTOSM/OpenStreetMap Nairobi railway asset at `src/data/nairobi_railways_osm.json`, with source attribution in `src/data/nairobi_railways_osm.md` and in the train sheet. The asset is ODbL-derived and passenger timetable accuracy must still be checked against Kenya Railways.
 
-- `src/lib/supabase.ts` — browser-safe Supabase client using only the URL and anon key.
-- `src/lib/appMode.ts` — central demo-mode flags.
-- `supabase/migrations/20261008_initial_ma3.sql` — unified tables, latest-price view and explicit RLS policies.
-- `supabase/seed/demo_catalog.sql` — five retailers, demo products and seeded prices.
-- `docs/supabase-setup.md` — Supabase dashboard, environment and import instructions.
+Market now uses searchable Shop plans rather than displaying a large template grid. Profiles include Solo Chapa, Sister Safi, Fam Safi, Campus Chapa, School Starter and Smart Mtaa. The user chooses a spend style—Budget friendly, Smart balance or More variety—and a target KES amount. The product catalogue stays hidden until the user searches. The backend import templates are `supabase/import_templates/products.csv` and `supabase/import_templates/price_observations.csv`.
 
-The Market page now compares five stores: Naivas, Quickmart, Carrefour, Chandarana Foodplus and Cleanshelf. It keeps bachelor, family and school templates, product search, basket quantities, basket totals and the cheapest overall store. It can hydrate matching demo catalogue rows from Supabase when configured, and falls back to local demo values when it is not. It never presents seeded values as live or official prices.
-
-Ndai booking, carpool payment and delivery payment are blocked while `APP_MODE.demo` is true. Driver mode uses simulated coordinates while demo mode is true and labels the action as a demo location preview. The backend SQL keeps sensitive tables behind RLS and allows only public active products, retailers and seeded demo prices to be read anonymously.
-
-The build completed successfully after these changes. Existing warnings concern Firebase dynamic/static imports and the large generated JavaScript bundle; they are not TypeScript errors. Before production, migrate authentication and wallet persistence to the same Supabase project or deliberately document the temporary Firebase bridge, then remove unused Firebase code.
+The repository was built successfully after these changes. To see them in the Windows clone, pull the latest main branch rather than applying old patch files.

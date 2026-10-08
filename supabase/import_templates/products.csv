@@ -1,0 +1,2 @@
+sku,name,normalized_name,category,brand,pack_size,barcode,image_url,active
+EXAMPLE-001,Maize flour,maize flour,Staples,Example brand,2 kg,,https://example.invalid/image.jpg,true

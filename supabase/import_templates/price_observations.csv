@@ -1,0 +1,2 @@
+sku,retailer_slug,branch,region,price_kes,pack_size,source_type,source_url,observed_at,verified
+EXAMPLE-001,naivas,Nairobi CBD,Nairobi,145,2 kg,seeded_demo,,2026-10-08,false

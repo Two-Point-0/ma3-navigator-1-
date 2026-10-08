@@ -17,6 +17,7 @@ import {
 } from "@/lib/journey";
 import { generateStopQueue, StopQueueEntry, haversineKm, etaMinutes, AVG_MATATU_SPEED_KMH } from "@/data/ma3_core";
 import { RAIL_LINES, RAIL_STATIONS, railLineCoords, nextDeparture, NCR_FARE_ESTIMATE } from "@/data/ma3_rail";
+import OSMRailways from "@/data/nairobi_railways_osm.json";
 import { useWallet } from "@/lib/wallet";
 
 type Panel = "search" | "planner" | "matatu" | "train" | null;
@@ -29,7 +30,8 @@ const ROUTE_STOPS = MA3_GTFS.routeStops as Record<string, string[]>;
 
 type SearchResult =
   | { kind: "route"; route: typeof ROUTES[0] }
-  | { kind: "stop"; stop: StopMatch };
+  | { kind: "stop"; stop: StopMatch }
+  | { kind: "rail"; station: typeof RAIL_STATIONS[string] };
 
 interface LiveMatatu {
   id: string;
@@ -154,6 +156,7 @@ export default function Ma3Page() {
   const [saveDays, setSaveDays]     = useState<string[]>([]);
   const [saveTime, setSaveTime]     = useState("07:30");
   const [showSaved, setShowSaved]   = useState(false);
+  const [panelMinimized, setPanelMinimized] = useState(false);
   const [tripProgress, setTripProgress] = useState(0);
   const { wallet, pay }             = useWallet();
 
@@ -174,7 +177,11 @@ export default function Ma3Page() {
       .slice(0, 12)
       .map(route => ({ kind: "route" as const, route }));
     const stopMatches: SearchResult[] = searchStops(query, 12).map(stop => ({ kind: "stop" as const, stop }));
-    return [...routeMatches, ...stopMatches];
+    const railMatches: SearchResult[] = Object.values(RAIL_STATIONS)
+      .filter(station => station.name.toLowerCase().includes(q))
+      .slice(0, 8)
+      .map(station => ({ kind: "rail" as const, station }));
+    return [...routeMatches, ...stopMatches, ...railMatches];
   }, [query]);
 
   const clearStatic = useCallback(() => {
@@ -187,6 +194,9 @@ export default function Ma3Page() {
       removeLineLayer(map, `route-passed-${r.id}`);
     });
     RAIL_LINES.forEach(l => removeLineLayer(map, `rail-${l.id}`));
+    if (map.getLayer("osm-rail-line")) map.removeLayer("osm-rail-line");
+    if (map.getLayer("osm-rail-stations")) map.removeLayer("osm-rail-stations");
+    if (map.getSource("osm-railways")) map.removeSource("osm-railways");
     removePointLayer(map, "route-stops");
     removePointLayer(map, "planner-pts");
   }, []);
@@ -218,6 +228,9 @@ export default function Ma3Page() {
 
   const drawRail = useCallback((map: maplibregl.Map, selectedId: string | null) => {
     clearStatic();
+    map.addSource("osm-railways", { type: "geojson", data: OSMRailways as any });
+    map.addLayer({ id: "osm-rail-line", type: "line", source: "osm-railways", paint: { "line-color": "#f0ede8", "line-width": 2.2, "line-opacity": 0.72, "line-dasharray": [2, 1] } } as any);
+    map.addLayer({ id: "osm-rail-stations", type: "circle", source: "osm-railways", filter: ["==", ["get", "railway"], "station"], paint: { "circle-radius": 4, "circle-color": "#080810", "circle-stroke-color": "#f0ede8", "circle-stroke-width": 1.5 } } as any);
     RAIL_LINES.forEach(l => {
       const w = selectedId === l.id ? 6 : 3.5;
       const op = selectedId && selectedId !== l.id ? 0.3 : 0.9;
@@ -336,7 +349,18 @@ export default function Ma3Page() {
     const servingRouteIds = (MA3_GTFS.stopRoutes as Record<string, string[]>)[stop.id] ?? [];
     const firstRoute = ROUTES.find(r => servingRouteIds.includes(r.id));
     if (firstRoute) selectRoute(firstRoute);
-    toast(`📍 ${stop.name} — ${servingRouteIds.length} route${servingRouteIds.length !== 1 ? "s" : ""} serve this stop`);
+    toast(`${stop.name} selected — choose a start and destination below`);
+  };
+
+  const selectRailStation = (station: typeof RAIL_STATIONS[string]) => {
+    setQuery(station.name);
+    setMapCenter([station.lat, station.lon]);
+    mapRef.current?.flyTo(station.lon, station.lat, 14);
+    const line = RAIL_LINES.find(item => item.stations.includes(station.id));
+    setSelRailLine(line?.id ?? null);
+    setPanel("train");
+    setPanelMinimized(false);
+    if (mapInst.current) drawRail(mapInst.current, line?.id ?? null);
   };
 
   const findJourney = () => {
@@ -362,13 +386,26 @@ export default function Ma3Page() {
     }
   };
 
+  const useCurrentLocation = () => {
+    if (!navigator.geolocation) { toast("Location is not available in this browser"); return; }
+    navigator.geolocation.getCurrentPosition(position => {
+      const lat = position.coords.latitude;
+      const lon = position.coords.longitude;
+      const nearest = Object.entries(STOPS_RAW).map(([id, stop]) => ({ id, name: stop[0], lat: stop[1], lon: stop[2], distance: haversineKm(lat, lon, stop[1], stop[2]) })).sort((a, b) => a.distance - b.distance)[0];
+      if (!nearest) return;
+      const stop: StopMatch = { id: nearest.id, name: nearest.name, lat: nearest.lat, lon: nearest.lon };
+      setFromStop(stop); setFromVal(`Near ${stop.name}`); setJourneyOpts(null); setMapCenter([lat, lon]); mapRef.current?.flyTo(lon, lat, 15);
+      toast(`Walking to ${stop.name} added as your start`);
+    }, () => toast("Location permission was not granted"), { enableHighAccuracy: true, timeout: 10000 });
+  };
+
   const lockIn = (stop: StopMatch) => {
     setLockedStop(stop);
     setStopQueue(generateStopQueue(stop.lat, stop.lon, MA3_GTFS.stops as any));
-    toast(`📍 Locked in at ${stop.name} — touts can see you!`);
+    toast(`Locked in at ${stop.name} — touts can see you!`);
   };
 
-  const openPanel = (p: Panel) => setPanel(prev => prev === p ? null : p);
+  const openPanel = (p: Panel) => { setPanelMinimized(false); setPanel(prev => prev === p ? null : p); };
   const pitch = is3D ? 52 : 0;
   const bearing = is3D ? -14 : 0;
 
@@ -381,21 +418,9 @@ export default function Ma3Page() {
         <button style={glassBtn(panel === "search", "var(--stop)")} onClick={() => openPanel("search")}>
           <Search size={13} /> Search
         </button>
-        <button style={glassBtn(panel === "planner", "var(--go)")} onClick={() => openPanel("planner")}>
-          <Navigation size={13} /> Plan
-        </button>
-        <button style={glassBtn(panel === "matatu", "var(--ready)")} onClick={() => openPanel("matatu")}>
-          <BusFront size={13} /> Matatu
-        </button>
-        <button style={glassBtn(panel === "train", "#8b5cf6")} onClick={() => openPanel("train")}>
-          <TrainFront size={13} /> Train
-        </button>
         <button onClick={() => setShowAllLive(v => !v)}
           style={{ ...glassBtn(showAllLive, "#16a34a"), borderColor: showAllLive ? "rgba(22,163,74,.5)" : "rgba(255,255,255,.12)", color: showAllLive ? "#16a34a" : "var(--muted2)" }}>
           {showAllLive ? <Eye size={13} /> : <EyeOff size={13} />} Live
-        </button>
-        <button style={{ ...glassBtn(is3D, "#3b82f6"), marginLeft: "auto" }} onClick={() => setIs3D(d => !d)}>
-          <Box size={13} /> 3D
         </button>
       </div>
 
@@ -404,9 +429,9 @@ export default function Ma3Page() {
         {panel === "search" && (
           <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }}
             transition={{ type: "spring", damping: 28, stiffness: 320 }}
-            className="bpanel open" style={{ maxHeight: "75vh" }}>
+            className="bpanel open" style={{ maxHeight: panelMinimized ? "24vh" : "52vh" }}>
             <div className="bpanel-head">
-              <div className="handle" />
+              <button aria-label="Minimize search panel" className="handle" onClick={() => setPanelMinimized(v => !v)} />
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 <div style={{ position: "relative", flex: 1 }}>
                   <Search size={13} style={{ position: "absolute", left: 11, top: "50%", transform: "translateY(-50%)", color: "var(--ready)" }} />
@@ -448,7 +473,22 @@ export default function Ma3Page() {
                   </div>
                 </motion.div>
               )}
-              {!query && !selRoute && <p style={{ fontSize: ".64rem", color: "var(--muted)", textAlign: "center", padding: "10px 0" }}>Search by route number, route name, or stop name</p>}
+              {selRoute && !panelMinimized && (
+                <div className="ios-glass" style={{ marginTop: 8, padding: 10 }}>
+                  <p className="sec-label" style={{ marginBottom: 7 }}>Plan from your location</p>
+                  <div style={{ display: "grid", gap: 6 }}>
+                    <StopAC value={fromVal} onChange={setFromVal} color="var(--go)" placeholder="Start or current stop"
+                      onSelect={s => { setFromStop(s); setFromVal(s.name); setJourneyOpts(null); }} />
+                    <button className="btn btn-ghost" style={{ justifyContent: "center", padding: 8, fontSize: ".65rem" }} onClick={useCurrentLocation}><MapPin size={11} /> Use my current location</button>
+                    <StopAC value={toVal} onChange={setToVal} color="var(--stop)" placeholder="Destination stop"
+                      onSelect={s => { setToStop(s); setToVal(s.name); setJourneyOpts(null); }} />
+                    <button className="btn btn-go" style={{ width: "100%", padding: 9, justifyContent: "center", fontSize: ".7rem" }} onClick={findJourney}>
+                      <Navigation size={12} /> Show walk, matatu and train options
+                    </button>
+                  </div>
+                </div>
+              )}
+              {!query && !selRoute && <p style={{ fontSize: ".64rem", color: "var(--muted)", textAlign: "center", padding: "10px 0" }}>Search for a matatu route, stop, train station or destination</p>}
             </div>
 
             <div className="bpanel-scroll" style={{ padding: "0 14px 20px" }}>
@@ -471,6 +511,17 @@ export default function Ma3Page() {
                         <div style={{ fontSize: ".55rem", color: "var(--muted)" }}>next</div>
                       </div>
                       <BusFront size={13} style={{ color: route.c, flexShrink: 0 }} />
+                    </motion.button>
+                  );
+                } else if (res.kind === "rail") {
+                  const station = res.station;
+                  const servingLines = RAIL_LINES.filter(line => line.stations.includes(station.id));
+                  return (
+                    <motion.button key={`rail-${station.id}`} whileTap={{ scale: 0.97 }} onClick={() => selectRailStation(station)}
+                      style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 11px", borderRadius: 12, width: "100%", textAlign: "left", marginBottom: 5, background: "var(--glass)", border: "1px solid var(--border)", cursor: "pointer" }}>
+                      <div style={{ width: 36, height: 36, borderRadius: 9, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(139,92,246,.12)", border: "1.5px solid rgba(139,92,246,.3)", flexShrink: 0 }}><TrainFront size={15} style={{ color: "#a78bfa" }} /></div>
+                      <div style={{ flex: 1, minWidth: 0 }}><p style={{ fontSize: ".77rem", fontWeight: 600 }}>{station.name}</p><p style={{ fontSize: ".6rem", color: "var(--muted)" }}>Rail station · {servingLines.map(line => line.name).join(" · ")}</p></div>
+                      <ArrowRight size={13} style={{ color: "#a78bfa" }} />
                     </motion.button>
                   );
                 } else {
@@ -504,9 +555,9 @@ export default function Ma3Page() {
         {panel === "planner" && (
           <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }}
             transition={{ type: "spring", damping: 28, stiffness: 320 }}
-            className="bpanel open" style={{ maxHeight: "85vh" }}>
+            className="bpanel open" style={{ maxHeight: panelMinimized ? "24vh" : "52vh" }}>
             <div className="bpanel-head">
-              <div className="handle" />
+              <button aria-label="Minimize panel" className="handle" onClick={() => setPanelMinimized(v => !v)} />
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
                 <span style={{ fontFamily: "var(--font-display)", fontSize: ".88rem", fontWeight: 900 }}>Journey Planner</span>
                 <div style={{ display: "flex", gap: 6 }}>
@@ -553,7 +604,7 @@ export default function Ma3Page() {
                               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
                                 <div style={{ display: "flex", alignItems: "center", gap: 5, flexWrap: "wrap" }}>
                                   {opt.isFastest && <span className="chip" style={{ background: "rgba(22,163,74,.12)", color: "var(--go)", border: "1px solid rgba(22,163,74,.3)" }}><Zap size={9} style={{ display: "inline" }} /> FASTEST</span>}
-                                  {opt.isCheapest && <span className="chip" style={{ background: "rgba(217,119,6,.12)", color: "var(--ready)", border: "1px solid rgba(217,119,6,.3)" }}>💰 CHEAPEST</span>}
+                                  {opt.isCheapest && <span className="chip" style={{ background: "rgba(217,119,6,.12)", color: "var(--ready)", border: "1px solid rgba(217,119,6,.3)" }}>CHEAPEST</span>}
                                   {opt.usesRail && <span className="chip" style={{ background: "rgba(139,92,246,.12)", color: "#8b5cf6", border: "1px solid rgba(139,92,246,.3)" }}><TrainFront size={9} style={{ display: "inline" }} /> TRAIN</span>}
                                 </div>
                                 <span style={{ fontFamily: "var(--font-mono)", fontSize: ".82rem", fontWeight: 700 }}>KES {opt.fareEstimate}</span>
@@ -585,7 +636,7 @@ export default function Ma3Page() {
                                   <span style={{ fontSize: ".58rem", color: "var(--muted)", fontFamily: "var(--font-mono)", flexShrink: 0 }}>{leg.etaMin}m</span>
                                 </div>
                               ))}
-                              {opt.transfers > 0 && <p style={{ fontSize: ".6rem", color: "var(--ready)", marginBottom: 6 }}>⚠️ {opt.transfers} transfer — allow extra time</p>}
+                              {opt.transfers > 0 && <p style={{ fontSize: ".6rem", color: "var(--ready)", marginBottom: 6 }}>Transfer: {opt.transfers} transfer — allow extra time</p>}
                               {opt.legs[0]?.routeId && (
                                 <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "5px 8px", background: "rgba(22,163,74,.06)", borderRadius: 8, marginBottom: 8 }}>
                                   <BadgeCheck size={12} style={{ color: "var(--go)", flexShrink: 0 }} />
@@ -600,7 +651,7 @@ export default function Ma3Page() {
                                 </button>
                                 <button className="btn" disabled={!canAfford}
                                   style={{ padding: "8px 12px", fontSize: ".7rem", background: canAfford ? "rgba(217,119,6,.12)" : "rgba(220,38,38,.1)", border: `1px solid ${canAfford ? "rgba(217,119,6,.3)" : "rgba(220,38,38,.3)"}`, color: canAfford ? "var(--ready)" : "var(--stop)" }}
-                                  onClick={() => { if (pay(opt.fareEstimate)) toast(`✅ KES ${opt.fareEstimate} paid`); else toast("Top up your wallet first"); }}>
+                                  onClick={() => { if (pay(opt.fareEstimate)) toast(`KES ${opt.fareEstimate} paid`); else toast("Top up your wallet first"); }}>
                                   <Wallet size={11} /> Pay
                                 </button>
                                 <button className="btn btn-ghost" style={{ padding: "8px 10px" }} onClick={() => setSaveForm(true)}>
@@ -632,7 +683,7 @@ export default function Ma3Page() {
                               onClick={() => {
                                 if (!fromStop || !toStop || !saveLabel) { toast("Fill in From, To and a label"); return; }
                                 setSavedJourneys(p => [...p, { label: saveLabel, from: fromStop, to: toStop, time: saveTime, days: saveDays }]);
-                                setSaveForm(false); setSaveLabel(""); setSaveDays([]); toast("✅ Saved!");
+                                setSaveForm(false); setSaveLabel(""); setSaveDays([]); toast("Saved");
                               }}>Save</button>
                             <button className="btn btn-ghost" style={{ padding: "9px 13px" }} onClick={() => setSaveForm(false)}><X size={14} /></button>
                           </div>
@@ -715,9 +766,9 @@ export default function Ma3Page() {
         {panel === "matatu" && (
           <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }}
             transition={{ type: "spring", damping: 28, stiffness: 320 }}
-            className="bpanel open" style={{ maxHeight: "55vh" }}>
+            className="bpanel open" style={{ maxHeight: panelMinimized ? "24vh" : "45vh" }}>
             <div className="bpanel-head">
-              <div className="handle" />
+              <button aria-label="Minimize panel" className="handle" onClick={() => setPanelMinimized(v => !v)} />
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
                   <BusFront size={15} style={{ color: "var(--ready)" }} />
@@ -760,9 +811,9 @@ export default function Ma3Page() {
         {panel === "train" && (
           <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }}
             transition={{ type: "spring", damping: 28, stiffness: 320 }}
-            className="bpanel open" style={{ maxHeight: "70vh" }}>
+            className="bpanel open" style={{ maxHeight: panelMinimized ? "24vh" : "52vh" }}>
             <div className="bpanel-head">
-              <div className="handle" />
+              <button aria-label="Minimize panel" className="handle" onClick={() => setPanelMinimized(v => !v)} />
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
                   <TrainFront size={15} style={{ color: "#8b5cf6" }} />
@@ -770,6 +821,7 @@ export default function Ma3Page() {
                 </div>
                 <button onClick={() => setPanel(null)} style={{ background: "none", border: "none", color: "var(--muted)", cursor: "pointer" }}><X size={18} /></button>
               </div>
+              <p style={{ margin: "7px 0 0", fontSize: ".56rem", color: "var(--muted)" }}>Rail geometry: OpenStreetMap contributors · ODbL. Times are timetable placeholders; confirm with Kenya Railways.</p>
             </div>
             <div className="bpanel-scroll" style={{ padding: "0 14px 24px" }}>
               {RAIL_LINES.map(line => {
