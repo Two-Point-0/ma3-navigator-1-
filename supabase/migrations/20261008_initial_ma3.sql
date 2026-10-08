@@ -1,0 +1,50 @@
+create extension if not exists "pgcrypto";
+
+create table if not exists public.profiles (id uuid primary key references auth.users(id) on delete cascade, full_name text, email text, phone text, role text not null default 'passenger' check (role in ('passenger','matatu_driver','carpool_driver','admin')), created_at timestamptz not null default now(), updated_at timestamptz not null default now());
+create table if not exists public.retailers (id uuid primary key default gen_random_uuid(), name text not null, slug text not null unique, logo_url text, active boolean not null default true, created_at timestamptz not null default now());
+create table if not exists public.products (id uuid primary key default gen_random_uuid(), sku text unique, name text not null, normalized_name text not null, category text, brand text, pack_size text, barcode text, image_url text, active boolean not null default true, created_at timestamptz not null default now(), updated_at timestamptz not null default now());
+create table if not exists public.price_observations (id uuid primary key default gen_random_uuid(), product_id uuid not null references public.products(id) on delete cascade, retailer_id uuid not null references public.retailers(id) on delete cascade, branch text, region text default 'Nairobi', price_kes numeric(12,2) not null check (price_kes >= 0), pack_size text, source_type text not null default 'seeded_demo' check (source_type in ('seeded_demo','retailer_feed','user_submitted','manual_entry','partner_data')), source_url text, observed_at timestamptz not null default now(), verified boolean not null default false, created_at timestamptz not null default now());
+create table if not exists public.shopping_baskets (id uuid primary key default gen_random_uuid(), user_id uuid references auth.users(id) on delete set null, name text not null, basket_type text, created_at timestamptz not null default now(), updated_at timestamptz not null default now());
+create table if not exists public.basket_items (id uuid primary key default gen_random_uuid(), basket_id uuid not null references public.shopping_baskets(id) on delete cascade, product_id uuid not null references public.products(id) on delete restrict, quantity numeric(12,2) not null check (quantity > 0), created_at timestamptz not null default now());
+create table if not exists public.routes (id uuid primary key default gen_random_uuid(), name text not null, mode text not null default 'demo', geometry jsonb, active boolean not null default true, created_at timestamptz not null default now());
+create table if not exists public.stops (id uuid primary key default gen_random_uuid(), route_id uuid references public.routes(id) on delete cascade, name text not null, latitude numeric(10,7), longitude numeric(10,7), sequence_number integer, created_at timestamptz not null default now());
+create table if not exists public.trips (id uuid primary key default gen_random_uuid(), route_id uuid references public.routes(id) on delete set null, mode text not null default 'demo', departure_time timestamptz, arrival_time timestamptz, fare_kes numeric(12,2), created_at timestamptz not null default now());
+create table if not exists public.driver_profiles (id uuid primary key default gen_random_uuid(), user_id uuid not null unique references auth.users(id) on delete cascade, driver_type text not null check (driver_type in ('matatu_driver','carpool_driver')), display_name text, phone text, demo_mode boolean not null default true, created_at timestamptz not null default now());
+create table if not exists public.vehicles (id uuid primary key default gen_random_uuid(), driver_id uuid not null references public.driver_profiles(id) on delete cascade, registration_number text, make text, model text, seats integer check (seats > 0), created_at timestamptz not null default now());
+create table if not exists public.driver_verifications (id uuid primary key default gen_random_uuid(), driver_id uuid not null unique references public.driver_profiles(id) on delete cascade, driver_verification_status text not null default 'prototype_only' check (driver_verification_status in ('prototype_only','pending','verified','rejected','expired')), vehicle_verification_status text not null default 'prototype_only' check (vehicle_verification_status in ('prototype_only','pending','verified','rejected','expired')), insurance_expiry date, roadworthiness_expiry date, licence_expiry date, location_consent_at timestamptz, last_verified_at timestamptz, created_at timestamptz not null default now());
+create table if not exists public.carpool_posts (id uuid primary key default gen_random_uuid(), driver_id uuid not null references public.driver_profiles(id) on delete cascade, origin text not null, destination text not null, departure_time timestamptz, available_seats integer not null check (available_seats > 0), distance_km numeric(10,2), fuel_consumption_l_per_100km numeric(10,2) default 8, fuel_price_kes numeric(10,2) default 190, calculated_contribution_kes numeric(12,2), status text not null default 'demo' check (status in ('demo','draft','published','cancelled','completed')), demo_mode boolean not null default true, created_at timestamptz not null default now());
+create table if not exists public.carpool_requests (id uuid primary key default gen_random_uuid(), carpool_post_id uuid not null references public.carpool_posts(id) on delete cascade, passenger_id uuid not null references auth.users(id) on delete cascade, seats_requested integer not null default 1 check (seats_requested > 0), status text not null default 'demo' check (status in ('demo','pending','accepted','rejected','cancelled')), created_at timestamptz not null default now());
+create table if not exists public.location_consents (id uuid primary key default gen_random_uuid(), user_id uuid not null references auth.users(id) on delete cascade, purpose text not null, consented_at timestamptz not null default now(), withdrawn_at timestamptz);
+
+create or replace view public.latest_prices as select distinct on (product_id, retailer_id) id, product_id, retailer_id, branch, region, price_kes, pack_size, source_type, source_url, observed_at, verified from public.price_observations order by product_id, retailer_id, observed_at desc;
+
+alter table public.profiles enable row level security;
+alter table public.retailers enable row level security;
+alter table public.products enable row level security;
+alter table public.price_observations enable row level security;
+alter table public.shopping_baskets enable row level security;
+alter table public.basket_items enable row level security;
+alter table public.driver_profiles enable row level security;
+alter table public.vehicles enable row level security;
+alter table public.driver_verifications enable row level security;
+alter table public.carpool_posts enable row level security;
+alter table public.carpool_requests enable row level security;
+alter table public.location_consents enable row level security;
+
+create policy "public reads active retailers" on public.retailers for select using (active = true);
+create policy "public reads active products" on public.products for select using (active = true);
+create policy "public reads demo prices" on public.price_observations for select using (source_type = 'seeded_demo' and verified = false);
+create policy "users read own profile" on public.profiles for select using (auth.uid() = id);
+create policy "users update own profile" on public.profiles for update using (auth.uid() = id);
+create policy "users own baskets" on public.shopping_baskets for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+create policy "users own basket items" on public.basket_items for all using (exists (select 1 from public.shopping_baskets b where b.id = basket_id and b.user_id = auth.uid())) with check (exists (select 1 from public.shopping_baskets b where b.id = basket_id and b.user_id = auth.uid()));
+create policy "drivers read own profile" on public.driver_profiles for select using (auth.uid() = user_id);
+create policy "drivers edit own profile" on public.driver_profiles for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
+create policy "drivers create own profile" on public.driver_profiles for insert with check (auth.uid() = user_id);
+create policy "drivers own vehicles" on public.vehicles for all using (exists (select 1 from public.driver_profiles d where d.id = driver_id and d.user_id = auth.uid())) with check (exists (select 1 from public.driver_profiles d where d.id = driver_id and d.user_id = auth.uid()));
+create policy "drivers read own verification" on public.driver_verifications for select using (exists (select 1 from public.driver_profiles d where d.id = driver_id and d.user_id = auth.uid()));
+create policy "public reads demo carpool posts" on public.carpool_posts for select using (demo_mode = true and status = 'demo');
+create policy "drivers own carpool posts" on public.carpool_posts for all using (exists (select 1 from public.driver_profiles d where d.id = driver_id and d.user_id = auth.uid())) with check (exists (select 1 from public.driver_profiles d where d.id = driver_id and d.user_id = auth.uid()));
+create policy "passenger reads own requests" on public.carpool_requests for select using (auth.uid() = passenger_id);
+create policy "passenger creates own requests" on public.carpool_requests for insert with check (auth.uid() = passenger_id);
+create policy "users own location consent" on public.location_consents for all using (auth.uid() = user_id) with check (auth.uid() = user_id);

@@ -10,6 +10,7 @@ import maplibregl from "maplibre-gl";
 import MapLibreView, { MapLibreHandle } from "@/components/MapLibreView";
 import { useWallet } from "@/lib/wallet";
 import { MA3_GTFS } from "@/data/ma3_gtfs";
+import { APP_MODE, PROTOTYPE_NOTICE } from "@/lib/appMode";
 
 const NAIROBI: [number, number] = [-1.2864, 36.8172];
 
@@ -137,6 +138,7 @@ export default function NdaiPage() {
   };
 
   const handleBook = (d: typeof DRIVERS[0]) => {
+    if (APP_MODE.demo || !APP_MODE.realPayments || !APP_MODE.liveTransport) { toast(PROTOTYPE_NOTICE); return; }
     if (!pay(fare)) { toast("Insufficient wallet balance — top up in Profile"); return; }
     setDriver(d);
     setStage("booked");
@@ -146,6 +148,7 @@ export default function NdaiPage() {
   const handleCancel = () => { setStage("idle"); setDriver(null); setPickup(""); setDest(""); };
 
   const bookCarpool = (offer: CarpoolOffer) => {
+    if (APP_MODE.demo || !APP_MODE.realPayments || !APP_MODE.liveTransport) { toast(PROTOTYPE_NOTICE); return; }
     if (!pay(offer.contribution)) { toast("Insufficient wallet balance — top up in Profile"); return; }
     setBookedCarpool(offer);
     toast(`Seat reserved with ${offer.driverName} — KES ${offer.contribution} cost-share paid`);
@@ -168,6 +171,7 @@ export default function NdaiPage() {
 
   const bookDelivery = () => {
     if (!delFrom || !delTo) { toast("Enter pickup and drop-off"); return; }
+    if (APP_MODE.demo || !APP_MODE.realPayments || !APP_MODE.liveTransport) { toast(PROTOTYPE_NOTICE); return; }
     const price = DELIVERY_PRICES[delSize];
     if (!pay(price)) { toast("Insufficient wallet balance"); return; }
     setDelStage("booked");
