@@ -1,7 +1,6 @@
 // Journey planning engine - uses real GTFS data with road-mapped polylines
 import { MA3_GTFS } from "@/data/ma3_gtfs";
 import { haversineKm, etaMinutes, AVG_MATATU_SPEED_KMH } from "@/data/ma3_core";
-import { RAIL_LINES, RAIL_STATIONS, RAIL_MATATU_INTERCHANGES, NCR_FARE_ESTIMATE } from "@/data/ma3_rail";
 
 type StopTuple = [string, number, number]; // [name, lat, lon]
 
@@ -13,7 +12,7 @@ export interface StopMatch {
 }
 
 export interface JourneyLeg {
-  type: "matatu" | "walk" | "train";
+  type: "matatu" | "walk";
   routeId?: string;
   routeShortName?: string;
   routeColor?: string;
@@ -22,7 +21,6 @@ export interface JourneyLeg {
   distanceKm: number;
   etaMin: number;
   fareKes: number;
-  isTrainLeg?: boolean;
 }
 
 export interface JourneyOption {
@@ -33,8 +31,6 @@ export interface JourneyOption {
   fareEstimate: number;
   isFastest?: boolean;
   isCheapest?: boolean;
-  usesRail?: boolean;
-  matatusToBoard?: number; // how many matatus from current stop going YOUR direction
 }
 
 const stopsRaw = MA3_GTFS.stops as unknown as Record<string, StopTuple>;
@@ -93,20 +89,6 @@ function isCorrectDirection(routeId: string, fromStopId: string, toStopId: strin
   return fIdx !== -1 && tIdx !== -1 && fIdx < tIdx;
 }
 
-// Count matatus on a route approaching a stop going toward destination
-export function countMatatusApproaching(routeId: string, boardingStopId: string): number {
-  // In real app this would query live vehicle positions
-  // Mock: random 1-4 based on route + stop hash
-  const hash = (routeId + boardingStopId).split('').reduce((a, c) => a + c.charCodeAt(0), 0);
-  return 1 + (hash % 4);
-}
-
-// Estimate time until next matatu arrives (based on headway simulation)
-export function nextMatatuArrivalMin(routeId: string, boardingStopId: string): number {
-  const hash = (routeId + boardingStopId).split('').reduce((a, c) => a + c.charCodeAt(0), 0);
-  return 2 + (hash % 12); // 2-14 min
-}
-
 export function planJourney(fromStopId: string, toStopId: string): JourneyOption[] {
   const from = getStop(fromStopId);
   const to = getStop(toStopId);
@@ -129,7 +111,6 @@ export function planJourney(fromStopId: string, toStopId: string): JourneyOption
     if (fIdx === -1 || tIdx === -1 || fIdx >= tIdx) return;
     const dist = segmentDist(routeId, fIdx, tIdx);
     const route = routesById.get(routeId)!;
-    const waitMin = nextMatatuArrivalMin(routeId, fromStopId);
     const rideMin = etaMinutes(dist);
     options.push({
       legs: [{
@@ -137,58 +118,63 @@ export function planJourney(fromStopId: string, toStopId: string): JourneyOption
         fromStop: from, toStop: to,
         distanceKm: dist, etaMin: rideMin, fareKes: fareForDist(dist),
       }],
-      totalEtaMin: waitMin + rideMin,
+      totalEtaMin: rideMin,
       totalDistanceKm: dist,
       transfers: 0,
       fareEstimate: fareForDist(dist),
-      matatusToBoard: countMatatusApproaching(routeId, fromStopId),
     });
   });
 
-  // ── 2. 1-transfer matatu options ──
-  if (options.length < 2) {
-    outer:
-    for (const r1 of fromRoutes.slice(0, 14)) {
-      const s1 = routeStops[r1]; if (!s1) continue;
-      const fIdx1 = s1.indexOf(fromStopId); if (fIdx1 === -1) continue;
-      for (const r2 of toRoutes.slice(0, 14)) {
-        if (r1 === r2) continue;
-        const s2 = routeStops[r2]; if (!s2) continue;
-        const tIdx2 = s2.indexOf(toStopId); if (tIdx2 === -1) continue;
-        // find shared stop that is AFTER fromStop on r1 AND BEFORE toStop on r2
-        const shared = s1.slice(fIdx1 + 1).find(sid =>
-          s2.includes(sid) && sid !== fromStopId && sid !== toStopId &&
-          s2.indexOf(sid) < tIdx2
-        );
-        if (!shared) continue;
-        const sharedStop = getStop(shared); if (!sharedStop) continue;
-        const tIdx1 = s1.indexOf(shared);
-        const fIdx2 = s2.indexOf(shared);
-        if (tIdx1 <= fIdx1 || fIdx2 >= tIdx2) continue;
-        const dist1 = segmentDist(r1, fIdx1, tIdx1);
-        const dist2 = segmentDist(r2, fIdx2, tIdx2);
-        const route1 = routesById.get(r1)!, route2 = routesById.get(r2)!;
-        const wait1 = nextMatatuArrivalMin(r1, fromStopId);
-        const wait2 = nextMatatuArrivalMin(r2, shared);
-        options.push({
-          legs: [
-            { type: "matatu", routeId: r1, routeShortName: route1.sn, routeColor: route1.c, fromStop: from, toStop: sharedStop, distanceKm: dist1, etaMin: etaMinutes(dist1), fareKes: fareForDist(dist1) },
-            { type: "matatu", routeId: r2, routeShortName: route2.sn, routeColor: route2.c, fromStop: sharedStop, toStop: to, distanceKm: dist2, etaMin: etaMinutes(dist2), fareKes: fareForDist(dist2) },
-          ],
-          totalEtaMin: wait1 + etaMinutes(dist1) + wait2 + etaMinutes(dist2),
-          totalDistanceKm: dist1 + dist2,
-          transfers: 1,
-          fareEstimate: fareForDist(dist1) + fareForDist(dist2),
-          matatusToBoard: countMatatusApproaching(r1, fromStopId),
-        });
-        if (options.length >= 4) break outer;
+  // Explore downstream transfer stops breadth-first; route changes are limited
+  // to four so results stay useful without proposing circular journeys.
+  type State = { stopId: string; legs: JourneyLeg[]; usedRoutes: Set<string> };
+  const queue: State[] = fromRoutes.map(routeId => ({ stopId: fromStopId, legs: [], usedRoutes: new Set([routeId]) }));
+  const seen = new Set<string>(options.map(option => option.legs.map(leg => `${leg.routeId}:${leg.fromStop.id}:${leg.toStop.id}`).join("|")));
+  let expanded = 0;
+  for (let cursor = 0; cursor < queue.length && expanded < 12000 && options.length < 80; cursor++) {
+    const state = queue[cursor];
+    const usedRoutes = [...state.usedRoutes];
+    const lastRoute = usedRoutes[usedRoutes.length - 1];
+    if (!lastRoute) continue;
+    const stops = routeStops[lastRoute];
+    const fromIndex = stops?.indexOf(state.stopId) ?? -1;
+    if (!stops || fromIndex < 0) continue;
+    for (let index = fromIndex + 1; index < stops.length; index++) {
+      const nextStopId = stops[index];
+      const nextStop = getStop(nextStopId);
+      if (!nextStop) continue;
+      const distance = segmentDist(lastRoute, fromIndex, index);
+      const route = routesById.get(lastRoute);
+      if (!route) continue;
+      const leg: JourneyLeg = { type: "matatu", routeId: lastRoute, routeShortName: route.sn, routeColor: route.c,
+        fromStop: state.legs.length ? state.legs[state.legs.length - 1].toStop : from, toStop: nextStop,
+        distanceKm: distance, etaMin: etaMinutes(distance), fareKes: fareForDist(distance) };
+      const legs = [...state.legs, leg];
+      if (nextStopId === toStopId) {
+        const signature = legs.map(item => `${item.routeId}:${item.fromStop.id}:${item.toStop.id}`).join("|");
+        if (!seen.has(signature)) {
+          seen.add(signature);
+          options.push({ legs, totalEtaMin: legs.reduce((sum, item) => sum + item.etaMin, 0),
+            totalDistanceKm: legs.reduce((sum, item) => sum + item.distanceKm, 0),
+            transfers: legs.length - 1, fareEstimate: legs.reduce((sum, item) => sum + item.fareKes, 0) });
+        }
+        break;
+      }
+      if (state.usedRoutes.size >= 5) continue;
+      for (const nextRouteId of stopRoutes[nextStopId] ?? []) {
+        if (state.usedRoutes.has(nextRouteId)) continue;
+        expanded++;
+        const transferKey = `${nextStopId}|${nextRouteId}|${[...state.usedRoutes].sort().join(",")}`;
+        if (seen.has(transferKey)) continue;
+        seen.add(transferKey);
+        queue.push({ stopId: nextStopId, legs, usedRoutes: new Set([...state.usedRoutes, nextRouteId]) });
       }
     }
   }
 
   // ── 3. Walking fallback if very close ──
   const directDist = haversineKm(from.lat, from.lon, to.lat, to.lon);
-  if (directDist < 2.5 && options.length === 0) {
+  if (directDist <= 0.8 && options.length === 0) {
     const walkMin = Math.round((directDist / 4.8) * 60);
     options.push({
       legs: [{ type: "walk", fromStop: from, toStop: to, distanceKm: directDist, etaMin: walkMin, fareKes: 0 }],
@@ -199,45 +185,8 @@ export function planJourney(fromStopId: string, toStopId: string): JourneyOption
     });
   }
 
-  // ── 3. Train + matatu combined option (via known rail/matatu interchanges) ──
-  for (const interchange of RAIL_MATATU_INTERCHANGES) {
-    const stationStop = getStop(interchange.matatuStopId);
-    if (!stationStop) continue;
-    const distToInterchange = haversineKm(from.lat, from.lon, stationStop.lat, stationStop.lon);
-    // Only worth suggesting if the interchange is reasonably close to the start, or IS the start
-    const startsAtInterchange = fromStopId === interchange.matatuStopId || distToInterchange < 1.5;
-    if (!startsAtInterchange) continue;
-
-    for (const line of RAIL_LINES) {
-      const stationOrigin = RAIL_STATIONS[line.stations[0]];
-      const stationTerm = RAIL_STATIONS[line.stations[line.stations.length - 1]];
-      // does this rail line's far terminus get meaningfully closer to destination?
-      const distTermToDest = haversineKm(stationTerm.lat, stationTerm.lon, to.lat, to.lon);
-      const distOriginToDest = haversineKm(stationOrigin.lat, stationOrigin.lon, to.lat, to.lon);
-      if (distTermToDest >= distOriginToDest) continue; // train doesn't help get closer
-      if (distTermToDest > 2.5) continue; // still too far from destination after the train ride
-
-      const railDist = haversineKm(stationOrigin.lat, stationOrigin.lon, stationTerm.lat, stationTerm.lon);
-      const railMin = etaMinutes(railDist, line.avgSpeedKmh);
-      const walkDist = distTermToDest;
-      const walkMin = Math.round((walkDist / 4.8) * 60);
-
-      options.push({
-        legs: [
-          { type: "walk", fromStop: from, toStop: stationStop, distanceKm: distToInterchange, etaMin: Math.round((distToInterchange / 4.8) * 60), fareKes: 0 },
-          { type: "train", fromStop: { id: stationOrigin.id, name: stationOrigin.name, lat: stationOrigin.lat, lon: stationOrigin.lon }, toStop: { id: stationTerm.id, name: stationTerm.name, lat: stationTerm.lat, lon: stationTerm.lon }, distanceKm: railDist, etaMin: railMin, fareKes: NCR_FARE_ESTIMATE[line.id] ?? 80, isTrainLeg: true },
-          { type: "walk", fromStop: { id: stationTerm.id, name: stationTerm.name, lat: stationTerm.lat, lon: stationTerm.lon }, toStop: to, distanceKm: walkDist, etaMin: walkMin, fareKes: 0 },
-        ],
-        totalEtaMin: Math.round((distToInterchange / 4.8) * 60) + 5 /* wait for train */ + railMin + walkMin,
-        totalDistanceKm: distToInterchange + railDist + walkDist,
-        transfers: 1,
-        fareEstimate: NCR_FARE_ESTIMATE[line.id] ?? 80,
-        usesRail: true,
-      });
-    }
-  }
-
-  // ── Sort: fastest first, then by fare ──
+  // These are distance/speed estimates from an archived route snapshot, not service times.
+  // ── Sort: shorter estimate first, then by rough fare band ──
   options.sort((a, b) => a.totalEtaMin !== b.totalEtaMin ? a.totalEtaMin - b.totalEtaMin : a.fareEstimate - b.fareEstimate);
 
   // ── Tag fastest & cheapest ──

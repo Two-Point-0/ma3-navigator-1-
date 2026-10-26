@@ -6,9 +6,9 @@ export const ROLE_STORAGE_KEY = "ma3_user_role";
 export type Ma3Role = "passenger" | "matatu-driver" | "carpool-driver";
 
 const SLIDES = [
-  { theme: "var(--stop)", icon: Bus, keyword: "MOVE", title: "Navigate Nairobi like a local", bullets: ["Search routes by number, Sacco, stop or destination", "Plan direct trips, transfers and walking legs", "See the next stop after boarding"] },
-  { theme: "var(--ready)", icon: ShoppingCart, keyword: "MARKET", title: "Shop smart, stretch your money", bullets: ["Compare permitted retailer data with timestamps", "Build basic, standard and pro baskets", "Use family profiles for age-specific shopping"] },
-  { theme: "var(--go)", icon: Gamepad2, keyword: "MIRTH", title: "Play, create and celebrate", bullets: ["Load lightweight games and cultural stories", "Discover Nganya creators and products", "Vote in community-led recognition events"] },
+  { theme: "var(--stop)", icon: Bus, keyword: "MOVE", title: "Find a clearer way across town", bullets: ["Search matatu routes and stops", "Compare route and walking options", "Mapped train tracks are not live service times"] },
+  { theme: "var(--ready)", icon: ShoppingCart, keyword: "MARKET", title: "Compare your shopping basket", bullets: ["Compare dated prices across five supermarkets", "Check the branch and pack size", "Opt in to location for nearby store directions"] },
+  { theme: "var(--go)", icon: Gamepad2, keyword: "MIRTH", title: "Enjoy games and Nganya culture", bullets: ["Search games and explore curated Nganyas", "Vote and make free community predictions", "No cash bets or real-money prizes in this prototype"] },
 ];
 
 const ROLES: Array<{ id: Ma3Role; label: string; description: string; Icon: typeof UserRound }> = [
@@ -24,7 +24,7 @@ export default function Onboarding({ onDone }: OnboardingProps) {
   const [dir, setDir] = useState(1);
   const [role, setRole] = useState<Ma3Role | null>(null);
   const go = (next: number) => { setDir(next > slide ? 1 : -1); setSlide(next); };
-  const finish = () => { localStorage.setItem("ma3_onboarding_done", "1"); if (role) localStorage.setItem(ROLE_STORAGE_KEY, role); onDone(); };
+  const finish = () => { localStorage.setItem("ma3_onboarding_done", "1"); if (role) localStorage.setItem(ROLE_STORAGE_KEY, role); else if (!localStorage.getItem(ROLE_STORAGE_KEY)) localStorage.setItem(ROLE_STORAGE_KEY, "passenger"); onDone(); };
   const current = SLIDES[slide];
   const Icon = current.icon;
   const isLast = slide === SLIDES.length - 1;
@@ -40,9 +40,9 @@ export default function Onboarding({ onDone }: OnboardingProps) {
       </motion.div>
     </AnimatePresence>
     <div style={{ padding: "1.5rem 2rem 2.5rem", display: "flex", flexDirection: "column", alignItems: "center", gap: 16 }}>
-      {isLast && <div style={{ width: "100%", maxWidth: 360 }}><p className="sec-label">Choose your starting workspace</p><div style={{ display: "grid", gap: 7 }}>{ROLES.map(({ id, label, description, Icon: RoleIcon }) => <button key={id} onClick={() => setRole(id)} style={{ display: "flex", alignItems: "center", gap: 10, textAlign: "left", padding: "10px 12px", borderRadius: 12, background: role === id ? "rgba(217,119,6,.14)" : "var(--glass)", border: `1px solid ${role === id ? "var(--ready)" : "var(--border2)"}`, color: "var(--white)", cursor: "pointer" }}><RoleIcon size={17} style={{ color: role === id ? "var(--ready)" : "var(--muted2)" }} /><span style={{ flex: 1 }}><b style={{ display: "block", fontSize: ".75rem" }}>{label}</b><small style={{ color: "var(--muted2)" }}>{description}</small></span>{role === id && <Check size={15} style={{ color: "var(--ready)" }} />}</button>)}</div></div>}
+      {isLast && <div style={{ width: "100%", maxWidth: 360 }}><p className="sec-label">Optional: choose a starting workspace</p><div style={{ display: "grid", gap: 7 }}>{ROLES.map(({ id, label, description, Icon: RoleIcon }) => <button key={id} onClick={() => setRole(id)} style={{ display: "flex", alignItems: "center", gap: 10, textAlign: "left", padding: "10px 12px", borderRadius: 12, background: role === id ? "rgba(217,119,6,.14)" : "var(--glass)", border: `1px solid ${role === id ? "var(--ready)" : "var(--border2)"}`, color: "var(--white)", cursor: "pointer" }}><RoleIcon size={17} style={{ color: role === id ? "var(--ready)" : "var(--muted2)" }} /><span style={{ flex: 1 }}><b style={{ display: "block", fontSize: ".75rem" }}>{label}</b><small style={{ color: "var(--muted2)" }}>{description}</small></span>{role === id && <Check size={15} style={{ color: "var(--ready)" }} />}</button>)}</div></div>}
       <div style={{ display: "flex", gap: 7, alignItems: "center" }}>{SLIDES.map((_, i) => <button key={i} onClick={() => go(i)} aria-label={`Go to slide ${i + 1}`} style={{ width: i === slide ? 22 : 7, height: 7, borderRadius: 99, background: i === slide ? current.theme : "var(--border2)", border: "none", cursor: "pointer", transition: "all .3s ease" }} />)}</div>
-      <button onClick={isLast ? finish : () => go(slide + 1)} disabled={isLast && !role} style={{ width: "100%", maxWidth: 360, padding: "14px 20px", borderRadius: 14, background: isLast && !role ? "var(--border2)" : current.theme, border: "none", color: slide === 1 ? "#000" : "#fff", fontFamily: "var(--font)", fontWeight: 800, fontSize: ".9rem", cursor: isLast && !role ? "not-allowed" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>{isLast ? "Enter Ma3" : "Next"}{!isLast && <ChevronRight size={16} />}</button>
+      <button onClick={isLast ? finish : () => go(slide + 1)} style={{ width: "100%", maxWidth: 360, padding: "14px 20px", borderRadius: 14, background: current.theme, border: "none", color: slide === 1 ? "#000" : "#fff", fontFamily: "var(--font)", fontWeight: 800, fontSize: ".9rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>{isLast ? "Enter Ma3" : "Next"}{!isLast && <ChevronRight size={16} />}</button>
     </div>
   </div>;
 }

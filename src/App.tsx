@@ -2,25 +2,26 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import { Switch, Route, Router as WouterRouter, Link, useLocation } from "wouter";
 import { Toaster, toast } from "sonner";
 import { motion } from "framer-motion";
-import { Bus, Car, Plane, Home, Store, MapPin, Gamepad2, Bell, Zap, HelpCircle, Navigation } from "lucide-react";
-import { useState, useEffect } from "react";
-import { WalletProvider, useWallet } from "@/lib/wallet";
+import { Bus, Car, Plane, Home, Store, MapPin, Gamepad2, Bell, Wallet as WalletIcon, HelpCircle, Navigation } from "lucide-react";
+import { Suspense, lazy, useState, useEffect } from "react";
+import { WalletProvider } from "@/lib/wallet";
+import { ShoppingBasketProvider } from "@/lib/shoppingBasket";
 import { AuthProvider, useAuthContext } from "@/context/AuthContext";
-import LoginPage from "@/pages/Login";
 import Onboarding, { useOnboarding } from "@/components/Onboarding";
 import { HelpProvider, useHelp } from "@/lib/help";
 import GlobalHelpSheet from "@/components/GlobalHelpSheet";
 
-import HomePage from "@/pages/Home";
-import Ma3Page from "@/pages/Ma3";
-import NdaiPage from "@/pages/Ndai";
-import FlyPage from "@/pages/Fly";
-import MarketPage from "@/pages/Market";
-import MirthPage from "@/pages/Mirth";
-import ExplorePage from "@/pages/Explore";
-import ProfilePage from "@/pages/Profile";
-import DriverPage from "@/pages/Driver";
-import NotFound from "@/pages/NotFound";
+const LoginPage = lazy(() => import("@/pages/Login"));
+const HomePage = lazy(() => import("@/pages/Home"));
+const Ma3Page = lazy(() => import("@/pages/Ma3"));
+const NdaiPage = lazy(() => import("@/pages/Ndai"));
+const FlyPage = lazy(() => import("@/pages/Fly"));
+const MarketPage = lazy(() => import("@/pages/Market"));
+const MirthPage = lazy(() => import("@/pages/Mirth"));
+const ExplorePage = lazy(() => import("@/pages/Explore"));
+const ProfilePage = lazy(() => import("@/pages/Profile"));
+const DriverPage = lazy(() => import("@/pages/Driver"));
+const NotFound = lazy(() => import("@/pages/NotFound"));
 
 const NAV_ITEMS = [
   { href: "/ma3", label: "Ma3", Icon: Bus },
@@ -36,7 +37,6 @@ const NAV_ITEMS = [
 function TopBar() {
   const [spin, setSpin] = useState(false);
   const [location] = useLocation();
-  const { wallet } = useWallet();
   const { setOpen: setHelpOpen, setCurrentPath } = useHelp();
 
   useEffect(() => {
@@ -51,7 +51,7 @@ function TopBar() {
       <div style={{ position: "absolute", left: "1.1rem" }}>
         <Link href="/profile">
           <div className="token-pill" style={{ cursor: "pointer" }}>
-            <Zap size={12} /><span>{wallet.balance.toLocaleString()}</span>
+            <WalletIcon size={12} /><span>Wallet</span>
           </div>
         </Link>
       </div>
@@ -92,10 +92,10 @@ function BottomNav() {
       {visibleItems.map(({ href, label, Icon }) => {
         const active = isActive(href);
         return (
-          <Link key={href} href={href}>
+          <Link key={href} href={href} aria-label={label} title={label}>
             <div className={`bn ${active ? "on" : ""}`}>
-              <div className="bn-ic"><Icon size={18} /></div>
-              <div className="bn-lbl">{label}</div>
+              <div className="bn-ic"><Icon size={19} strokeWidth={active ? 2.4 : 1.8} /></div>
+              <span className="bn-lbl">{label}</span>
             </div>
           </Link>
         );
@@ -138,7 +138,7 @@ function Loader() {
           Ma<motion.span
             animate={phase >= 2 ? { rotate: 360 } : {}}
             transition={{ duration: 0.8, ease: [0.34, 1.56, 0.64, 1] }}
-            style={{ color: "var(--gold)", display: "inline-block", transformOrigin: "center 60%" }}
+            style={{ color: phase >= 2 ? "var(--go)" : phase >= 1 ? "var(--ready)" : "var(--stop)", display: "inline-block", transformOrigin: "center 60%" }}
           >3</motion.span>
         </motion.div>
       </div>
@@ -147,7 +147,7 @@ function Loader() {
           initial={{ width: "0%" }}
           animate={{ width: "100%" }}
           transition={{ duration: 2.6, ease: "easeInOut" }}
-          style={{ height: "100%", background: "linear-gradient(90deg,var(--gold),var(--sage))", borderRadius: 99 }}
+          style={{ height: "100%", background: "linear-gradient(90deg,var(--stop),var(--ready),var(--go))", borderRadius: 99 }}
         />
       </div>
       <div style={{ position: "absolute", bottom: 28, display: "flex", gap: 12, alignItems: "center" }}>
@@ -176,6 +176,7 @@ function AppShell() {
       <TopBar />
       <GlobalHelpSheet />
       <div className="page-wrap">
+        <Suspense fallback={<div className="inner" style={{ paddingTop: 24, color: "var(--muted2)", fontSize: ".75rem" }}>Loading page…</div>}>
         <Switch>
           <Route path="/login" component={LoginPage} />
           <Route path="/" component={HomePage} />
@@ -189,6 +190,7 @@ function AppShell() {
           <Route path="/driver" component={DriverPage} />
           <Route component={NotFound} />
         </Switch>
+        </Suspense>
       </div>
       <BottomNav />
     </div>
@@ -200,6 +202,7 @@ export default function App() {
   return (
     <AuthProvider>
     <WalletProvider>
+    <ShoppingBasketProvider>
       <WouterRouter>
         <Loader />
         <AppShell />
@@ -219,6 +222,7 @@ export default function App() {
           },
         }}
       />
+    </ShoppingBasketProvider>
     </WalletProvider>
     </AuthProvider>
   );

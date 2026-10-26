@@ -46,15 +46,23 @@ export const WALLET_PLAN_OPTIONS: Record<WalletPlan, { label: string; suggested:
 };
 
 // ---- BUSINESS PINS (Explore page) ----
-export type PinCategory = "food" | "thrift" | "entertainment" | "culture" | "service" | "transport";
+export type PinCategory = "food" | "thrift" | "entertainment" | "culture" | "service" | "transport" | "shop" | "education" | "health" | "worship" | "stay" | "tourism" | "water" | "other";
 
 export const PIN_CATEGORY_META: Record<PinCategory, { label: string; color: string; icon: string }> = {
-  food:          { label: "Food & Eats",      color: "#16a34a", icon: "🍖" },
-  thrift:        { label: "Thrift / Mitumba", color: "#d97706", icon: "👕" },
+  food:          { label: "Food & drink",     color: "#d97706", icon: "🍖" },
+  thrift:        { label: "Thrift",           color: "#d97706", icon: "👕" },
   entertainment: { label: "Entertainment",    color: "#d97706", icon: "🎶" },
-  culture:       { label: "Culture & Events", color: "#d97706", icon: "🎭" },
-  service:       { label: "Services",         color: "#16a34a", icon: "🛠️" },
-  transport:     { label: "Transport Hub",    color: "#dc2626", icon: "🚌" },
+  culture:       { label: "Culture & parks",  color: "#d97706", icon: "🎭" },
+  service:       { label: "Services",         color: "#d97706", icon: "🛠️" },
+  transport:     { label: "Transport",        color: "#d97706", icon: "🚌" },
+  shop:          { label: "Shops",            color: "#d97706", icon: "🛍️" },
+  education:     { label: "Education",        color: "#d97706", icon: "📚" },
+  health:        { label: "Health",           color: "#d97706", icon: "✚" },
+  worship:       { label: "Places of worship", color: "#d97706", icon: "⌂" },
+  stay:          { label: "Accommodation",    color: "#d97706", icon: "⌂" },
+  tourism:       { label: "Places to visit",  color: "#d97706", icon: "◎" },
+  water:         { label: "Water & toilets",  color: "#d97706", icon: "◉" },
+  other:         { label: "Other places",     color: "#d97706", icon: "•" },
 };
 
 export interface BusinessPin {
@@ -67,6 +75,9 @@ export interface BusinessPin {
   floor?: string;
   unit?: string;
   notes?: string;
+  county?: string;
+  locality?: string;
+  openingHours?: string;
   addedBy?: string;
   rating?: number;
   votes?: number;
@@ -95,39 +106,3 @@ export const SEED_PINS: BusinessPin[] = [
   { id:"p16", name:"Taarab & Chakacha Night", category:"culture", subType:"Coastal", lat:-1.2666, lon:36.8438, eventTime:"Sat 6PM", genre:"Coastal", notes:"Sarakasi Dome cultural showcase" },
   { id:"p17", name:"Kikuyu Benga Night", category:"culture", subType:"Benga", lat:-1.3192, lon:36.7861, eventTime:"Thu 7PM", genre:"Benga", notes:"Live benga band, Carnivore Grounds" },
 ];
-
-// ---- VEHICLE / DRIVER QUEUE LOGIC ----
-export interface StopQueueEntry {
-  destination: string;          // stop name passenger wants to alight at / area
-  destLat: number;
-  destLon: number;
-  paxCount: number;             // how many waiting for this destination
-}
-
-// Generates a mock "waiting passengers by destination" queue for a stop,
-// so a driver/tout arriving can instantly see where demand is concentrated
-// without calling out destinations one by one (the "makanga problem").
-export function generateStopQueue(stopLat: number, stopLon: number, stops: Record<string, StopInfo>): StopQueueEntry[] {
-  const names = Object.values(stops);
-  if (!names.length) return [];
-  const entries: StopQueueEntry[] = [];
-  const sampleSize = 4 + Math.floor(Math.random() * 4);
-  for (let i = 0; i < sampleSize; i++) {
-    const s = names[Math.floor(Math.random() * names.length)];
-    if (haversineKm(stopLat, stopLon, s.lat, s.lon) < 0.05) continue;
-    entries.push({
-      destination: s.name,
-      destLat: s.lat,
-      destLon: s.lon,
-      paxCount: 1 + Math.floor(Math.random() * 9),
-    });
-  }
-  // merge duplicates
-  const merged = new Map<string, StopQueueEntry>();
-  entries.forEach(e => {
-    const existing = merged.get(e.destination);
-    if (existing) existing.paxCount += e.paxCount;
-    else merged.set(e.destination, { ...e });
-  });
-  return Array.from(merged.values()).sort((a, b) => b.paxCount - a.paxCount);
-}

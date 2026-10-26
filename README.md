@@ -16,10 +16,9 @@ npm run dev          # starts dev server
 
 ---
 
-## Firebase Setup (do this once)
+## Legacy Firebase Setup (optional)
 
-The app runs fully without Firebase — wallet, pins and votes just reset on refresh.
-Adding Firebase makes everything **persistent and shared in real-time**.
+These steps configure Firebase authentication and older app modules. They do **not** configure the newer Supabase-backed Explore, Market or Mirth features; follow [`docs/supabase-setup.md`](docs/supabase-setup.md) for those.
 
 ### Step 1 — Create a Firebase project
 1. Go to https://console.firebase.google.com
@@ -91,16 +90,14 @@ vercel              # follow prompts, adds env vars through the CLI
 
 ---
 
-## What Firebase Powers in Ma3
+## Current backend and data status
 
-| Feature | Without Firebase | With Firebase |
-|---------|-----------------|---------------|
-| Wallet balance | Resets on refresh | Saved per user, real KES balance |
-| Business pins | Lost on refresh | Permanent, shared across all users in real-time |
-| Nganya VS votes | Resets on refresh | Real leaderboard, one vote per account enforced |
-| Queue lock-in | Mock data | Real passengers locking in, drivers see live demand |
-| User profile | Hardcoded name | Real Google account with photo |
-| Guest mode | N/A | Anonymous auth — browse without signing in |
+- **Supabase** now backs Explore POIs, supermarket/product/price records, curated Nganya records, route votes, style ratings and non-cash points. Follow [`docs/supabase-setup.md`](docs/supabase-setup.md) to configure it; credentials are intentionally placeholders.
+- **Firebase** remains in the earlier authentication and legacy app modules above. Firebase identities are separate from Supabase identities unless an explicit identity-linking flow is built.
+- **Ma3 routes/stops** use an archived TUMI GTFS snapshot (validity through 2020-12-31) for search and rough, static geometry-based planning only. It is not a current timetable or live fleet feed; journey fares and times are estimates, and no fare payment is processed here.
+- **Train** uses the local OpenStreetMap railway GeoJSON for mapped track features and station points. No timetable or departure estimates are shown.
+- **Demand markers** are local to this device. Drivers do not receive them until a real shared backend is connected.
+- A paid-booking challenge remains locked until there is a real provider and a server-verified order/payment event. Community points are not money.
 
 ---
 
@@ -108,7 +105,7 @@ vercel              # follow prompts, adds env vars through the CLI
 
 ```
 ma3-app2/
-├── .env.example          ← copy to .env.local and fill your Firebase keys
+├── .env.example          ← browser-safe Supabase placeholders + optional legacy Firebase values
 ├── firestore.rules       ← paste into Firebase Console → Firestore → Rules
 ├── README.md
 ├── package.json
@@ -123,26 +120,26 @@ ma3-app2/
     ├── context/
     │   └── AuthContext.tsx        # Global auth state (Google + guest sign-in)
     ├── data/
-    │   ├── ma3_core.ts            # Types, wallet, pins, queue logic, seed data
-    │   ├── ma3_gtfs.ts            # Real GTFS data — 136 routes, 2,351 stops
-    │   └── ma3_rail.ts            # NCR rail — 5 lines, stations, real schedule times
+    │   ├── ma3_core.ts            # Types and routing helpers; no generated passenger queue
+    │   ├── ma3_gtfs.ts            # Archived TUMI route/stop snapshot (validity through 2020)
+    │   └── nairobi_railways_osm.json # Mapped OpenStreetMap railway geometry/stations
     ├── hooks/
     │   ├── useAuth.ts             # Firebase auth state hook
-    │   └── useFirestore.ts        # Wallet, pins, votes, queue — all Firestore hooks
+    │   └── useFirestore.ts        # Legacy Firestore hooks for older modules
     ├── lib/
     │   ├── firebase.ts            # Firebase app init (Auth, Firestore, Storage)
-    │   ├── journey.ts             # GTFS routing engine (direct + 1-transfer planning)
+    │   ├── journey.ts             # Archived route-geometry estimates; no live arrivals/train times
     │   ├── mapLayers.ts           # MapLibre GeoJSON layer helpers
     │   └── wallet.tsx             # In-memory wallet context (works without Firebase)
     └── pages/
         ├── Home.tsx               # Dashboard
         ├── Login.tsx              # Google + guest sign-in
-        ├── Ma3.tsx                # Track · Planner · Queue lock-in · Vehicles · Rail
+        ├── Ma3.tsx                # Search · Live feed placeholder · OSM Train map
         ├── Ndai.tsx               # Ride-hailing
         ├── Fly.tsx                # Flights + transfers
-        ├── Market.tsx             # Price comparison + basket
-        ├── Mirth.tsx              # Nganya VS · Tribal games · Culture
-        ├── Explore.tsx            # Full-screen pin map (food/thrift/entertainment)
+        ├── Market.tsx             # Supabase catalogue and five-retailer price comparison
+        ├── Mirth.tsx              # Searchable games · Nganya routes/votes · free season picks
+        ├── Explore.tsx            # HOTOSM POIs, searchable map and categories
         ├── Profile.tsx            # Wallet top-up · Badges · History
         └── NotFound.tsx
 ```
@@ -153,14 +150,14 @@ ma3-app2/
 
 | Route | Page | Key Feature |
 |-------|------|-------------|
-| `/` | Home | Wallet summary, quick stats, section links |
+| `/` | Home | Wallet summary and section links |
 | `/login` | Login | Google sign-in or guest |
-| `/ma3` | Ma3 Track | 4 tabs: routes on 3D map, planner, vehicles, NCR rail with live countdown |
+| `/ma3` | Ma3 | Three controls: Search, Live feed status, and OSM Train map |
 | `/ndai` | Ndai Ride | Boda/Ndai/ProBox/Van booking with wallet payment |
 | `/fly` | Fly | Domestic flights + airport transfers |
-| `/market` | Market | Quickmart vs Naivas vs Carrefour price comparison + budget basket |
-| `/explore` | Explore | Full-screen 3D map — tap to pin a business with floor/unit for multi-store buildings |
-| `/mirth` | Mirth | Nganya VS battle + weekly vote, tribal games, Nairobi culture events |
+| `/market` | Market | Supabase-backed product prices across five retailer records; CSV imports documented |
+| `/explore` | Explore | Search and browse Supabase-backed HOTOSM points of interest |
+| `/mirth` | Mirth | Searchable games, route-scoped Nganya voting and free season predictions |
 | `/profile` | Profile | Wallet balance, daily/weekly/monthly plans, transaction history, badges |
 
 ---
@@ -168,5 +165,6 @@ ma3-app2/
 ## Notes
 - **MapLibre** uses OpenFreeMap tiles — completely free, no token needed.
   If you get a Mapbox token later, change `DARK_STYLE` in `src/components/MapLibreView.tsx`.
-- **GTFS data** is baked into `src/data/ma3_gtfs.ts` — no backend needed for routing.
+- **Ma3 route data** is an archived snapshot, not a current service feed. The Train map uses OSM railway geometry; actual live locations/timetables are not connected.
+- **Supabase data setup and imports** are documented in `docs/supabase-setup.md`.
 - Never commit `.env.local` to GitHub — it's already in `.gitignore`.

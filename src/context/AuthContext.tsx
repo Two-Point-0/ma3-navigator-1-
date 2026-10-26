@@ -1,12 +1,6 @@
-// src/context/AuthContext.tsx
-// Wraps the whole app. Any component can call useAuthContext() to get the user.
-// Works fully even with no Firebase project configured — falls back to a
-// local guest session so nothing in the app ever depends on real Firebase
-// credentials being present.
-
-import { createContext, useContext, useEffect, useState, ReactNode } from "react";
-import type { User } from "firebase/auth";
-import { auth, db, googleProvider, isFirebaseConfigured } from "@/lib/firebase";
+import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import type { User } from "@supabase/supabase-js";
+import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 
 interface AuthContextType {
   user: User | null;
@@ -19,72 +13,51 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser]       = useState<User | null>(null);
-  const [loading, setLoading] = useState(isFirebaseConfigured);
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(isSupabaseConfigured);
 
   useEffect(() => {
-    if (!isFirebaseConfigured || !auth) {
-      // No Firebase project configured — app runs in local/guest mode.
+    if (!supabase) { setLoading(false); return; }
+    void supabase.auth.getSession().then(({ data, error }) => {
+      if (error) console.warn("Could not restore the sign-in session", error.message);
+      setUser(data.session?.user ?? null);
       setLoading(false);
-      return;
-    }
-
-    let unsub: (() => void) | undefined;
-    (async () => {
-      const { onAuthStateChanged } = await import("firebase/auth");
-      unsub = onAuthStateChanged(auth, async (u) => {
-        setUser(u);
-        setLoading(false);
-        if (u && db) {
-          const { doc, setDoc, serverTimestamp } = await import("firebase/firestore");
-          await setDoc(doc(db, "users", u.uid), {
-            displayName: u.displayName ?? "Ma3 Rider",
-            email:       u.email ?? null,
-            photoURL:    u.photoURL ?? null,
-            isAnon:      u.isAnonymous,
-            lastSeen:    serverTimestamp(),
-          }, { merge: true });
-        }
-      });
-    })();
-
-    return () => unsub?.();
+    });
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+      setLoading(false);
+    });
+    return () => subscription.unsubscribe();
   }, []);
 
   const signInWithGoogle = async () => {
-    if (!isFirebaseConfigured || !auth) {
-      console.warn("Firebase not configured — add your config to .env to enable Google sign-in.");
-      return;
-    }
-    const { signInWithPopup } = await import("firebase/auth");
-    await signInWithPopup(auth, googleProvider);
+    if (!supabase) throw new Error("Sign-in is temporarily unavailable.");
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo: window.location.origin },
+    });
+    if (error) throw error;
   };
 
   const signInAsGuest = async () => {
-    if (!isFirebaseConfigured || !auth) {
-      // Local guest mode — no Firebase needed, the app already works fully without auth.
-      setUser(null);
-      return;
-    }
-    const { signInAnonymously } = await import("firebase/auth");
-    await signInAnonymously(auth);
+    if (!supabase) { setUser(null); return; }
+    const { data, error } = await supabase.auth.signInAnonymously();
+    if (error) throw error;
+    setUser(data.user);
   };
 
   const logout = async () => {
-    if (!isFirebaseConfigured || !auth) { setUser(null); return; }
-    const { signOut } = await import("firebase/auth");
-    await signOut(auth);
+    if (!supabase) { setUser(null); return; }
+    const { error } = await supabase.auth.signOut();
+    if (error) throw error;
+    setUser(null);
   };
 
-  return (
-    <AuthContext.Provider value={{ user, loading, signInWithGoogle, signInAsGuest, logout }}>
-      {children}
-    </AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={{ user, loading, signInWithGoogle, signInAsGuest, logout }}>{children}</AuthContext.Provider>;
 }
 
 export function useAuthContext() {
-  const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error("useAuthContext must be used inside AuthProvider");
-  return ctx;
+  const context = useContext(AuthContext);
+  if (!context) throw new Error("useAuthContext must be used inside AuthProvider");
+  return context;
 }

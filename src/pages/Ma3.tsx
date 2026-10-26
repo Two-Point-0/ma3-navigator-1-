@@ -1,92 +1,49 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
+import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Search, Navigation, X, Clock, Users, ArrowRight, Wallet,
-  Star, Shield, Volume2, Gauge, Gem, Lock, Box,
-  MapPin, BusFront, TrainFront, TrainTrack,
-  Calendar, AlarmClock, Zap, Eye, EyeOff, BadgeCheck, Footprints,
+  Search, Navigation, X, ArrowRight, Lock, Box,
+  MapPin, BusFront, TrainFront,
+  Calendar, AlarmClock, Zap, Eye, BadgeCheck, Footprints,
 } from "lucide-react";
 import { toast } from "sonner";
 import maplibregl from "maplibre-gl";
 import MapLibreView, { MapLibreHandle } from "@/components/MapLibreView";
+import PageTabs from "@/components/PageTabs";
 import { setLineLayer, setPointLayer, removeLineLayer, removePointLayer } from "@/lib/mapLayers";
 import { MA3_GTFS } from "@/data/ma3_gtfs";
 import {
   searchStops, planJourney, StopMatch, JourneyOption,
-  nextMatatuArrivalMin,
 } from "@/lib/journey";
-import { generateStopQueue, StopQueueEntry, haversineKm, etaMinutes, AVG_MATATU_SPEED_KMH } from "@/data/ma3_core";
-import { RAIL_LINES, RAIL_STATIONS, railLineCoords, nextDeparture, NCR_FARE_ESTIMATE } from "@/data/ma3_rail";
+import { haversineKm } from "@/data/ma3_core";
 import OSMRailways from "@/data/nairobi_railways_osm.json";
-import { useWallet } from "@/lib/wallet";
+import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 
-type Panel = "search" | "planner" | "matatu" | "train" | null;
+type Panel = "search" | "planner" | "live" | "train" | null;
 
 const NAIROBI: [number, number] = [-1.2864, 36.8172];
 const ROUTES = MA3_GTFS.routes;
 const SHAPES = MA3_GTFS.shapes as unknown as Record<string, [number, number][]>;
 const STOPS_RAW = MA3_GTFS.stops as unknown as Record<string, [string, number, number]>;
 const ROUTE_STOPS = MA3_GTFS.routeStops as Record<string, string[]>;
+const MA3_TABS = [
+  { id: "search", label: "Matatu routes", Icon: Search },
+  { id: "live", label: "Live fleet", Icon: Eye },
+  { id: "train", label: "Rail stations", Icon: TrainFront },
+] as const;
 
 type SearchResult =
   | { kind: "route"; route: typeof ROUTES[0] }
   | { kind: "stop"; stop: StopMatch }
-  | { kind: "rail"; station: typeof RAIL_STATIONS[string] };
+  | { kind: "rail"; station: OSMStation };
 
-interface LiveMatatu {
-  id: string;
-  routeId: string;
-  plate: string;
-  posIdx: number;
-  progress: number;
-  speedKmh: number;
-  stats: { armour: number; combat: number; speed: number; value: number };
-  rated: boolean;
-  direction: "outbound" | "inbound";
-}
-
-function buildMatatus(n: number): LiveMatatu[] {
-  const plates = ["KBZ","KDA","KCA","KCB","KCC","KDD","KDE","KBA","KCM","KDP"];
-  return Array.from({ length: n }, (_, i) => {
-    const route = ROUTES[i % ROUTES.length];
-    const shape = SHAPES[route.id];
-    const totalPts = shape?.length ?? 1;
-    const startIdx = Math.floor((i / n) * totalPts) % Math.max(totalPts - 1, 1);
-    return {
-      id: `V${i + 1}`,
-      routeId: route.id,
-      plate: `${plates[i % plates.length]} ${100 + i * 7}${String.fromCharCode(65 + i % 26)}`,
-      posIdx: startIdx,
-      progress: Math.random(),
-      speedKmh: AVG_MATATU_SPEED_KMH + Math.round((Math.random() - 0.5) * 8),
-      stats: { armour: 40 + ~~(Math.random()*55), combat: 35 + ~~(Math.random()*60), speed: 45 + ~~(Math.random()*50), value: 30 + ~~(Math.random()*65) },
-      rated: Math.random() > 0.75,
-      direction: i % 2 === 0 ? "outbound" : "inbound",
-    };
-  });
-}
-const ALL_MATATUS = buildMatatus(ROUTES.length * 2);
-
-function interpolatePos(shape: [number, number][], idx: number, progress: number): [number, number] {
-  if (!shape || shape.length === 0) return NAIROBI;
-  const a = shape[Math.min(idx, shape.length - 1)];
-  const b = shape[Math.min(idx + 1, shape.length - 1)];
-  return [a[0] + (b[0] - a[0]) * progress, a[1] + (b[1] - a[1]) * progress];
-}
-
-function busSVG(color: string): string {
-  return `<div style="width:22px;height:22px;border-radius:50%;background:${color};border:2px solid rgba(255,255,255,.9);display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,.55)">
-    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-      <rect x="2" y="7" width="20" height="13" rx="2"/><path d="M6 7V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v2"/>
-      <circle cx="8" cy="16" r="1" fill="#fff" stroke="none"/><circle cx="16" cy="16" r="1" fill="#fff" stroke="none"/>
-    </svg></div>`;
-}
-function trainStationSVG(): string {
-  return `<div style="width:20px;height:20px;background:#1c1c2a;border:2px solid #f0ede8;border-radius:5px;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(0,0,0,.5)">
-    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#f0ede8" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-      <rect x="4" y="2" width="16" height="16" rx="2"/><path d="M8 22l4-4 4 4"/><path d="M9 12h.01M15 12h.01"/><path d="M4 8h16"/>
-    </svg></div>`;
-}
+type OSMStation = { id: string; name: string; lat: number; lon: number };
+const OSM_STATIONS: OSMStation[] = (OSMRailways as any).features
+  .filter((feature: any) => feature.properties?.railway === "station" && feature.geometry?.type === "Point" && feature.properties?.name)
+  .map((feature: any, index: number) => ({
+    id: String(feature.id ?? feature.properties["@id"] ?? `${feature.properties.name}-${index}`),
+    name: String(feature.properties.name), lat: Number(feature.geometry.coordinates[1]), lon: Number(feature.geometry.coordinates[0]),
+  }));
 
 function StopAC({ value, onChange, onSelect, placeholder, color }: {
   value: string; onChange: (v: string) => void; onSelect: (s: StopMatch) => void;
@@ -114,27 +71,72 @@ function StopAC({ value, onChange, onSelect, placeholder, color }: {
   );
 }
 
-function SBar({ label, icon, value, color }: { label: string; icon: React.ReactNode; value: number; color: string }) {
-  return (
-    <div className="sbar-wrap">
-      <div className="sbar-label"><span style={{ display: "flex", alignItems: "center", gap: 4 }}>{icon}{label}</span><span style={{ color, fontFamily: "var(--font-mono)" }}>{value}</span></div>
-      <div className="sbar-track"><motion.div className="sbar-fill" initial={{ width: 0 }} animate={{ width: `${value}%` }} transition={{ duration: .6 }} style={{ background: color }} /></div>
-    </div>
-  );
+function shapeBetweenStops(routeId: string, from: StopMatch, to: StopMatch): [number, number][] {
+  const shape = SHAPES[routeId];
+  if (!shape?.length) return [];
+  const nearestIndex = (stop: StopMatch) => shape.reduce((best, point, index) => {
+    const distance = haversineKm(stop.lat, stop.lon, point[0], point[1]);
+    return distance < best.distance ? { index, distance } : best;
+  }, { index: 0, distance: Number.POSITIVE_INFINITY }).index;
+  const fromIndex = nearestIndex(from);
+  const toIndex = nearestIndex(to);
+  const segment = shape.slice(Math.min(fromIndex, toIndex), Math.max(fromIndex, toIndex) + 1);
+  return fromIndex <= toIndex ? segment : segment.reverse();
 }
 
-const glassBtn = (active: boolean, accentColor = "var(--ready)"): React.CSSProperties => ({
-  display: "flex", alignItems: "center", gap: 6, padding: "9px 14px", borderRadius: 12,
-  background: active ? "rgba(217,119,6,.16)" : "rgba(8,8,16,.76)",
-  backdropFilter: "blur(16px)",
-  border: `1px solid ${active ? "rgba(217,119,6,.5)" : "rgba(255,255,255,.12)"}`,
-  color: active ? accentColor : "var(--muted2)",
-  fontFamily: "var(--font)", fontWeight: 700, fontSize: ".7rem",
-  cursor: "pointer", whiteSpace: "nowrap" as const,
-  boxShadow: "0 2px 12px rgba(0,0,0,.4)", transition: ".18s",
-});
+function findRailPath(from: OSMStation, to: OSMStation): [number, number][] {
+  type Edge = { id: string; distance: number };
+  const graph = new Map<string, Edge[]>();
+  const coordinates = new Map<string, [number, number]>();
+  const keyFor = (lon: number, lat: number) => `${lon.toFixed(5)},${lat.toFixed(5)}`;
+  const addEdge = (a: [number, number], b: [number, number]) => {
+    const aId = keyFor(a[0], a[1]), bId = keyFor(b[0], b[1]);
+    coordinates.set(aId, [Number(aId.split(",")[1]), Number(aId.split(",")[0])]);
+    coordinates.set(bId, [Number(bId.split(",")[1]), Number(bId.split(",")[0])]);
+    const distance = haversineKm(a[1], a[0], b[1], b[0]);
+    graph.set(aId, [...(graph.get(aId) ?? []), { id: bId, distance }]);
+    graph.set(bId, [...(graph.get(bId) ?? []), { id: aId, distance }]);
+  };
+  const features = (OSMRailways as any).features as any[];
+  for (const feature of features) {
+    if (feature.properties?.railway !== "rail") continue;
+    const geometry = feature.geometry;
+    const lines = geometry?.type === "LineString" ? [geometry.coordinates] : geometry?.type === "MultiLineString" ? geometry.coordinates : [];
+    for (const line of lines) for (let index = 1; index < line.length; index++) addEdge(line[index - 1], line[index]);
+  }
+  const nearest = (station: OSMStation) => {
+    let id = "", best = Infinity;
+    for (const [candidate, [lat, lon]] of coordinates) {
+      const distance = haversineKm(station.lat, station.lon, lat, lon);
+      if (distance < best) { best = distance; id = candidate; }
+    }
+    return best < 2 ? id : "";
+  };
+  const start = nearest(from), finish = nearest(to);
+  if (!start || !finish) return [];
+  const distances = new Map<string, number>([[start, 0]]), previous = new Map<string, string>();
+  const heap: { id: string; distance: number }[] = [];
+  const push = (item: { id: string; distance: number }) => { heap.push(item); let index = heap.length - 1; while (index > 0) { const parent = (index - 1) >> 1; if (heap[parent].distance <= item.distance) break; heap[index] = heap[parent]; index = parent; } heap[index] = item; };
+  const pop = () => { const first = heap[0], last = heap.pop(); if (heap.length && last) { let index = 0; while (index * 2 + 1 < heap.length) { let child = index * 2 + 1; if (child + 1 < heap.length && heap[child + 1].distance < heap[child].distance) child++; if (heap[child].distance >= last.distance) break; heap[index] = heap[child]; index = child; } heap[index] = last; } return first; };
+  push({ id: start, distance: 0 });
+  while (heap.length) {
+    const current = pop()!;
+    if (current.distance !== distances.get(current.id)) continue;
+    if (current.id === finish) break;
+    for (const edge of graph.get(current.id) ?? []) {
+      const next = current.distance + edge.distance;
+      if (next >= (distances.get(edge.id) ?? Infinity)) continue;
+      distances.set(edge.id, next); previous.set(edge.id, current.id); push({ id: edge.id, distance: next });
+    }
+  }
+  if (!distances.has(finish)) return [];
+  const path = [finish];
+  while (path[0] !== start) { const parent = previous.get(path[0]); if (!parent) return []; path.unshift(parent); }
+  return path.map(id => coordinates.get(id)!).filter(Boolean);
+}
 
 export default function Ma3Page() {
+  const [, setLocation] = useLocation();
   const [panel, setPanel]           = useState<Panel>(null);
   const [query, setQuery]           = useState("");
   const [selRoute, setSelRoute]     = useState<typeof ROUTES[0] | null>(null);
@@ -143,31 +145,36 @@ export default function Ma3Page() {
   const [fromStop, setFromStop]     = useState<StopMatch | null>(null);
   const [toStop, setToStop]         = useState<StopMatch | null>(null);
   const [journeyOpts, setJourneyOpts] = useState<JourneyOption[] | null>(null);
-  const [lockedStop, setLockedStop] = useState<StopMatch | null>(null);
-  const [stopQueue, setStopQueue]   = useState<StopQueueEntry[]>([]);
-  const [selMatatu, setSelMatatu]   = useState<LiveMatatu | null>(null);
-  const [selRailLine, setSelRailLine] = useState<string | null>(null);
+  const [lockedStop, setLockedStop] = useState<{ stop: StopMatch; routeId: string } | null>(null);
+  const [trackedLeg, setTrackedLeg] = useState<JourneyOption["legs"][number] | null>(null);
+  const [trackedPosition, setTrackedPosition] = useState<[number, number] | null>(null);
+  const [trackingActive, setTrackingActive] = useState(false);
+  const [trackingStatus, setTrackingStatus] = useState("");
+  const arrivalAlerted = useRef(false);
   const [is3D, setIs3D]             = useState(false);
   const [mapCenter, setMapCenter]   = useState<[number, number]>(NAIROBI);
-  const [showAllLive, setShowAllLive] = useState(false);
+  const [exploreDestination, setExploreDestination] = useState<{ name: string; lat: number; lon: number; stop: StopMatch; distanceKm: number } | null>(null);
+  const [mapReady, setMapReady] = useState(false);
   const [savedJourneys, setSavedJourneys] = useState<{ label: string; from: StopMatch; to: StopMatch; time: string; days: string[] }[]>([]);
   const [saveForm, setSaveForm]     = useState(false);
   const [saveLabel, setSaveLabel]   = useState("");
   const [saveDays, setSaveDays]     = useState<string[]>([]);
   const [saveTime, setSaveTime]     = useState("07:30");
   const [showSaved, setShowSaved]   = useState(false);
-  const [panelMinimized, setPanelMinimized] = useState(false);
-  const [tripProgress, setTripProgress] = useState(0);
-  const { wallet, pay }             = useWallet();
+  const [panelMinimized, setPanelMinimized] = useState(true);
+  const [railStationQuery, setRailStationQuery] = useState("");
+  const [railFromId, setRailFromId] = useState("");
+  const [railToId, setRailToId] = useState("");
+  const railFrom = OSM_STATIONS.find(station => station.id === railFromId);
+  const railTo = OSM_STATIONS.find(station => station.id === railToId);
+  const visibleRailStations = useMemo(() => {
+    const term = railStationQuery.trim().toLowerCase();
+    return OSM_STATIONS.filter(station => !term || station.name.toLowerCase().includes(term));
+  }, [railStationQuery]);
 
   const mapRef         = useRef<MapLibreHandle>(null);
   const mapInst        = useRef<maplibregl.Map | null>(null);
   const staticMarkers  = useRef<maplibregl.Marker[]>([]);
-  const matatuMarkers  = useRef<Map<string, maplibregl.Marker>>(new Map());
-  const matatuState    = useRef<LiveMatatu[]>(ALL_MATATUS.map(m => ({ ...m })));
-  const animRef        = useRef<number>(0);
-  const lastFrame       = useRef<number>(0);
-  const progressTimer   = useRef<number>(0);
 
   const searchResults: SearchResult[] = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -177,7 +184,7 @@ export default function Ma3Page() {
       .slice(0, 12)
       .map(route => ({ kind: "route" as const, route }));
     const stopMatches: SearchResult[] = searchStops(query, 12).map(stop => ({ kind: "stop" as const, stop }));
-    const railMatches: SearchResult[] = Object.values(RAIL_STATIONS)
+    const railMatches: SearchResult[] = OSM_STATIONS
       .filter(station => station.name.toLowerCase().includes(q))
       .slice(0, 8)
       .map(station => ({ kind: "rail" as const, station }));
@@ -191,28 +198,22 @@ export default function Ma3Page() {
     staticMarkers.current = [];
     ROUTES.forEach(r => {
       removeLineLayer(map, `route-${r.id}`);
-      removeLineLayer(map, `route-passed-${r.id}`);
     });
-    RAIL_LINES.forEach(l => removeLineLayer(map, `rail-${l.id}`));
+    [0, 1, 2].forEach(i => removeLineLayer(map, `journey-leg-${i}`));
     if (map.getLayer("osm-rail-line")) map.removeLayer("osm-rail-line");
     if (map.getLayer("osm-rail-stations")) map.removeLayer("osm-rail-stations");
     if (map.getSource("osm-railways")) map.removeSource("osm-railways");
+    removeLineLayer(map, "selected-rail-segment");
+    removePointLayer(map, "selected-rail-stations");
     removePointLayer(map, "route-stops");
     removePointLayer(map, "planner-pts");
   }, []);
 
-  const drawRoute = useCallback((map: maplibregl.Map, route: typeof ROUTES[0], progress = 0) => {
+  const drawRoute = useCallback((map: maplibregl.Map, route: typeof ROUTES[0]) => {
     clearStatic();
     const shape = SHAPES[route.id];
     if (shape?.length) {
-      setLineLayer(map, `route-${route.id}`, shape, route.c, 5, progress > 0 ? 0.35 : 0.9);
-      if (progress > 0) {
-        const cutIdx = Math.floor(shape.length * progress);
-        const passedSegment = shape.slice(0, Math.max(cutIdx, 1));
-        if (passedSegment.length > 1) {
-          setLineLayer(map, `route-passed-${route.id}`, passedSegment, "#ffffff", 5, 0.95);
-        }
-      }
+      setLineLayer(map, `route-${route.id}`, shape, route.c, 5, 0.9);
       const mid = shape[~~(shape.length / 2)];
       const el = document.createElement("div");
       el.innerHTML = `<div style="background:${route.c};color:#fff;padding:3px 9px;border-radius:99px;font-size:11px;font-weight:700;font-family:'DM Mono',monospace;box-shadow:0 2px 6px rgba(0,0,0,.4)">${route.sn}</div>`;
@@ -226,121 +227,119 @@ export default function Ma3Page() {
     setPointLayer(map, "route-stops", pts, 4);
   }, [clearStatic]);
 
-  const drawRail = useCallback((map: maplibregl.Map, selectedId: string | null) => {
+  const drawRail = useCallback((map: maplibregl.Map, from?: OSMStation, to?: OSMStation) => {
     clearStatic();
-    map.addSource("osm-railways", { type: "geojson", data: OSMRailways as any });
-    map.addLayer({ id: "osm-rail-line", type: "line", source: "osm-railways", paint: { "line-color": "#f0ede8", "line-width": 2.2, "line-opacity": 0.72, "line-dasharray": [2, 1] } } as any);
-    map.addLayer({ id: "osm-rail-stations", type: "circle", source: "osm-railways", filter: ["==", ["get", "railway"], "station"], paint: { "circle-radius": 4, "circle-color": "#080810", "circle-stroke-color": "#f0ede8", "circle-stroke-width": 1.5 } } as any);
-    RAIL_LINES.forEach(l => {
-      const w = selectedId === l.id ? 6 : 3.5;
-      const op = selectedId && selectedId !== l.id ? 0.3 : 0.9;
-      setLineLayer(map, `rail-${l.id}`, railLineCoords(l), l.color, w, op);
-    });
-    Object.values(RAIL_STATIONS).forEach(s => {
-      const el = document.createElement("div");
-      el.innerHTML = trainStationSVG();
-      el.title = s.name;
-      staticMarkers.current.push(new maplibregl.Marker({ element: el, anchor: "center" }).setLngLat([s.lon, s.lat]).addTo(map));
-    });
+    if (!from || !to) return;
+    const path = findRailPath(from, to);
+    if (path.length > 1) {
+      setLineLayer(map, "selected-rail-segment", path, "#d97706", 4, .96);
+      setPointLayer(map, "selected-rail-stations", [from, to].map((station, index) => ({ id: station.id, lat: station.lat, lon: station.lon, color: index ? "#dc2626" : "#16a34a", radius: 7 })), 7);
+      const latitudes = path.map(point => point[0]), longitudes = path.map(point => point[1]);
+      map.fitBounds([[Math.min(...longitudes), Math.min(...latitudes)], [Math.max(...longitudes), Math.max(...latitudes)]], { padding: 64, maxZoom: 14 });
+    }
   }, [clearStatic]);
-
-  const startAnimation = useCallback((routeId?: string) => {
-    cancelAnimationFrame(animRef.current);
-    lastFrame.current = 0;
-    const loop = (timestamp: number) => {
-      if (!mapInst.current) { animRef.current = requestAnimationFrame(loop); return; }
-      const dt = lastFrame.current ? (timestamp - lastFrame.current) / 1000 : 0.016;
-      lastFrame.current = timestamp;
-      matatuState.current.forEach(mt => {
-        if (routeId && mt.routeId !== routeId) return;
-        const shape = SHAPES[mt.routeId];
-        if (!shape || shape.length < 2) return;
-        const totalPts = shape.length;
-        const seg = shape[mt.posIdx];
-        const nextSeg = shape[Math.min(mt.posIdx + 1, totalPts - 1)];
-        const segDist = haversineKm(seg[0], seg[1], nextSeg[0], nextSeg[1]);
-        const segTime = segDist / (mt.speedKmh / 3600);
-        const progressInc = segTime > 0 ? dt / segTime : 0.01;
-        mt.progress += progressInc;
-        if (mt.progress >= 1) {
-          mt.progress = 0;
-          if (mt.direction === "outbound") {
-            mt.posIdx++;
-            if (mt.posIdx >= totalPts - 1) { mt.direction = "inbound"; mt.posIdx = totalPts - 2; }
-          } else {
-            mt.posIdx--;
-            if (mt.posIdx < 0) { mt.direction = "outbound"; mt.posIdx = 0; }
-          }
-        }
-        const [lat, lon] = interpolatePos(shape, mt.posIdx, mt.progress);
-        const existing = matatuMarkers.current.get(mt.id);
-        if (existing) existing.setLngLat([lon, lat]);
-        else {
-          const route = ROUTES.find(r => r.id === mt.routeId);
-          if (!route) return;
-          const el = document.createElement("div");
-          el.innerHTML = busSVG(route.c);
-          el.title = `${mt.plate} — Route ${route.sn}`;
-          el.style.cursor = "pointer";
-          el.onclick = () => setSelMatatu(mt);
-          const marker = new maplibregl.Marker({ element: el, anchor: "center" }).setLngLat([lon, lat]).addTo(mapInst.current!);
-          matatuMarkers.current.set(mt.id, marker);
-        }
-      });
-      animRef.current = requestAnimationFrame(loop);
-    };
-    animRef.current = requestAnimationFrame(loop);
-  }, []);
-
-  const stopAnimation = useCallback(() => {
-    cancelAnimationFrame(animRef.current);
-    matatuMarkers.current.forEach(m => m.remove());
-    matatuMarkers.current.clear();
-  }, []);
 
   useEffect(() => {
     const map = mapInst.current;
     if (!map) return;
-    stopAnimation();
     clearStatic();
-    if (panel === "matatu" || showAllLive) {
-      startAnimation(panel === "matatu" && selRoute ? selRoute.id : undefined);
+    if (panel === "live") {
+      // Live positions are not drawn until a verified location feed is configured.
     } else if (panel === "train") {
-      drawRail(map, selRailLine);
+      drawRail(map, railFrom, railTo);
     } else if (selRoute) {
-      drawRoute(map, selRoute, tripProgress);
-      startAnimation(selRoute.id);
+      drawRoute(map, selRoute);
     }
-  }, [panel, selRoute, selRailLine, showAllLive]);
+  }, [panel, selRoute, mapReady, drawRail, railFromId, railToId]);
+
+  const handleMapLoad = (map: maplibregl.Map) => { mapInst.current = map; setMapReady(true); };
 
   useEffect(() => {
-    cancelAnimationFrame(progressTimer.current);
-    if (!selRoute || panel !== "search") { setTripProgress(0); return; }
-    let p = 0;
-    const tick = () => {
-      p = Math.min(1, p + 0.0025);
-      setTripProgress(p);
-      if (mapInst.current) drawRoute(mapInst.current, selRoute, p);
-      if (p < 1) progressTimer.current = requestAnimationFrame(tick);
-    };
-    progressTimer.current = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(progressTimer.current);
-  }, [selRoute, panel]);
+    if (!trackedLeg || !trackingActive) return;
+    if (!navigator.geolocation) { setTrackingStatus("Location is not available on this device."); setTrackingActive(false); return; }
+    setTrackingStatus("Waiting for your phone location…");
+    const watchId = navigator.geolocation.watchPosition(position => {
+      setTrackedPosition([position.coords.latitude, position.coords.longitude]);
+    }, () => {
+      setTrackingStatus("Location permission is needed to follow your trip on the map.");
+      setTrackingActive(false);
+    }, { enableHighAccuracy: true, maximumAge: 3000, timeout: 12000 });
+    return () => navigator.geolocation.clearWatch(watchId);
+  }, [trackedLeg, trackingActive]);
 
-  useEffect(() => () => { stopAnimation(); cancelAnimationFrame(progressTimer.current); }, []);
+  useEffect(() => {
+    const map = mapInst.current;
+    if (!mapReady || !map) return;
+    if (!trackedLeg?.routeId || trackedLeg.type !== "matatu") {
+      removeLineLayer(map, "tracked-journey-route"); removeLineLayer(map, "tracked-journey-progress"); removePointLayer(map, "tracked-journey-points");
+      return;
+    }
+    const route = shapeBetweenStops(trackedLeg.routeId, trackedLeg.fromStop, trackedLeg.toStop);
+    if (route.length < 2) { setTrackingStatus("No mapped route shape is available for this leg."); return; }
+    setLineLayer(map, "tracked-journey-route", route, trackedLeg.routeColor ?? "#d97706", 5, .42);
+    const location = trackedPosition;
+    if (location) {
+      let nearest = 0, nearestKm = Infinity;
+      route.forEach(([lat, lon], index) => { const distance = haversineKm(location[0], location[1], lat, lon); if (distance < nearestKm) { nearestKm = distance; nearest = index; } });
+      const snapped = route[nearest];
+      setLineLayer(map, "tracked-journey-progress", route.slice(0, nearest + 1), "#16a34a", 6, .98);
+      setPointLayer(map, "tracked-journey-points", [
+        { id: "phone-location", lat: snapped[0], lon: snapped[1], color: nearestKm <= .8 ? "#16a34a" : "#d97706", radius: 9 },
+        { id: "alight-stop", lat: trackedLeg.toStop.lat, lon: trackedLeg.toStop.lon, color: "#dc2626", radius: 8 },
+      ], 8);
+      setTrackingStatus(nearestKm > 1.5 ? "You appear off this archived route; the dot is snapped to the nearest route point." : `Following your phone on the route to ${trackedLeg.toStop.name}.`);
+      map.easeTo({ center: [snapped[1], snapped[0]], duration: 550 });
+      if (haversineKm(location[0], location[1], trackedLeg.toStop.lat, trackedLeg.toStop.lon) <= .15 && !arrivalAlerted.current) {
+        arrivalAlerted.current = true; setTrackingStatus(`Near ${trackedLeg.toStop.name} — your selected stop.`); setTrackingActive(false); toast(`You are near ${trackedLeg.toStop.name}.`);
+      }
+    } else {
+      setPointLayer(map, "tracked-journey-points", [
+        { id: "board-stop", lat: trackedLeg.fromStop.lat, lon: trackedLeg.fromStop.lon, color: "#16a34a", radius: 8 },
+        { id: "alight-stop", lat: trackedLeg.toStop.lat, lon: trackedLeg.toStop.lon, color: "#dc2626", radius: 8 },
+      ], 8);
+    }
+  }, [mapReady, trackedLeg, trackedPosition]);
 
-  const handleMapLoad = (map: maplibregl.Map) => { mapInst.current = map; };
+  useEffect(() => {
+    const map = mapInst.current;
+    if (!mapReady || !map || !exploreDestination) return;
+    setPointLayer(map, "explore-destination", [
+      { id: "nearest-ma3-stop", lat: exploreDestination.stop.lat, lon: exploreDestination.stop.lon, color: "#16a34a", radius: 7 },
+      { id: "destination", lat: exploreDestination.lat, lon: exploreDestination.lon, color: "#dc2626", radius: 9 },
+    ], 7);
+    setLineLayer(map, "explore-walk-approx", [[exploreDestination.stop.lat, exploreDestination.stop.lon], [exploreDestination.lat, exploreDestination.lon]], "#16a34a", 3, .9, true);
+    mapRef.current?.fitBounds([[Math.min(exploreDestination.stop.lon, exploreDestination.lon), Math.min(exploreDestination.stop.lat, exploreDestination.lat)], [Math.max(exploreDestination.stop.lon, exploreDestination.lon), Math.max(exploreDestination.stop.lat, exploreDestination.lat)]], 72);
+  }, [mapReady, exploreDestination]);
 
   const selectRoute = (route: typeof ROUTES[0]) => {
     setSelRoute(route);
     setQuery(`${route.sn} — ${route.ln}`);
-    setTripProgress(0);
     const map = mapInst.current;
-    if (map) drawRoute(map, route, 0);
-    startAnimation(route.id);
+    if (map) drawRoute(map, route);
     const shape = SHAPES[route.id];
     if (shape?.length) setMapCenter([shape[~~(shape.length / 2)][0], shape[~~(shape.length / 2)][1]]);
   };
+
+  useEffect(() => {
+    const raw = sessionStorage.getItem("ma3_destination");
+    if (!raw) return;
+    sessionStorage.removeItem("ma3_destination");
+    try {
+      const destination = JSON.parse(raw) as { name?: string; lat?: number; lon?: number };
+      if (!destination.name || !Number.isFinite(destination.lat) || !Number.isFinite(destination.lon)) return;
+      const nearest = Object.entries(STOPS_RAW).map(([id, stop]) => ({ id, name: stop[0], lat: stop[1], lon: stop[2], distance: haversineKm(destination.lat!, destination.lon!, stop[1], stop[2]) })).sort((a, b) => a.distance - b.distance)[0];
+      if (!nearest) { setQuery(destination.name); setPanel("search"); return; }
+      const stop: StopMatch = { id: nearest.id, name: nearest.name, lat: nearest.lat, lon: nearest.lon };
+      setExploreDestination({ name: destination.name, lat: destination.lat!, lon: destination.lon!, stop, distanceKm: nearest.distance });
+      setToStop(stop); setToVal(stop.name); setFromStop(null); setFromVal(""); setJourneyOpts(null);
+      setQuery(`${destination.name} · nearest mapped stop: ${nearest.name}`); setPanel("search"); setPanelMinimized(false);
+      setMapCenter([nearest.lat, nearest.lon]); mapRef.current?.flyTo(nearest.lon, nearest.lat, 14);
+      const servingRouteIds = (MA3_GTFS.stopRoutes as Record<string, string[]>)[nearest.id] ?? [];
+      const firstRoute = nearest.distance <= 30 ? ROUTES.find(route => servingRouteIds.includes(route.id)) : undefined;
+      if (firstRoute) { selectRoute(firstRoute); toast(`Closest archived Ma3 stop: ${nearest.name}. Select your origin to plan the matatu legs.`); }
+      else toast(`No Ma3 stop is mapped within 30 km of ${destination.name}. Try Fly for longer-distance travel.`);
+    } catch { sessionStorage.removeItem("ma3_destination"); }
+  }, []);
 
   const selectStopFromSearch = (stop: StopMatch) => {
     setQuery(stop.name);
@@ -352,15 +351,14 @@ export default function Ma3Page() {
     toast(`${stop.name} selected — choose a start and destination below`);
   };
 
-  const selectRailStation = (station: typeof RAIL_STATIONS[string]) => {
+  const selectRailStation = (station: OSMStation) => {
     setQuery(station.name);
     setMapCenter([station.lat, station.lon]);
     mapRef.current?.flyTo(station.lon, station.lat, 14);
-    const line = RAIL_LINES.find(item => item.stations.includes(station.id));
-    setSelRailLine(line?.id ?? null);
     setPanel("train");
     setPanelMinimized(false);
-    if (mapInst.current) drawRail(mapInst.current, line?.id ?? null);
+    if (!railFromId || railToId) { setRailFromId(station.id); setRailToId(""); }
+    else if (station.id !== railFromId) setRailToId(station.id);
   };
 
   const findJourney = () => {
@@ -374,15 +372,14 @@ export default function Ma3Page() {
       clearStatic();
       opts[0]?.legs.forEach((leg, i) => {
         if (leg.routeId) {
-          const shape = SHAPES[leg.routeId];
-          if (shape) setLineLayer(map, `journey-leg-${i}`, shape, leg.routeColor ?? "#d97706", 4, 0.85);
+          const segment = shapeBetweenStops(leg.routeId, leg.fromStop, leg.toStop);
+          if (segment.length > 1) setLineLayer(map, `journey-leg-${i}`, segment, leg.routeColor ?? "#d97706", 5, 0.95);
         }
       });
       setPointLayer(map, "planner-pts", [
         { id: "from", lat: fromStop.lat, lon: fromStop.lon, color: "#16a34a", radius: 10 },
         { id: "to",   lat: toStop.lat,   lon: toStop.lon,   color: "#dc2626", radius: 10 },
       ], 10);
-      if (opts[0]?.legs[0]?.routeId) startAnimation(opts[0].legs[0].routeId);
     }
   };
 
@@ -399,13 +396,33 @@ export default function Ma3Page() {
     }, () => toast("Location permission was not granted"), { enableHighAccuracy: true, timeout: 10000 });
   };
 
-  const lockIn = (stop: StopMatch) => {
-    setLockedStop(stop);
-    setStopQueue(generateStopQueue(stop.lat, stop.lon, MA3_GTFS.stops as any));
-    toast(`Locked in at ${stop.name} — touts can see you!`);
+  const lockIn = async (leg: JourneyOption["legs"][number]) => {
+    if (!leg.routeId) { toast("Choose a matatu leg before marking a pickup stop."); return; }
+    if (!isSupabaseConfigured || !supabase) { toast("Connect Supabase to share anonymous stop demand with drivers."); return; }
+    try {
+      let user = (await supabase.auth.getUser()).data.user;
+      if (!user) {
+        const { data, error } = await supabase.auth.signInAnonymously();
+        if (error || !data.user) throw error ?? new Error("Could not create a guest session.");
+        user = data.user;
+      }
+      const { error } = await supabase.rpc("set_my_ma3_stop_waiting", { p_route_id: leg.routeId, p_stop_id: leg.fromStop.id });
+      if (error) throw error;
+      setLockedStop({ stop: leg.fromStop, routeId: leg.routeId });
+      toast(`${leg.fromStop.name} shared as an anonymous pickup request for 30 minutes.`);
+    } catch (error) {
+      toast(error instanceof Error ? error.message : "Could not share your pickup stop. Check the Supabase setup.");
+    }
   };
 
-  const openPanel = (p: Panel) => { setPanelMinimized(false); setPanel(prev => prev === p ? null : p); };
+  const cancelStopWaiting = async () => {
+    if (!lockedStop || !supabase) { setLockedStop(null); return; }
+    const { error } = await supabase.rpc("cancel_my_ma3_stop_waiting", { p_route_id: lockedStop.routeId, p_stop_id: lockedStop.stop.id });
+    if (error) { toast("Could not remove the pickup request yet."); return; }
+    setLockedStop(null); toast("Pickup request removed.");
+  };
+
+  const openPanel = (p: Panel) => { setPanelMinimized(true); setPanel(prev => prev === p ? null : p); };
   const pitch = is3D ? 52 : 0;
   const bearing = is3D ? -14 : 0;
 
@@ -414,14 +431,9 @@ export default function Ma3Page() {
       <MapLibreView ref={mapRef} center={mapCenter} zoom={12} pitch={pitch} bearing={bearing}
         height="100%" borderRadius={0} onLoad={handleMapLoad} />
 
-      <div style={{ position: "absolute", top: 10, left: 10, right: 10, zIndex: 50, display: "flex", gap: 6, flexWrap: "wrap" }}>
-        <button style={glassBtn(panel === "search", "var(--stop)")} onClick={() => openPanel("search")}>
-          <Search size={13} /> Search
-        </button>
-        <button onClick={() => setShowAllLive(v => !v)}
-          style={{ ...glassBtn(showAllLive, "#16a34a"), borderColor: showAllLive ? "rgba(22,163,74,.5)" : "rgba(255,255,255,.12)", color: showAllLive ? "#16a34a" : "var(--muted2)" }}>
-          {showAllLive ? <Eye size={13} /> : <EyeOff size={13} />} Live
-        </button>
+      <div style={{ position: "absolute", top: 10, left: 10, right: 10, zIndex: 50 }}>
+        <PageTabs label="Ma3 sections" active={panel === "live" || panel === "train" ? panel : "search"} tabs={MA3_TABS}
+          onChange={value => { setPanelMinimized(true); setPanel(value as "search" | "live" | "train"); }} />
       </div>
 
       {/* ══════ UNIFIED SEARCH PANEL ══════ */}
@@ -429,17 +441,17 @@ export default function Ma3Page() {
         {panel === "search" && (
           <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }}
             transition={{ type: "spring", damping: 28, stiffness: 320 }}
-            className="bpanel open" style={{ maxHeight: panelMinimized ? "24vh" : "52vh" }}>
+            className="bpanel open" style={{ maxHeight: panelMinimized ? "20vh" : "50vh" }}>
             <div className="bpanel-head">
               <button aria-label="Minimize search panel" className="handle" onClick={() => setPanelMinimized(v => !v)} />
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 <div style={{ position: "relative", flex: 1 }}>
                   <Search size={13} style={{ position: "absolute", left: 11, top: "50%", transform: "translateY(-50%)", color: "var(--ready)" }} />
-                  <input autoFocus className="finput" style={{ paddingLeft: 32 }}
+                  <input data-page-search autoFocus className="finput" style={{ paddingLeft: 32 }}
                     placeholder="Route number, route name, or stop… e.g. 23W, Rongai, Kencom"
                     value={query} onChange={e => setQuery(e.target.value)} />
                   {query && (
-                    <button onClick={() => { setQuery(""); setSelRoute(null); clearStatic(); stopAnimation(); }}
+                    <button onClick={() => { setQuery(""); setSelRoute(null); clearStatic(); }}
                       style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: "var(--muted)", cursor: "pointer" }}>
                       <X size={14} />
                     </button>
@@ -457,25 +469,22 @@ export default function Ma3Page() {
                     </div>
                     <div style={{ flex: 1 }}>
                       <p style={{ fontSize: ".74rem", fontWeight: 700, color: selRoute.c }}>{selRoute.hs}</p>
-                      <p style={{ fontSize: ".6rem", color: "var(--muted2)" }}>{selRoute.ln} · {ROUTE_STOPS[selRoute.id]?.length ?? 0} stops</p>
+                      <p style={{ fontSize: ".6rem", color: "var(--muted2)" }}>{selRoute.ln}</p>
                     </div>
-                    <button onClick={() => { setSelRoute(null); setQuery(""); clearStatic(); stopAnimation(); }}
+                    <button onClick={() => { setSelRoute(null); setQuery(""); clearStatic(); }}
                       style={{ background: "none", border: "none", color: "var(--muted)", cursor: "pointer" }}><X size={13} /></button>
                   </div>
                   <div style={{ marginTop: 8 }}>
                     <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 3 }}>
-                      <span style={{ fontSize: ".58rem", color: "var(--muted)" }}>Live progress along route</span>
-                      <span style={{ fontSize: ".58rem", color: "#fff", fontFamily: "var(--font-mono)" }}>{Math.round(tripProgress * 100)}%</span>
-                    </div>
-                    <div style={{ height: 5, borderRadius: 99, background: `${selRoute.c}25`, overflow: "hidden" }}>
-                      <div style={{ height: "100%", width: `${tripProgress * 100}%`, background: "#fff", borderRadius: 99, transition: "width .3s linear" }} />
+                      <span style={{ fontSize: ".58rem", color: "var(--muted)" }}>Archived route shape · static map geometry only</span>
                     </div>
                   </div>
                 </motion.div>
               )}
+              {exploreDestination && !panelMinimized && <div className="ios-glass" style={{ padding: 9, marginTop: 8, fontSize: ".59rem", color: "var(--muted2)" }}>Destination: {exploreDestination.name}. Green dashed line is a straight-line approximation to the nearest archived stop ({exploreDestination.distanceKm.toFixed(1)} km), not a pedestrian route.{exploreDestination.distanceKm > 30 && <><p style={{ margin: "6px 0" }}>Outside the mapped Ma3 coverage; check available flight options instead.</p><button className="btn btn-ready" style={{ width: "100%" }} onClick={() => { sessionStorage.setItem("ma3_fly_destination", JSON.stringify({ name: exploreDestination.name, lat: exploreDestination.lat, lon: exploreDestination.lon })); setLocation("/fly"); }}>Open Fly with destination</button></>}</div>}
               {selRoute && !panelMinimized && (
                 <div className="ios-glass" style={{ marginTop: 8, padding: 10 }}>
-                  <p className="sec-label" style={{ marginBottom: 7 }}>Plan from your location</p>
+              <p className="sec-label" style={{ marginBottom: 7 }}>Plan from your location</p>
                   <div style={{ display: "grid", gap: 6 }}>
                     <StopAC value={fromVal} onChange={setFromVal} color="var(--go)" placeholder="Start or current stop"
                       onSelect={s => { setFromStop(s); setFromVal(s.name); setJourneyOpts(null); }} />
@@ -483,19 +492,17 @@ export default function Ma3Page() {
                     <StopAC value={toVal} onChange={setToVal} color="var(--stop)" placeholder="Destination stop"
                       onSelect={s => { setToStop(s); setToVal(s.name); setJourneyOpts(null); }} />
                     <button className="btn btn-go" style={{ width: "100%", padding: 9, justifyContent: "center", fontSize: ".7rem" }} onClick={findJourney}>
-                      <Navigation size={12} /> Show walk, matatu and train options
+                      <Navigation size={12} /> Show archived route estimates
                     </button>
                   </div>
                 </div>
               )}
-              {!query && !selRoute && <p style={{ fontSize: ".64rem", color: "var(--muted)", textAlign: "center", padding: "10px 0" }}>Search for a matatu route, stop, train station or destination</p>}
             </div>
 
             <div className="bpanel-scroll" style={{ padding: "0 14px 20px" }}>
               {searchResults.map((res, i) => {
                 if (res.kind === "route") {
                   const route = res.route;
-                  const waitMin = nextMatatuArrivalMin(route.id, "");
                   return (
                     <motion.button key={`r-${route.id}`} whileTap={{ scale: 0.97 }} onClick={() => selectRoute(route)}
                       style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 11px", borderRadius: 12, width: "100%", textAlign: "left", marginBottom: 5, background: selRoute?.id === route.id ? `${route.c}14` : "var(--glass)", border: `1px solid ${selRoute?.id === route.id ? route.c + "40" : "var(--border)"}`, cursor: "pointer" }}>
@@ -506,27 +513,21 @@ export default function Ma3Page() {
                         <p style={{ fontSize: ".77rem", fontWeight: 600 }}>{route.hs}</p>
                         <p style={{ fontSize: ".6rem", color: "var(--muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{route.ln}</p>
                       </div>
-                      <div style={{ textAlign: "right", flexShrink: 0 }}>
-                        <div style={{ fontSize: ".6rem", color: "var(--ready)", fontFamily: "var(--font-mono)", fontWeight: 700 }}>~{waitMin}m</div>
-                        <div style={{ fontSize: ".55rem", color: "var(--muted)" }}>next</div>
-                      </div>
                       <BusFront size={13} style={{ color: route.c, flexShrink: 0 }} />
                     </motion.button>
                   );
                 } else if (res.kind === "rail") {
                   const station = res.station;
-                  const servingLines = RAIL_LINES.filter(line => line.stations.includes(station.id));
                   return (
                     <motion.button key={`rail-${station.id}`} whileTap={{ scale: 0.97 }} onClick={() => selectRailStation(station)}
                       style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 11px", borderRadius: 12, width: "100%", textAlign: "left", marginBottom: 5, background: "var(--glass)", border: "1px solid var(--border)", cursor: "pointer" }}>
                       <div style={{ width: 36, height: 36, borderRadius: 9, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(139,92,246,.12)", border: "1.5px solid rgba(139,92,246,.3)", flexShrink: 0 }}><TrainFront size={15} style={{ color: "#a78bfa" }} /></div>
-                      <div style={{ flex: 1, minWidth: 0 }}><p style={{ fontSize: ".77rem", fontWeight: 600 }}>{station.name}</p><p style={{ fontSize: ".6rem", color: "var(--muted)" }}>Rail station · {servingLines.map(line => line.name).join(" · ")}</p></div>
+                      <div style={{ flex: 1, minWidth: 0 }}><p style={{ fontSize: ".77rem", fontWeight: 600 }}>{station.name}</p><p style={{ fontSize: ".6rem", color: "var(--muted)" }}>OpenStreetMap station feature</p></div>
                       <ArrowRight size={13} style={{ color: "#a78bfa" }} />
                     </motion.button>
                   );
                 } else {
                   const stop = res.stop;
-                  const servingCount = ((MA3_GTFS.stopRoutes as Record<string, string[]>)[stop.id] ?? []).length;
                   return (
                     <motion.button key={`s-${stop.id}`} whileTap={{ scale: 0.97 }} onClick={() => selectStopFromSearch(stop)}
                       style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 11px", borderRadius: 12, width: "100%", textAlign: "left", marginBottom: 5, background: "var(--glass)", border: "1px solid var(--border)", cursor: "pointer" }}>
@@ -535,7 +536,7 @@ export default function Ma3Page() {
                       </div>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <p style={{ fontSize: ".77rem", fontWeight: 600 }}>{stop.name}</p>
-                        <p style={{ fontSize: ".6rem", color: "var(--muted)" }}>Bus stop · {servingCount} route{servingCount !== 1 ? "s" : ""}</p>
+                        <p style={{ fontSize: ".6rem", color: "var(--muted)" }}>Stop from the archived route dataset</p>
                       </div>
                       <span className="chip" style={{ background: "rgba(220,38,38,.1)", color: "var(--stop)", border: "1px solid rgba(220,38,38,.25)" }}>STOP</span>
                     </motion.button>
@@ -555,7 +556,7 @@ export default function Ma3Page() {
         {panel === "planner" && (
           <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }}
             transition={{ type: "spring", damping: 28, stiffness: 320 }}
-            className="bpanel open" style={{ maxHeight: panelMinimized ? "24vh" : "52vh" }}>
+            className="bpanel open" style={{ maxHeight: panelMinimized ? "20vh" : "50vh" }}>
             <div className="bpanel-head">
               <button aria-label="Minimize panel" className="handle" onClick={() => setPanelMinimized(v => !v)} />
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
@@ -596,24 +597,17 @@ export default function Ma3Page() {
                           3 · {journeyOpts.length} option{journeyOpts.length !== 1 ? "s" : ""} found
                         </p>
                         {journeyOpts.map((opt, i) => {
-                          const canAfford = wallet.balance >= opt.fareEstimate;
-                          const waitMin = opt.legs[0]?.routeId ? nextMatatuArrivalMin(opt.legs[0].routeId, fromStop?.id ?? "") : 5;
                           return (
                             <motion.div key={i} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}
                               className="card" style={{ padding: 12, marginBottom: 8, borderColor: opt.isFastest ? "rgba(22,163,74,.3)" : opt.isCheapest ? "rgba(217,119,6,.3)" : "var(--border2)" }}>
                               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
                                 <div style={{ display: "flex", alignItems: "center", gap: 5, flexWrap: "wrap" }}>
-                                  {opt.isFastest && <span className="chip" style={{ background: "rgba(22,163,74,.12)", color: "var(--go)", border: "1px solid rgba(22,163,74,.3)" }}><Zap size={9} style={{ display: "inline" }} /> FASTEST</span>}
-                                  {opt.isCheapest && <span className="chip" style={{ background: "rgba(217,119,6,.12)", color: "var(--ready)", border: "1px solid rgba(217,119,6,.3)" }}>CHEAPEST</span>}
-                                  {opt.usesRail && <span className="chip" style={{ background: "rgba(139,92,246,.12)", color: "#8b5cf6", border: "1px solid rgba(139,92,246,.3)" }}><TrainFront size={9} style={{ display: "inline" }} /> TRAIN</span>}
+                                  {opt.isFastest && <span className="chip" style={{ background: "rgba(22,163,74,.12)", color: "var(--go)", border: "1px solid rgba(22,163,74,.3)" }}><Zap size={9} style={{ display: "inline" }} /> SHORTEST ESTIMATE</span>}
+                                  {opt.isCheapest && <span className="chip" style={{ background: "rgba(217,119,6,.12)", color: "var(--ready)", border: "1px solid rgba(217,119,6,.3)" }}>LOWER EST. FARE</span>}
                                 </div>
-                                <span style={{ fontFamily: "var(--font-mono)", fontSize: ".82rem", fontWeight: 700 }}>KES {opt.fareEstimate}</span>
+                                <span style={{ fontFamily: "var(--font-mono)", fontSize: ".82rem", fontWeight: 700 }}>~KES {opt.fareEstimate}</span>
                               </div>
                               <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
-                                <div style={{ flex: 1, background: "rgba(0,0,0,.3)", borderRadius: 8, padding: "5px 8px", textAlign: "center" }}>
-                                  <p style={{ fontSize: ".5rem", color: "var(--muted)", textTransform: "uppercase" }}>Wait</p>
-                                  <p style={{ fontFamily: "var(--font-mono)", fontSize: ".82rem", color: "var(--ready)", fontWeight: 700 }}>{waitMin}m</p>
-                                </div>
                                 <div style={{ flex: 1, background: "rgba(0,0,0,.3)", borderRadius: 8, padding: "5px 8px", textAlign: "center" }}>
                                   <p style={{ fontSize: ".5rem", color: "var(--muted)", textTransform: "uppercase" }}>Ride</p>
                                   <p style={{ fontFamily: "var(--font-mono)", fontSize: ".82rem", color: "var(--white)", fontWeight: 700 }}>{opt.legs.reduce((s, l) => s + l.etaMin, 0)}m</p>
@@ -627,8 +621,6 @@ export default function Ma3Page() {
                                 <div key={li} style={{ display: "flex", alignItems: "center", gap: 7, padding: "5px 8px", background: "rgba(0,0,0,.3)", borderRadius: 8, marginBottom: 4 }}>
                                   {leg.type === "matatu"
                                     ? <span style={{ padding: "2px 8px", borderRadius: 99, background: leg.routeColor, color: "#fff", fontFamily: "var(--font-mono)", fontSize: ".64rem", fontWeight: 700, flexShrink: 0 }}>{leg.routeShortName}</span>
-                                    : leg.type === "train"
-                                    ? <span style={{ padding: "2px 8px", borderRadius: 99, background: "#8b5cf6", color: "#fff", fontSize: ".64rem", fontWeight: 700, flexShrink: 0, display: "flex", alignItems: "center", gap: 3 }}><TrainFront size={9} /> Train</span>
                                     : <span style={{ padding: "2px 8px", borderRadius: 99, background: "rgba(255,255,255,.1)", color: "var(--muted2)", fontSize: ".64rem", flexShrink: 0, display: "flex", alignItems: "center", gap: 3 }}><Footprints size={9} /> Walk</span>}
                                   <span style={{ fontSize: ".66rem", color: "var(--muted2)", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                                     {leg.fromStop.name} <ArrowRight size={9} style={{ display: "inline", verticalAlign: "middle" }} /> {leg.toStop.name}
@@ -641,18 +633,16 @@ export default function Ma3Page() {
                                 <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "5px 8px", background: "rgba(22,163,74,.06)", borderRadius: 8, marginBottom: 8 }}>
                                   <BadgeCheck size={12} style={{ color: "var(--go)", flexShrink: 0 }} />
                                   <p style={{ fontSize: ".62rem", color: "var(--muted2)" }}>
-                                    Board going <strong style={{ color: "var(--go)" }}>toward {toStop?.name}</strong> — wrong-direction matatus are filtered out.
+                                    Board route <strong style={{ color: "var(--go)" }}>{opt.legs[0].routeShortName}</strong> at {opt.legs[0].fromStop.name}; transfer as shown if needed.
                                   </p>
                                 </div>
                               )}
                               <div style={{ display: "flex", gap: 6 }}>
-                                <button className="btn btn-go" style={{ flex: 1, padding: 8, fontSize: ".7rem", justifyContent: "center" }} onClick={() => lockIn(opt.legs[0].fromStop)}>
-                                  <Lock size={11} /> Lock In
+                                <button className="btn btn-go" style={{ flex: 1, padding: 8, fontSize: ".7rem", justifyContent: "center" }} onClick={() => { const firstMatatu = opt.legs.find(leg => leg.type === "matatu"); if (firstMatatu) void lockIn(firstMatatu); }} disabled={!opt.legs.some(leg => leg.type === "matatu")}>
+                                  <Lock size={11} /> Share pickup
                                 </button>
-                                <button className="btn" disabled={!canAfford}
-                                  style={{ padding: "8px 12px", fontSize: ".7rem", background: canAfford ? "rgba(217,119,6,.12)" : "rgba(220,38,38,.1)", border: `1px solid ${canAfford ? "rgba(217,119,6,.3)" : "rgba(220,38,38,.3)"}`, color: canAfford ? "var(--ready)" : "var(--stop)" }}
-                                  onClick={() => { if (pay(opt.fareEstimate)) toast(`KES ${opt.fareEstimate} paid`); else toast("Top up your wallet first"); }}>
-                                  <Wallet size={11} /> Pay
+                                <button className="btn btn-ghost" style={{ flex: 1, padding: 8, fontSize: ".7rem", justifyContent: "center" }} onClick={() => { const firstMatatu = opt.legs.find(leg => leg.type === "matatu"); if (!firstMatatu) return; arrivalAlerted.current = false; setTrackedPosition(null); setTrackedLeg(firstMatatu); setTrackingActive(true); setPanelMinimized(true); toast("Allow location access to follow your phone along the mapped route."); }} disabled={!opt.legs.some(leg => leg.type === "matatu")}>
+                                  <Navigation size={11} /> Track ride
                                 </button>
                                 <button className="btn btn-ghost" style={{ padding: "8px 10px" }} onClick={() => setSaveForm(true)}>
                                   <Calendar size={12} />
@@ -699,22 +689,15 @@ export default function Ma3Page() {
                         <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
                           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                             <Lock size={12} style={{ color: "var(--ready)" }} />
-                            <span style={{ fontSize: ".78rem", fontWeight: 700 }}>{lockedStop.name}</span>
+                            <span style={{ fontSize: ".78rem", fontWeight: 700 }}>{lockedStop.stop.name}</span>
                           </div>
-                          <button onClick={() => { setLockedStop(null); setStopQueue([]); }} style={{ background: "none", border: "none", color: "var(--muted)", cursor: "pointer" }}><X size={13} /></button>
+                          <button aria-label="Cancel pickup request" onClick={() => void cancelStopWaiting()} style={{ background: "none", border: "none", color: "var(--muted)", cursor: "pointer" }}><X size={13} /></button>
                         </div>
-                        <p style={{ fontSize: ".61rem", color: "var(--muted2)", marginBottom: 8 }}>Drivers see this demand board — no tout needs to shout.</p>
-                        <div className="sec-label" style={{ marginBottom: 6 }}><Users size={9} style={{ display: "inline", marginRight: 3 }} />DEMAND AT THIS STAGE</div>
-                        {stopQueue.slice(0, 6).map((q, i) => (
-                          <div key={i} style={{ display: "flex", alignItems: "center", gap: 7, padding: "5px 7px", background: "rgba(255,255,255,.03)", borderRadius: 8, marginBottom: 3 }}>
-                            <div style={{ width: 22, height: 22, borderRadius: "50%", background: "rgba(217,119,6,.15)", border: "1px solid rgba(217,119,6,.3)", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "var(--font-mono)", fontSize: ".6rem", fontWeight: 700, color: "var(--ready)", flexShrink: 0 }}>{q.paxCount}</div>
-                            <span style={{ flex: 1, fontSize: ".7rem" }}>{q.destination}</span>
-                            <span style={{ fontSize: ".57rem", color: "var(--muted)", fontFamily: "var(--font-mono)" }}>~{etaMinutes(haversineKm(lockedStop.lat, lockedStop.lon, q.destLat, q.destLon))}m</span>
-                          </div>
-                        ))}
+                        <p style={{ fontSize: ".61rem", color: "var(--muted2)", lineHeight: 1.5 }}>Your pickup stop is shared as an anonymous count for this route. It expires after 30 minutes; drivers cannot see your account or phone location.</p>
                       </motion.div>
                     )}
                   </AnimatePresence>
+                  {trackedLeg && <div className="ios-glass" style={{ marginBottom: 8, padding: 10 }}><div style={{ display: "flex", alignItems: "center", gap: 7 }}><Navigation size={13} style={{ color: trackingActive ? "var(--go)" : "var(--ready)" }} /><b style={{ flex: 1, fontSize: ".68rem" }}>{trackingStatus || `Ride to ${trackedLeg.toStop.name}`}</b><button className="icon-btn" aria-label="Stop following ride" onClick={() => { setTrackingActive(false); setTrackedLeg(null); setTrackedPosition(null); }}><X size={13} /></button></div><p style={{ marginTop: 5, fontSize: ".56rem", lineHeight: 1.45, color: "var(--muted2)" }}>Uses your phone's location to show progress on the archived route shape. It does not show the driver's live location or guarantee current service.</p></div>}
                 </>
               ) : (
                 <div>
@@ -763,44 +746,29 @@ export default function Ma3Page() {
 
       {/* ══════ MATATU PANEL ══════ */}
       <AnimatePresence>
-        {panel === "matatu" && (
+        {panel === "live" && (
           <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }}
             transition={{ type: "spring", damping: 28, stiffness: 320 }}
-            className="bpanel open" style={{ maxHeight: panelMinimized ? "24vh" : "45vh" }}>
+            className="bpanel open" style={{ maxHeight: panelMinimized ? "20vh" : "50vh" }}>
             <div className="bpanel-head">
               <button aria-label="Minimize panel" className="handle" onClick={() => setPanelMinimized(v => !v)} />
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
                   <BusFront size={15} style={{ color: "var(--ready)" }} />
-                  <span style={{ fontFamily: "var(--font-display)", fontSize: ".88rem", fontWeight: 900 }}>Live Matatus</span>
-                  <span className="chip" style={{ background: "rgba(22,163,74,.1)", color: "var(--go)", border: "1px solid rgba(22,163,74,.25)", fontSize: ".56rem" }}>
-                    <span style={{ display: "inline-block", width: 6, height: 6, borderRadius: "50%", background: "var(--go)", marginRight: 4, animation: "dot-pulse 1.2s infinite" }} /> LIVE
+                  <span style={{ fontFamily: "var(--font-display)", fontSize: ".88rem", fontWeight: 900 }}>Live fleet</span>
+                  <span className="chip" style={{ background: "rgba(217,119,6,.1)", color: "var(--ready)", border: "1px solid rgba(217,119,6,.25)", fontSize: ".56rem" }}>
+                    FEED NOT CONNECTED
                   </span>
                 </div>
                 <button onClick={() => setPanel(null)} style={{ background: "none", border: "none", color: "var(--muted)", cursor: "pointer" }}><X size={18} /></button>
               </div>
             </div>
             <div className="bpanel-scroll" style={{ padding: "0 14px 20px" }}>
-              {ALL_MATATUS.slice(0, 20).map(v => {
-                const route = ROUTES.find(r => r.id === v.routeId);
-                if (!route) return null;
-                const waitMin = nextMatatuArrivalMin(v.routeId, "");
-                return (
-                  <motion.button key={v.id} whileTap={{ scale: 0.97 }} onClick={() => setSelMatatu(v)}
-                    style={{ display: "flex", alignItems: "center", gap: 9, padding: "8px 10px", borderRadius: 11, width: "100%", marginBottom: 5, background: "var(--glass)", border: `1px solid ${selMatatu?.id === v.id ? route.c + "55" : "var(--border)"}`, cursor: "pointer" }}>
-                    <div style={{ width: 8, height: 8, borderRadius: "50%", background: route.c, flexShrink: 0, animation: "dot-pulse 1.5s infinite" }} />
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <p style={{ fontFamily: "var(--font-mono)", fontSize: ".73rem", fontWeight: 700 }}>{v.plate}</p>
-                      <p style={{ fontSize: ".57rem", color: "var(--muted)" }}>Route {route.sn} · {v.direction === "outbound" ? "→" : "←"} {v.speedKmh} km/h</p>
-                    </div>
-                    <div style={{ textAlign: "right" }}>
-                      <div style={{ fontSize: ".6rem", color: "var(--ready)", fontFamily: "var(--font-mono)", fontWeight: 700 }}>{waitMin}m</div>
-                      <div style={{ fontSize: ".52rem", color: "var(--muted)" }}>to stop</div>
-                    </div>
-                    {v.rated ? <span className="chip" style={{ background: "rgba(217,119,6,.12)", color: "var(--ready)", border: "1px solid rgba(217,119,6,.25)" }}>★</span> : <Star size={11} style={{ color: "var(--muted)" }} />}
-                  </motion.button>
-                );
-              })}
+              <div className="ios-glass" style={{ padding: 13 }}>
+                <p style={{ fontSize: ".75rem", fontWeight: 700 }}>No verified real-time vehicle feed is connected.</p>
+                <p style={{ marginTop: 6, color: "var(--muted2)", fontSize: ".64rem", lineHeight: 1.5 }}>This map will stay clear rather than invent vehicle positions. Connect a permissioned AVL/GPS feed through a protected server-side adapter before enabling live locations.</p>
+                <p style={{ marginTop: 7, color: "var(--muted)", fontSize: ".57rem" }}>Archived route geometry is not a live feed and does not report a vehicle's current position.</p>
+              </div>
             </div>
           </motion.div>
         )}
@@ -811,112 +779,30 @@ export default function Ma3Page() {
         {panel === "train" && (
           <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }}
             transition={{ type: "spring", damping: 28, stiffness: 320 }}
-            className="bpanel open" style={{ maxHeight: panelMinimized ? "24vh" : "52vh" }}>
+            className="bpanel open" style={{ maxHeight: panelMinimized ? "20vh" : "50vh" }}>
             <div className="bpanel-head">
               <button aria-label="Minimize panel" className="handle" onClick={() => setPanelMinimized(v => !v)} />
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
-                  <TrainFront size={15} style={{ color: "#8b5cf6" }} />
-                  <span style={{ fontFamily: "var(--font-display)", fontSize: ".88rem", fontWeight: 900 }}>NCR Commuter Train</span>
+                  <TrainFront size={15} style={{ color: "var(--ready)" }} />
+                  <span style={{ fontFamily: "var(--font-display)", fontSize: ".88rem", fontWeight: 900 }}>Rail map</span>
                 </div>
                 <button onClick={() => setPanel(null)} style={{ background: "none", border: "none", color: "var(--muted)", cursor: "pointer" }}><X size={18} /></button>
               </div>
-              <p style={{ margin: "7px 0 0", fontSize: ".56rem", color: "var(--muted)" }}>Rail geometry: OpenStreetMap contributors · ODbL. Times are timetable placeholders; confirm with Kenya Railways.</p>
+              <p style={{ margin: "7px 0 0", fontSize: ".59rem", color: "var(--muted2)", lineHeight: 1.45 }}>Choose a start station, then an end station.</p>
             </div>
             <div className="bpanel-scroll" style={{ padding: "0 14px 24px" }}>
-              {RAIL_LINES.map(line => {
-                const now = new Date(), nowMin = now.getHours() * 60 + now.getMinutes();
-                const nextOut = nextDeparture(line.departuresFromCBD, nowMin);
-                const nextIn  = nextDeparture(line.departuresToCBD,  nowMin);
-                const origin  = RAIL_STATIONS[line.stations[0]];
-                const term    = RAIL_STATIONS[line.stations[line.stations.length - 1]];
-                const dist    = haversineKm(origin.lat, origin.lon, term.lat, term.lon);
-                const active  = selRailLine === line.id;
-                return (
-                  <motion.div key={line.id} whileTap={{ scale: 0.98 }} className="card"
-                    style={{ marginBottom: 8, padding: 12, cursor: "pointer", background: active ? `${line.color}10` : "var(--glass)", borderColor: active ? `${line.color}45` : "var(--border2)" }}
-                    onClick={() => { const n = active ? null : line.id; setSelRailLine(n); if (mapInst.current) drawRail(mapInst.current, n); }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 5 }}>
-                      <TrainTrack size={13} style={{ color: line.color }} />
-                      <span style={{ fontFamily: "var(--font-display)", fontSize: ".78rem", fontWeight: 700, color: line.color, flex: 1 }}>{line.name}</span>
-                      <span style={{ fontFamily: "var(--font-mono)", fontSize: ".68rem", color: "var(--muted2)" }}>KES {NCR_FARE_ESTIMATE[line.id]}</span>
-                    </div>
-                    <p style={{ fontSize: ".61rem", color: "var(--muted2)", marginBottom: 6 }}>
-                      {origin.name} → {term.name} · {line.stations.length} stations · ~{etaMinutes(dist, line.avgSpeedKmh)} min
-                    </p>
-                    <div style={{ display: "flex", gap: 6, marginBottom: active ? 8 : 0 }}>
-                      <div style={{ flex: 1, background: "rgba(0,0,0,.3)", borderRadius: 8, padding: "5px 8px" }}>
-                        <p style={{ fontSize: ".52rem", color: "var(--muted)", textTransform: "uppercase" }}>Next from CBD</p>
-                        <p style={{ fontFamily: "var(--font-mono)", fontSize: ".76rem", color: "var(--ready)", fontWeight: 700 }}>{nextOut ? `${nextOut.time} (${nextOut.inMin}m)` : "—"}</p>
-                      </div>
-                      <div style={{ flex: 1, background: "rgba(0,0,0,.3)", borderRadius: 8, padding: "5px 8px" }}>
-                        <p style={{ fontSize: ".52rem", color: "var(--muted)", textTransform: "uppercase" }}>Next to CBD</p>
-                        <p style={{ fontFamily: "var(--font-mono)", fontSize: ".76rem", color: "var(--go)", fontWeight: 700 }}>{nextIn ? `${nextIn.time} (${nextIn.inMin}m)` : "—"}</p>
-                      </div>
-                    </div>
-                    {active && (
-                      <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
-                        {line.stations.map(sid => (
-                          <span key={sid} className="chip" style={{ background: `${line.color}12`, color: line.color, border: `1px solid ${line.color}28`, fontSize: ".57rem" }}>
-                            <TrainFront size={8} style={{ display: "inline", marginRight: 3 }} />{RAIL_STATIONS[sid].name}
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                  </motion.div>
-                );
-              })}
-              <p style={{ fontSize: ".57rem", color: "var(--muted)", textAlign: "center" }}>Schedule based on published Kenya Railways NCR timetable. Verify at station.</p>
+              <div className="ios-glass" style={{ padding: 10, marginBottom: 10 }}>
+                <p style={{ fontSize: ".67rem", fontWeight: 700, color: "var(--ready)" }}>Rail route preview</p>
+                <p style={{ marginTop: 4, fontSize: ".59rem", color: "var(--muted2)", lineHeight: 1.45 }}>{!railFrom ? "Choose your boarding station." : !railTo ? `Board at ${railFrom.name}; choose an alighting station.` : `${railFrom.name} → ${railTo.name}`}</p>
+              </div>
+              <p className="sec-label">Mapped railway stations</p>
+              <div style={{ position: "relative", margin: "7px 0 8px" }}><Search size={13} style={{ position: "absolute", left: 11, top: "50%", transform: "translateY(-50%)", color: "var(--ready)" }} /><input data-page-search className="finput" style={{ paddingLeft: 32 }} placeholder="Search mapped railway stations…" value={railStationQuery} onChange={event => setRailStationQuery(event.target.value)} /></div>
+              {visibleRailStations.map(station => <button key={station.id} className="card" onClick={() => selectRailStation(station)} style={{ display: "flex", alignItems: "center", gap: 9, width: "100%", textAlign: "left", padding: "9px 10px", marginBottom: 6, cursor: "pointer", color: "var(--white)" }}><TrainFront size={14} style={{ color: station.id === railFromId ? "var(--go)" : station.id === railToId ? "var(--stop)" : "var(--ready)" }} /><span style={{ flex: 1, fontSize: ".72rem" }}>{station.name}</span><span style={{ fontSize: ".56rem", color: "var(--muted2)" }}>{station.id === railFromId ? "Board" : station.id === railToId ? "Alight" : "Choose"}</span></button>)}
+              {visibleRailStations.length === 0 && <p style={{ fontSize: ".65rem", color: "var(--muted2)" }}>{OSM_STATIONS.length ? "No stations match that search." : "No named station points in this OSM snapshot."}</p>}
             </div>
           </motion.div>
         )}
-      </AnimatePresence>
-
-      {/* Matatu detail sheet */}
-      <AnimatePresence>
-        {selMatatu && (() => {
-          const route = ROUTES.find(r => r.id === selMatatu.routeId);
-          if (!route) return null;
-          return (
-            <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} transition={{ type: "spring", damping: 26, stiffness: 300 }}
-              style={{ position: "absolute", bottom: 0, left: 0, right: 0, zIndex: 350, background: "var(--ink3)", borderTop: "1px solid var(--border2)", borderRadius: "22px 22px 0 0", padding: "1rem 1rem 1.8rem", backdropFilter: "blur(16px)" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-                <div>
-                  <p style={{ fontFamily: "var(--font-mono)", fontSize: ".95rem", fontWeight: 700 }}>{selMatatu.plate}</p>
-                  <p style={{ fontSize: ".63rem", color: route.c }}>Route {route.sn} — {route.hs}</p>
-                  <p style={{ fontSize: ".6rem", color: "var(--muted2)", marginTop: 2 }}>
-                    {selMatatu.direction === "outbound" ? `→ Going toward ${route.hs}` : `← Returning to CBD`} · {selMatatu.speedKmh} km/h
-                  </p>
-                </div>
-                <button onClick={() => setSelMatatu(null)} style={{ background: "none", border: "none", color: "var(--muted)", cursor: "pointer" }}><X size={18} /></button>
-              </div>
-              <div style={{ display: "flex", gap: 7, marginBottom: 12 }}>
-                <div style={{ flex: 1, padding: "7px 10px", borderRadius: 10, background: "rgba(217,119,6,.08)", border: "1px solid rgba(217,119,6,.2)", textAlign: "center" }}>
-                  <p style={{ fontSize: ".52rem", color: "var(--muted)", textTransform: "uppercase" }}>To your stop</p>
-                  <p style={{ fontFamily: "var(--font-mono)", fontSize: ".88rem", color: "var(--ready)", fontWeight: 700 }}>{nextMatatuArrivalMin(route.id, "")}m</p>
-                </div>
-                <div style={{ flex: 1, padding: "7px 10px", borderRadius: 10, background: "rgba(22,163,74,.08)", border: "1px solid rgba(22,163,74,.2)", textAlign: "center" }}>
-                  <p style={{ fontSize: ".52rem", color: "var(--muted)", textTransform: "uppercase" }}>After boarding</p>
-                  <p style={{ fontFamily: "var(--font-mono)", fontSize: ".88rem", color: "var(--go)", fontWeight: 700 }}>{fromStop && toStop ? `${etaMinutes(haversineKm(fromStop.lat, fromStop.lon, toStop.lat, toStop.lon))}m` : "—"}</p>
-                </div>
-              </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 9, marginBottom: 12 }}>
-                <SBar label="Armour" icon={<Shield size={10} />} value={selMatatu.stats.armour} color="#dc2626" />
-                <SBar label="Combat" icon={<Volume2 size={10} />} value={selMatatu.stats.combat} color="#d97706" />
-                <SBar label="Speed"  icon={<Gauge size={10} />}  value={selMatatu.stats.speed}  color="#16a34a" />
-                <SBar label="Value"  icon={<Gem size={10} />}    value={selMatatu.stats.value}  color="#8b5cf6" />
-              </div>
-              {selMatatu.rated
-                ? <div className="card" style={{ padding: 10, textAlign: "center", background: "rgba(217,119,6,.08)", borderColor: "rgba(217,119,6,.2)" }}>
-                    <p style={{ fontSize: ".74rem", color: "var(--ready)", fontWeight: 600 }}>✅ Already Rated</p>
-                  </div>
-                : <button className="btn btn-primary" style={{ width: "100%", padding: 12, justifyContent: "center" }}
-                    onClick={() => { toast(`⭐ Rated ${selMatatu.plate}! +5⚡`); setSelMatatu(null); }}>
-                    <Star size={14} /> Rate This Nganya · +5⚡
-                  </button>}
-            </motion.div>
-          );
-        })()}
       </AnimatePresence>
     </div>
   );

@@ -1,20 +1,28 @@
-import { useState, useRef } from "react";
+import { useMemo, useState, useRef } from "react";
+import { Link } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   MapPin, Navigation, Clock, Wallet, Star, X,
   CheckCircle, Phone, MessageCircle,
-  Bike, Car, Crown, Users, Share2, Package, Info, Plus, UserRound,
+  Bike, Car, Crown, Users, Share2, Info, Plus, UserRound, ShoppingCart, Search,
 } from "lucide-react";
 import { toast } from "sonner";
 import maplibregl from "maplibre-gl";
 import MapLibreView, { MapLibreHandle } from "@/components/MapLibreView";
+import PageTabs from "@/components/PageTabs";
 import { useWallet } from "@/lib/wallet";
+import { useShoppingBasket } from "@/lib/shoppingBasket";
 import { MA3_GTFS } from "@/data/ma3_gtfs";
 import { APP_MODE, PROTOTYPE_NOTICE } from "@/lib/appMode";
 
 const NAIROBI: [number, number] = [-1.2864, 36.8172];
 
 type Tab = "ride" | "carpool" | "delivery";
+const NDAI_TABS = [
+  { id: "ride", label: "Ride", Icon: Car },
+  { id: "carpool", label: "Carpool", Icon: Share2 },
+  { id: "delivery", label: "Boda Basket", Icon: Bike },
+] as const;
 
 const RIDE_TYPES = [
   { id: "bike",    label: "Bike",    Icon: Bike,  desc: "Boda · 1 seat",      eta: 4,  base: 150 },
@@ -96,6 +104,8 @@ type RideStage = "idle" | "searching" | "drivers" | "booked";
 
 export default function NdaiPage() {
   const [tab, setTab]         = useState<Tab>("ride");
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const [sheetHeight, setSheetHeight] = useState(20);
   const [stage, setStage]     = useState<RideStage>("idle");
   const [rideId, setRideId]   = useState("comfort");
   const [pickup, setPickup]   = useState("");
@@ -112,6 +122,7 @@ export default function NdaiPage() {
   const [offerSeats, setOfferSeats] = useState(2);
   const [offerDistance, setOfferDistance] = useState(15);
   const [myOffers, setMyOffers]     = useState<CarpoolOffer[]>([]);
+  const [carpoolQuery, setCarpoolQuery] = useState("");
   const [bookedCarpool, setBookedCarpool] = useState<CarpoolOffer | null>(null);
   const [dailyOffers, setDailyOffers] = useState(() => {
     try {
@@ -120,16 +131,18 @@ export default function NdaiPage() {
     } catch { return 0; }
   });
 
-  const [delFrom, setDelFrom] = useState("");
   const [delTo, setDelTo]     = useState("");
-  const [delSize, setDelSize] = useState<"small" | "medium" | "large">("small");
-  const [delStage, setDelStage] = useState<"idle" | "booked">("idle");
+  const [delStage, setDelStage] = useState<"idle" | "drafted">("idle");
 
   const selected = RIDE_TYPES.find(r => r.id === rideId)!;
   const fare = selected.base + Math.floor(Math.random() * 80);
-  const DELIVERY_PRICES = { small: 150, medium: 250, large: 400 };
   const estimatedOfferFuel = estimateFuelCost(offerDistance);
   const estimatedOfferShare = passengerFuelShare(offerDistance, offerSeats);
+  const { items: shopItems, selectedBranch: shopBranch } = useShoppingBasket();
+  const visibleCarpoolOffers = useMemo(() => {
+    const query = carpoolQuery.trim().toLowerCase();
+    return [...myOffers, ...CARPOOL_OFFERS].filter(offer => !query || `${offer.driverName} ${offer.fromArea} ${offer.toArea} ${offer.carModel} ${offer.routeId}`.toLowerCase().includes(query));
+  }, [myOffers, carpoolQuery]);
 
   const handleSearch = () => {
     if (!pickup || !dest) { toast("Enter pickup and destination"); return; }
@@ -170,12 +183,11 @@ export default function NdaiPage() {
   };
 
   const bookDelivery = () => {
-    if (!delFrom || !delTo) { toast("Enter pickup and drop-off"); return; }
-    if (APP_MODE.demo || !APP_MODE.realPayments || !APP_MODE.liveTransport) { toast(PROTOTYPE_NOTICE); return; }
-    const price = DELIVERY_PRICES[delSize];
-    if (!pay(price)) { toast("Insufficient wallet balance"); return; }
-    setDelStage("booked");
-    toast(`Courier assigned — KES ${price} paid`);
+    if (!shopItems.length) { toast("Add items to your basket in Market first"); return; }
+    if (!shopBranch) { toast("Choose a supermarket branch from your complete basket in Market"); return; }
+    if (!delTo.trim()) { toast("Enter a delivery address or landmark"); return; }
+    setDelStage("drafted");
+    toast("Boda Basket delivery draft prepared on this device. No rider was requested and no payment was taken.");
   };
 
   return (
@@ -183,27 +195,18 @@ export default function NdaiPage() {
       <MapLibreView ref={mapRef} center={NAIROBI} zoom={13} height="100%" borderRadius={0}
         onLoad={m => { mapInst.current = m; }} />
 
-      <div style={{ position: "absolute", top: 10, left: 10, right: 10, zIndex: 50, display: "flex", gap: 6 }}>
-        {([
-          { id: "ride" as Tab, label: "Ride", Icon: Car },
-          { id: "carpool" as Tab, label: "Carpool", Icon: Share2 },
-          { id: "delivery" as Tab, label: "Delivery", Icon: Package },
-        ]).map(t => (
-          <button key={t.id} onClick={() => setTab(t.id)}
-            style={{ display: "flex", alignItems: "center", gap: 6, padding: "9px 14px", borderRadius: 12, background: tab === t.id ? "rgba(217,119,6,.22)" : "rgba(8,8,16,.78)", backdropFilter: "blur(16px)", border: `1px solid ${tab === t.id ? "rgba(217,119,6,.55)" : "rgba(255,255,255,.13)"}`, color: tab === t.id ? "var(--ready)" : "var(--muted2)", fontFamily: "var(--font)", fontWeight: 800, fontSize: ".74rem", cursor: "pointer", boxShadow: "0 2px 12px rgba(0,0,0,.4)" }}>
-            <t.Icon size={14} /> {t.label}
-          </button>
-        ))}
+      <div style={{ position: "absolute", top: 10, left: 10, right: 10, zIndex: 50 }}>
+        <PageTabs label="Ndai sections" active={tab} tabs={NDAI_TABS} onChange={value => { setTab(value as Tab); setSheetHeight(20); setSheetOpen(true); }} />
       </div>
 
       {/* ══════ RIDE TAB (amber/yellow-taxi theme) ══════ */}
       <AnimatePresence>
-        {tab === "ride" && stage !== "booked" && (
+        {sheetOpen && tab === "ride" && stage !== "booked" && (
           <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }}
             transition={{ type: "spring", damping: 28, stiffness: 300 }}
-            style={{ position: "absolute", bottom: 0, left: 0, right: 0, zIndex: 200, background: "rgba(10,10,18,.72)", backdropFilter: "blur(28px) saturate(145%)", borderRadius: "22px 22px 0 0", border: "1px solid var(--border2)", borderTop: "3px solid var(--ready)" }}>
-            <div style={{ display: "flex", justifyContent: "center", padding: "10px 0 4px" }}>
-              <div className="handle" />
+            className="bpanel open" style={{ height: `${sheetHeight}vh`, maxHeight: "calc(100% - 90px)", overflowY: "auto" }}>
+            <div className="bpanel-head">
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}><button aria-label={sheetHeight > 35 ? "Collapse panel" : "Expand panel"} className="handle" onClick={() => setSheetHeight(height => height > 35 ? 20 : 50)} /><button className="icon-btn" aria-label="Close panel" onClick={() => setSheetOpen(false)}><X size={14} /></button></div>
             </div>
             <div style={{ display: "flex", gap: 6, padding: "6px 14px 10px", overflowX: "auto", scrollbarWidth: "none" }}>
               {RIDE_TYPES.map(rt => {
@@ -222,7 +225,7 @@ export default function NdaiPage() {
             <div style={{ padding: "0 14px 10px", display: "flex", flexDirection: "column", gap: 7 }}>
               <div style={{ position: "relative" }}>
                 <div style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", width: 10, height: 10, borderRadius: "50%", background: "var(--go)", border: "2px solid #000", zIndex: 1 }} />
-                <input className="finput" style={{ paddingLeft: 32 }} placeholder="Pickup location"
+                <input data-page-search className="finput" style={{ paddingLeft: 32 }} placeholder="Pickup location"
                   value={pickup} onChange={e => setPickup(e.target.value)} />
               </div>
               <div style={{ position: "relative" }}>
@@ -307,10 +310,10 @@ export default function NdaiPage() {
 
       {/* Booked ride state */}
       <AnimatePresence>
-        {tab === "ride" && stage === "booked" && driver && (
+        {sheetOpen && tab === "ride" && stage === "booked" && driver && (
           <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} transition={{ type: "spring", damping: 26, stiffness: 300 }}
-            style={{ position: "absolute", bottom: 0, left: 0, right: 0, zIndex: 200, background: "rgba(10,10,18,.72)", backdropFilter: "blur(28px) saturate(145%)", borderRadius: "22px 22px 0 0", border: "1px solid var(--border2)", padding: "1rem 1rem 2rem" }}>
-            <div className="handle" />
+            className="bpanel open" style={{ maxHeight: "50vh", overflowY: "auto", padding: "0 1rem 2rem" }}>
+            <div className="bpanel-head"><div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}><button className="handle" aria-label="Collapse panel" /><button className="icon-btn" aria-label="Close panel" onClick={() => setSheetOpen(false)}><X size={14} /></button></div></div>
             <div style={{ textAlign: "center", marginBottom: 16 }}>
               <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring", stiffness: 260 }}>
                 <CheckCircle size={42} style={{ color: "var(--go)", margin: "0 auto 8px" }} />
@@ -353,12 +356,12 @@ export default function NdaiPage() {
 
       {/* ══════ CARPOOL TAB — legal cost-share commute ══════ */}
       <AnimatePresence>
-        {tab === "carpool" && !bookedCarpool && (
+        {sheetOpen && tab === "carpool" && !bookedCarpool && (
           <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }}
             transition={{ type: "spring", damping: 28, stiffness: 300 }}
-            className="bpanel open" style={{ maxHeight: "80vh" }}>
+            className="bpanel open" style={{ height: `${sheetHeight}vh`, maxHeight: "calc(100% - 90px)", overflowY: "auto" }}>
             <div className="bpanel-head">
-              <div className="handle" />
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}><button aria-label={sheetHeight > 35 ? "Collapse panel" : "Expand panel"} className="handle" onClick={() => setSheetHeight(height => height > 35 ? 20 : 50)} /><button className="icon-btn" aria-label="Close panel" onClick={() => setSheetOpen(false)}><X size={14} /></button></div>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
                   <Share2 size={15} style={{ color: "var(--ready)" }} />
@@ -406,8 +409,9 @@ export default function NdaiPage() {
             </AnimatePresence>
 
             <div className="bpanel-scroll" style={{ padding: "0 14px 20px" }}>
+              <div style={{ position: "relative", marginBottom: 9 }}><Search size={13} style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "var(--ready)" }} /><input data-page-search className="finput" style={{ paddingLeft: 34 }} placeholder="Search rides by area, route or car…" value={carpoolQuery} onChange={event => setCarpoolQuery(event.target.value)} /></div>
               <p className="sec-label" style={{ marginBottom: 8 }}>Commuters heading your way</p>
-              {[...myOffers, ...CARPOOL_OFFERS].map(offer => (
+              {visibleCarpoolOffers.map(offer => (
                 <motion.div key={offer.id} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
                   className="card" style={{ padding: 12, marginBottom: 8 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
@@ -450,10 +454,10 @@ export default function NdaiPage() {
 
       {/* Carpool booked confirmation */}
       <AnimatePresence>
-        {tab === "carpool" && bookedCarpool && (
+        {sheetOpen && tab === "carpool" && bookedCarpool && (
           <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} transition={{ type: "spring", damping: 26, stiffness: 300 }}
-            style={{ position: "absolute", bottom: 0, left: 0, right: 0, zIndex: 200, background: "rgba(10,10,18,.72)", backdropFilter: "blur(28px) saturate(145%)", borderRadius: "22px 22px 0 0", border: "1px solid var(--border2)", padding: "1rem 1rem 2rem" }}>
-            <div className="handle" />
+            className="bpanel open" style={{ maxHeight: "50vh", overflowY: "auto", padding: "0 1rem 2rem" }}>
+            <div className="bpanel-head"><div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}><button className="handle" aria-label="Collapse panel" /><button className="icon-btn" aria-label="Close panel" onClick={() => setSheetOpen(false)}><X size={14} /></button></div></div>
             <div style={{ textAlign: "center", marginBottom: 14 }}>
               <CheckCircle size={40} style={{ color: "var(--go)", margin: "0 auto 8px" }} />
               <p style={{ fontFamily: "var(--font-display)", fontSize: "1rem", fontWeight: 900, color: "var(--go)" }}>Seat Reserved</p>
@@ -479,56 +483,49 @@ export default function NdaiPage() {
         )}
       </AnimatePresence>
 
-      {/* ══════ DELIVERY TAB ══════ */}
-      <AnimatePresence>
-        {tab === "delivery" && delStage === "idle" && (
-          <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }}
-            transition={{ type: "spring", damping: 28, stiffness: 300 }}
-            style={{ position: "absolute", bottom: 0, left: 0, right: 0, zIndex: 200, background: "rgba(10,10,18,.72)", backdropFilter: "blur(28px) saturate(145%)", borderRadius: "22px 22px 0 0", border: "1px solid var(--border2)", padding: "1rem 1rem 1.6rem" }}>
-            <div className="handle" />
-            <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 12 }}>
-              <Package size={16} style={{ color: "var(--ready)" }} />
-              <span style={{ fontFamily: "var(--font-display)", fontSize: ".9rem", fontWeight: 900 }}>Send a Package</span>
-            </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 7, marginBottom: 10 }}>
-              <div style={{ position: "relative" }}>
-                <div style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", width: 9, height: 9, borderRadius: "50%", background: "var(--go)", border: "2px solid #000" }} />
-                <input className="finput" style={{ paddingLeft: 30 }} placeholder="Pickup location" value={delFrom} onChange={e => setDelFrom(e.target.value)} />
-              </div>
-              <div style={{ position: "relative" }}>
-                <MapPin size={12} style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "var(--stop)" }} />
-                <input className="finput" style={{ paddingLeft: 30 }} placeholder="Drop-off location" value={delTo} onChange={e => setDelTo(e.target.value)} />
-              </div>
-            </div>
-            <p className="sec-label" style={{ marginBottom: 6 }}>Package size</p>
-            <div style={{ display: "flex", gap: 6, marginBottom: 12 }}>
-              {(["small", "medium", "large"] as const).map(size => (
-                <button key={size} onClick={() => setDelSize(size)}
-                  style={{ flex: 1, padding: "10px 4px", borderRadius: 10, border: `1px solid ${delSize === size ? "rgba(217,119,6,.45)" : "var(--border2)"}`, background: delSize === size ? "rgba(217,119,6,.1)" : "var(--glass)", color: delSize === size ? "var(--ready)" : "var(--muted2)", cursor: "pointer", textAlign: "center" }}>
-                  <p style={{ fontSize: ".72rem", fontWeight: 700, textTransform: "capitalize" }}>{size}</p>
-                  <p style={{ fontSize: ".58rem", fontFamily: "var(--font-mono)", marginTop: 2 }}>KES {DELIVERY_PRICES[size]}</p>
-                </button>
-              ))}
-            </div>
-            <button className="btn btn-primary" style={{ width: "100%", padding: 12, justifyContent: "center" }} onClick={bookDelivery}>
-              <Package size={14} /> Book Courier — KES {DELIVERY_PRICES[delSize]}
-            </button>
-          </motion.div>
-        )}
-        {tab === "delivery" && delStage === "booked" && (
-          <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} transition={{ type: "spring", damping: 26, stiffness: 300 }}
-            style={{ position: "absolute", bottom: 0, left: 0, right: 0, zIndex: 200, background: "rgba(10,10,18,.72)", backdropFilter: "blur(28px) saturate(145%)", borderRadius: "22px 22px 0 0", border: "1px solid var(--border2)", padding: "1rem 1rem 2rem", textAlign: "center" }}>
-            <div className="handle" />
-            <CheckCircle size={40} style={{ color: "var(--go)", margin: "10px auto" }} />
-            <p style={{ fontFamily: "var(--font-display)", fontSize: "1rem", fontWeight: 900, color: "var(--go)", marginBottom: 4 }}>Courier On The Way</p>
-            <p style={{ fontSize: ".7rem", color: "var(--muted2)", marginBottom: 16 }}>{delFrom} → {delTo}</p>
-            <button onClick={() => { setDelStage("idle"); setDelFrom(""); setDelTo(""); }}
-              style={{ width: "100%", padding: 11, borderRadius: 12, background: "rgba(220,38,38,.1)", border: "1px solid rgba(220,38,38,.3)", color: "var(--stop)", fontWeight: 700, fontSize: ".78rem", cursor: "pointer" }}>
-              Done
-            </button>
-          </motion.div>
-        )}
-      </AnimatePresence>
+  {/* ══════ BODA BASKET MOTORBIKE SHOPPING DELIVERY ══════ */}
+  <AnimatePresence>
+    {sheetOpen && tab === "delivery" && delStage === "idle" && (
+      <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }}
+        transition={{ type: "spring", damping: 28, stiffness: 300 }}
+        className="bpanel open" style={{ height: `${sheetHeight}vh`, maxHeight: "calc(100% - 90px)", overflowY: "auto", padding: "0 1rem 1.4rem" }}>
+        <div className="bpanel-head"><div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}><button aria-label={sheetHeight > 35 ? "Collapse panel" : "Expand panel"} className="handle" onClick={() => setSheetHeight(height => height > 35 ? 20 : 50)} /><button className="icon-btn" aria-label="Close panel" onClick={() => setSheetOpen(false)}><X size={14} /></button></div>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+          <Bike size={18} style={{ color: "var(--ready)" }} />
+          <span style={{ fontFamily: "var(--font-display)", fontSize: ".92rem", fontWeight: 900 }}>Boda Basket</span>
+        </div>
+        <p style={{ fontSize: ".63rem", color: "var(--muted2)", lineHeight: 1.5, marginBottom: 10 }}>A motorbike (boda) shopping rider picks up your Market basket from your chosen supermarket branch and delivers it to your address.</p></div><div className="bpanel-scroll" style={{ padding: "0 14px 14px" }}>
+
+        {shopItems.length ? <div className="card" style={{ padding: 11, marginBottom: 9 }}>
+          <p className="sec-label" style={{ marginBottom: 6 }}>Your shared shopping basket</p>
+          {shopItems.map(item => <div key={item.productId} style={{ display: "flex", justifyContent: "space-between", gap: 8, padding: "4px 0", fontSize: ".65rem" }}><span>{item.quantity} × {item.name}{item.unit ? ` · ${item.unit}` : ""}</span><span style={{ color: "var(--muted2)" }}>{item.category}</span></div>)}
+          {shopBranch && <p style={{ borderTop: "1px solid var(--border)", paddingTop: 8, marginTop: 7, fontSize: ".64rem", color: "var(--ready)" }}>Pickup: {shopBranch.store} · {shopBranch.branchName}{shopBranch.region ? `, ${shopBranch.region}` : ""}<br /><span style={{ color: "var(--muted2)", fontSize: ".58rem" }}>Latest observed basket subtotal: KES {shopBranch.totalKes.toLocaleString()} — not a checkout quote.</span></p>}
+        </div> : <div className="card" style={{ padding: 12, marginBottom: 9 }}>
+          <p style={{ fontSize: ".67rem", color: "var(--muted2)", lineHeight: 1.5 }}>Start in Market to build your basket and choose a supermarket branch. You can pick a branch that is not the nearest one.</p>
+          <Link href="/market"><button className="btn btn-ready" style={{ marginTop: 9 }}><ShoppingCart size={13} /> Open Market</button></Link>
+        </div>}
+
+        {shopItems.length > 0 && (shopBranch ? <div style={{ marginBottom: 9 }}><label>Delivery address or landmark</label><div style={{ position: "relative" }}><MapPin size={12} style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "var(--stop)" }} /><input data-page-search className="finput" style={{ paddingLeft: 30 }} placeholder="Where should the motorbike rider deliver?" value={delTo} onChange={event => setDelTo(event.target.value)} /></div></div> : <div className="card" style={{ padding: 10, marginBottom: 9, fontSize: ".63rem", color: "var(--muted2)" }}>Choose a complete-basket branch from Market first; your basket and chosen branch will be shared here.<Link href="/market" style={{ color: "var(--ready)", marginLeft: 5 }}>Choose branch ↗</Link></div>)}
+
+        <div className="ios-glass" style={{ padding: 9, marginBottom: 9 }}><p style={{ fontSize: ".59rem", color: "var(--muted2)", lineHeight: 1.5, margin: 0 }}>Prototype only: store stock, substitutions, delivery fee, rider dispatch, order tracking, customer support and payment are not connected. Prices are observations, not confirmed stock or a retailer checkout total.</p></div>
+        <button className="btn btn-ready" style={{ width: "100%", padding: 12, justifyContent: "center", opacity: shopItems.length && shopBranch ? 1 : .55 }} onClick={bookDelivery}>
+          <Bike size={14} /> Prepare shopping request draft
+        </button>
+        </div>
+      </motion.div>
+    )}
+    {sheetOpen && tab === "delivery" && delStage === "drafted" && (
+      <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} transition={{ type: "spring", damping: 26, stiffness: 300 }}
+        className="bpanel open" style={{ maxHeight: "50vh", overflowY: "auto", padding: "0 1rem 1.6rem", textAlign: "center" }}>
+        <div className="bpanel-head"><div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}><button className="handle" aria-label="Collapse panel" /><button className="icon-btn" aria-label="Close panel" onClick={() => setSheetOpen(false)}><X size={14} /></button></div></div>
+        <CheckCircle size={34} style={{ color: "var(--ready)", margin: "8px auto" }} />
+        <p style={{ fontFamily: "var(--font-display)", fontSize: ".95rem", fontWeight: 900, color: "var(--ready)", marginBottom: 4 }}>Shopping request draft prepared</p>
+        <p style={{ fontSize: ".65rem", color: "var(--muted2)", lineHeight: 1.5, marginBottom: 10 }}>This draft stays in the current page only. It has not been sent to a rider; no stock was checked, no delivery fee was quoted and no payment was taken.</p>
+        <div className="card" style={{ padding: 10, textAlign: "left", marginBottom: 10 }}><p style={{ fontSize: ".65rem" }}>Pickup: {shopBranch?.store} · {shopBranch?.branchName}</p><p style={{ fontSize: ".65rem", marginTop: 4 }}>Deliver to: {delTo}</p><p style={{ fontSize: ".6rem", color: "var(--muted2)", marginTop: 4 }}>{shopItems.length} basket line(s) · latest observed subtotal KES {shopBranch?.totalKes.toLocaleString()}</p></div>
+        <button className="btn btn-ready" style={{ width: "100%", justifyContent: "center" }} onClick={() => setDelStage("idle")}>Edit request draft</button>
+      </motion.div>
+    )}
+  </AnimatePresence>
     </div>
   );
 }
