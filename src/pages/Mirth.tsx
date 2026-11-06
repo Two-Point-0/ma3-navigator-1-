@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import PageTabs from "@/components/PageTabs";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 import MapLibreView, { MapLibreHandle } from "@/components/MapLibreView";
-import maplibregl from "maplibre-gl";
+import * as maplibregl from "maplibre-gl";
 import { removeLineLayer, setLineLayer } from "@/lib/mapLayers";
 
 type Section = "games" | "nganya" | "challenges";
@@ -136,7 +136,7 @@ export default function MirthPage() {
       } else { setSeason(null); setSeasonCandidates([]); }
       if (!cancelled) { setBackendReady(true); setLoading(false); }
     })().catch(error => {
-      console.error("Mirth data load failed", error);
+        if (import.meta.env.DEV) console.error("Mirth data load failed", error);
       if (!cancelled) { setBackendReady(false); setLoading(false); }
     });
     return () => { cancelled = true; };
@@ -150,10 +150,10 @@ export default function MirthPage() {
       try {
         const { data, error } = await supabase!.rpc("get_nganya_annual_leaderboard", { p_year: leaderboardYear });
         if (cancelled) return;
-        if (error) { console.error("Nganya annual leaderboard unavailable", error); setAnnualLeaderboard([]); }
+        if (error) { if (import.meta.env.DEV) console.error("Nganya annual leaderboard unavailable", error); setAnnualLeaderboard([]); }
         else setAnnualLeaderboard((data ?? []).map((row: AnnualRow) => ({ ...row, id: row.matatu_id || row.id, vote_count: Number(row.vote_count) })));
       } catch (error) {
-        console.error("Nganya annual leaderboard failed", error);
+        if (import.meta.env.DEV) console.error("Nganya annual leaderboard failed", error);
         if (!cancelled) setAnnualLeaderboard([]);
       } finally { if (!cancelled) setLeaderboardLoading(false); }
     })();
@@ -234,7 +234,7 @@ export default function MirthPage() {
     let cancelled = false;
     void (async () => {
       const { data, error } = await supabase!.from("nganya_route_shapes").select("route_code,route_label,geometry").eq("active", true);
-      if (error) { console.warn("Could not load Nganya route map", error.message); return; }
+      if (error) { if (import.meta.env.DEV) console.warn("Could not load Nganya route map", error.message); return; }
       if (!cancelled) setRouteShapes((data ?? []) as RouteShape[]);
     })();
     return () => { cancelled = true; };

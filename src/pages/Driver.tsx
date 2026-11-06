@@ -38,7 +38,7 @@ export default function DriverPage() {
   const [checks, setChecks] = useState({ licence: false, insurance: false, roadworthy: false, consent: false });
   const [routeId, setRouteId] = useState(MATATU_ROUTES[0]?.id ?? "");
   const [waitingCounts, setWaitingCounts] = useState<Record<string, number>>({});
-  const [demandStatus, setDemandStatus] = useState("Waiting for stop-demand data");
+  const [demandStatus, setDemandStatus] = useState("Stop-demand totals require an admin-verified matatu driver account and current documents.");
   const demoCoords = useMemo(() => ({ latitude: -1.2864, longitude: 36.8172, accuracy: 25 }), []);
   const ready = Object.values(checks).every(Boolean);
   const icon = driverType === "matatu-driver" ? <Bus size={20} /> : <Car size={20} />;
@@ -60,19 +60,15 @@ export default function DriverPage() {
     let cancelled = false;
     const loadDemand = async () => {
       try {
-        let user = (await supabase!.auth.getUser()).data.user;
-        if (!user) {
-          const { data, error } = await supabase!.auth.signInAnonymously();
-          if (error || !data.user) throw error ?? new Error("A guest session is required.");
-          user = data.user;
-        }
+        const user = (await supabase!.auth.getUser()).data.user;
+        if (!user) { setDemandStatus("Sign in with an administrator-verified matatu driver account to see pickup totals."); return; }
         const { data, error } = await supabase!.rpc("get_ma3_waiting_counts", { p_route_id: routeId });
         if (error) throw error;
         if (cancelled) return;
         setWaitingCounts(Object.fromEntries((data ?? []).map((row: { stop_id: string; waiting_count: number }) => [row.stop_id, Number(row.waiting_count)])));
         setDemandStatus("Anonymous, self-reported pickup counts · refreshed every 15 seconds · requests expire after 30 minutes");
       } catch (error) {
-        if (!cancelled) { setWaitingCounts({}); setDemandStatus(error instanceof Error ? error.message : "Could not load pickup counts."); }
+        if (!cancelled) { setWaitingCounts({}); setDemandStatus("Could not load pickup counts. Confirm this account is verified and try again."); }
       }
     };
     void loadDemand();

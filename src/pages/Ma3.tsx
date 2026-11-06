@@ -7,7 +7,7 @@ import {
   Calendar, AlarmClock, Zap, Eye, BadgeCheck, Footprints,
 } from "lucide-react";
 import { toast } from "sonner";
-import maplibregl from "maplibre-gl";
+import * as maplibregl from "maplibre-gl";
 import MapLibreView, { MapLibreHandle } from "@/components/MapLibreView";
 import PageTabs from "@/components/PageTabs";
 import { setLineLayer, setPointLayer, removeLineLayer, removePointLayer } from "@/lib/mapLayers";
@@ -216,7 +216,12 @@ export default function Ma3Page() {
       setLineLayer(map, `route-${route.id}`, shape, route.c, 5, 0.9);
       const mid = shape[~~(shape.length / 2)];
       const el = document.createElement("div");
-      el.innerHTML = `<div style="background:${route.c};color:#fff;padding:3px 9px;border-radius:99px;font-size:11px;font-weight:700;font-family:'DM Mono',monospace;box-shadow:0 2px 6px rgba(0,0,0,.4)">${route.sn}</div>`;
+      el.textContent = String(route.sn);
+      Object.assign(el.style, {
+        background: /^#[\da-f]{6}$/i.test(route.c) ? route.c : "#d97706",
+        color: "#fff", padding: "3px 9px", borderRadius: "99px", fontSize: "11px",
+        fontWeight: "700", fontFamily: "'DM Mono',monospace", boxShadow: "0 2px 6px rgba(0,0,0,.4)",
+      });
       staticMarkers.current.push(new maplibregl.Marker({ element: el, anchor: "center" }).setLngLat([mid[1], mid[0]]).addTo(map));
     }
     const stopIds = ROUTE_STOPS[route.id] ?? [];
@@ -410,8 +415,8 @@ export default function Ma3Page() {
       if (error) throw error;
       setLockedStop({ stop: leg.fromStop, routeId: leg.routeId });
       toast(`${leg.fromStop.name} shared as an anonymous pickup request for 30 minutes.`);
-    } catch (error) {
-      toast(error instanceof Error ? error.message : "Could not share your pickup stop. Check the Supabase setup.");
+    } catch {
+      toast("Could not share your pickup stop. Check your connection and try again.");
     }
   };
 

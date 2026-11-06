@@ -97,7 +97,7 @@ export default function ProfilePage() {
         const { data, error } = await supabase!.storage.from("profile-photos").createSignedUrl(objectPath, 60 * 60 * 24);
         if (error) throw error;
         if (!cancelled && data?.signedUrl) { setAvatarUrl(data.signedUrl); localStorage.setItem("ma3_profile_avatar_path", objectPath); }
-      } catch (error) { console.warn("Could not load profile avatar", error); }
+      } catch (error) { if (import.meta.env.DEV) console.warn("Could not load profile avatar", error); }
     })();
     return () => { cancelled = true; };
   }, []);
@@ -127,8 +127,8 @@ export default function ProfilePage() {
       if (profileError) throw profileError;
       setAvatarUrl(signed.signedUrl); localStorage.setItem("ma3_profile_avatar_path", objectPath);
       toast("Profile photo uploaded.");
-    } catch (error) {
-      toast(error instanceof Error ? error.message : "Could not upload this photo. Try again later.");
+    } catch {
+      toast("Could not upload this photo. Check your connection and try again.");
     } finally { setAvatarUploading(false); if (avatarInputRef.current) avatarInputRef.current.value = ""; }
   };
 

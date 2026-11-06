@@ -5,7 +5,7 @@ import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 import { SelectedMarketBranch, useShoppingBasket } from "@/lib/shoppingBasket";
 import PageTabs from "@/components/PageTabs";
 import MapLibreView, { MapLibreHandle } from "@/components/MapLibreView";
-import maplibregl from "maplibre-gl";
+import * as maplibregl from "maplibre-gl";
 import { setPointLayer } from "@/lib/mapLayers";
 
 type Store = "Naivas" | "Quickmart" | "Carrefour" | "Chandarana" | "Cleanshelf";
@@ -169,7 +169,7 @@ export default function MarketPage() {
         setBranchSchemaReady(hasBranchSchema);
         setLoadError("");
       } catch (error) {
-        if (!cancelled) setLoadError(error instanceof Error ? error.message : "Could not read the catalogue.");
+        if (!cancelled) setLoadError("Could not read the catalogue. Check your connection and try again.");
       } finally { if (!cancelled) setLoading(false); }
     })();
     }, activeCatalogQuery.trim().length >= 2 ? 250 : 0);

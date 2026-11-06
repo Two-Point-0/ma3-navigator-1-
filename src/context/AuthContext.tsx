@@ -19,7 +19,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!supabase) { setLoading(false); return; }
     void supabase.auth.getSession().then(({ data, error }) => {
-      if (error) console.warn("Could not restore the sign-in session", error.message);
+      if (error && import.meta.env.DEV) console.warn("Could not restore the sign-in session", error.message);
       setUser(data.session?.user ?? null);
       setLoading(false);
     });

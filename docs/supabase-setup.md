@@ -5,13 +5,21 @@ The app reads shared Explore, Market and Mirth data from Supabase. The matching 
 ## 1. Create the Supabase project
 
 1. Create a project at [Supabase](https://supabase.com/).
-2. In **SQL Editor**, run these scripts in order:
+2. Apply each migration in filename order, exactly once:
    1. `supabase/migrations/20261008_initial_ma3.sql`
    2. `supabase/migrations/20261009_explore_market_nganya.sql`
    3. `supabase/migrations/20261012_ma3_transit_tables.sql`
-   4. `supabase/seed/demo_catalog.sql` (only seeds the five retailer reference rows—no fake products or shelf prices).
-3. In **Project Settings → API**, copy the project URL and public `anon` key. Do **not** use a service-role/secret key in the app.
-4. Copy `.env.example` to `.env.local` in the repository root and fill:
+   4. `supabase/migrations/20261012_market_branches.sql`
+   5. `supabase/migrations/20261014_flight_routes_and_nganya_route_shapes.sql`
+   6. `supabase/migrations/20261014_nganya_sgr_profile_media.sql`
+   7. `supabase/migrations/20261015_private_profile_photos.sql`
+   8. `supabase/migrations/20261016_ma3_stop_demand.sql`
+   9. `supabase/migrations/20261016_market_catalog_search.sql`
+   10. `supabase/migrations/20261016_nganya_driving_service_ratings.sql`
+   11. `supabase/migrations/20261106_security_profile_role.sql`
+3. In **SQL Editor**, run `supabase/seed/demo_catalog.sql` (only seeds the five retailer reference rows—no fake products or shelf prices).
+4. In **Project Settings → API**, copy the project URL and public `anon` key. Do **not** use a service-role/secret key in the app.
+5. Copy `.env.example` to `.env.local` in the repository root and fill:
 
    ```env
    VITE_SUPABASE_URL=https://YOUR_PROJECT.supabase.co
@@ -116,7 +124,7 @@ The rail layer is mapped OpenStreetMap geometry and station points, not a timeta
 
 - Never commit `.env.local` or a service key.
 - The two HOTOSM GeoJSON ZIP files are duplicates; use one. The GeoPackage ZIP is an alternative representation, not more POIs.
-- This checkout has npm and pnpm lock/workspace artefacts. Use the package manager matching this checkout's `package.json` and do not regenerate a second lockfile.
+- This repository uses npm and the checked-in `package-lock.json` as its dependency lock. Use `npm install` and keep that lockfile in sync with `package.json`.
 - Build-generated TypeScript/Vite outputs (`*.tsbuildinfo`, generated `vite.config.js`/`.d.ts`) are not source. Review `git status` before removing any untracked local output; this guide does not delete user files.
 
 
@@ -127,6 +135,10 @@ Run `supabase/migrations/20261014_flight_routes_and_nganya_route_shapes.sql` aft
 Nganya vehicle records remain in `nganya_matatus` and are registered by the authorized administrator or data steward after verification. Do not let the public create or publish voteable entries. Route paths are maintained separately in `nganya_route_shapes`, keyed by the same route code; use `supabase/import_templates/nganya_route_shapes.csv`, add the sourced GeoJSON path and citation, and mark it active only after review. Mirth draws only the two routes currently selected for the annual face-off. User-submitted route suggestions (if enabled later) must go into a private review queue and must never auto-register a vehicle.
 
 The Fly and Market pages display MapLibre basemaps; overlays only appear when geocoded rows have been imported. SGR's line, stations, and timetable stay separate in `sgr_routes`, `sgr_stations`, and `sgr_schedules`. A SGR polyline alone is not evidence of a currently operating service.
+
+## Security and production settings
+
+Read [`security-audit-2026-11-06.md`](security-audit-2026-11-06.md) and finish the manual Supabase Auth, deployment header, CSP, secret-scanning and access-control checks before a public launch. The role protection migration `20261106_security_profile_role.sql` is listed in the initial setup sequence and must be applied to each Supabase environment.
 
 ## 10. Explore destinations and Ma3 handoff
 

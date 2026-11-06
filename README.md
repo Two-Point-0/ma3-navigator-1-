@@ -1,5 +1,5 @@
 # Ma3 — Move · Market · Mirth
-Nairobi's urban companion app. React + TypeScript + Vite + MapLibre GL + Firebase.
+Nairobi's urban companion app. React + TypeScript + Vite + MapLibre GL + Supabase/Postgres/PostGIS.
 
 ---
 
@@ -16,48 +16,9 @@ npm run dev          # starts dev server
 
 ---
 
-## Legacy Firebase Setup (optional)
+## Supabase setup
 
-These steps configure Firebase authentication and older app modules. They do **not** configure the newer Supabase-backed Explore, Market or Mirth features; follow [`docs/supabase-setup.md`](docs/supabase-setup.md) for those.
-
-### Step 1 — Create a Firebase project
-1. Go to https://console.firebase.google.com
-2. Click **Add project** → name it `ma3-app` → Continue
-3. Disable Google Analytics (not needed) → **Create project**
-
-### Step 2 — Enable Authentication
-1. Left sidebar → **Authentication** → Get started
-2. **Sign-in method** tab → Enable **Google** → Save
-3. Also enable **Anonymous** (for guest users) → Save
-
-### Step 3 — Create Firestore Database
-1. Left sidebar → **Firestore Database** → Create database
-2. Choose **Start in test mode** → pick a region near Kenya (e.g. `europe-west1`) → Done
-3. Go to **Rules** tab → paste the contents of `firestore.rules` → **Publish**
-
-### Step 4 — Get your config keys
-1. Left sidebar → ⚙️ Project Settings → **Your apps** tab
-2. Click **</>** (Web) → register app as `ma3-web` → Continue
-3. Copy the `firebaseConfig` object — you'll see:
-   ```js
-   apiKey: "AIza...",
-   authDomain: "ma3-app.firebaseapp.com",
-   projectId: "ma3-app",
-   ...
-   ```
-
-### Step 5 — Create your .env.local file
-In the project root (same folder as package.json), create a file called `.env.local`:
-```
-VITE_FIREBASE_API_KEY=AIza...
-VITE_FIREBASE_AUTH_DOMAIN=ma3-app.firebaseapp.com
-VITE_FIREBASE_PROJECT_ID=ma3-app
-VITE_FIREBASE_STORAGE_BUCKET=ma3-app.appspot.com
-VITE_FIREBASE_MESSAGING_SENDER_ID=123456789
-VITE_FIREBASE_APP_ID=1:123456789:web:abc123
-```
-Replace each value with the ones from your Firebase project.
-Then restart the dev server: `npm run dev`
+Supabase is the app's only backend: Auth, Postgres, PostGIS, Realtime and Storage. Follow [`docs/supabase-setup.md`](docs/supabase-setup.md) to create the project, enable the required providers and PostGIS extension, apply migrations, and configure imports. The browser uses only the project URL and public anon/publishable key; never put a service-role key in the frontend.
 
 ---
 
@@ -79,7 +40,7 @@ npm run build        # creates the /dist folder
    - **Build command:** `npm run build`
    - **Publish directory:** `dist`
 5. Click **Deploy site**
-6. Add environment variables: Site settings → Environment variables → add all your `VITE_FIREBASE_*` keys
+6. Add `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` as environment variables
 7. Trigger a redeploy — your app is now live at `yoursite.netlify.app`
 
 ### Option B — Vercel (same idea, also works great)
@@ -92,8 +53,9 @@ vercel              # follow prompts, adds env vars through the CLI
 
 ## Current backend and data status
 
-- **Supabase** now backs Explore POIs, supermarket/product/price records, curated Nganya records, route votes, style ratings and non-cash points. Follow [`docs/supabase-setup.md`](docs/supabase-setup.md) to configure it; credentials are intentionally placeholders.
-- **Firebase** remains in the earlier authentication and legacy app modules above. Firebase identities are separate from Supabase identities unless an explicit identity-linking flow is built.
+- **Supabase** is the sole authentication and persistence provider. It backs Explore POIs, supermarket/product/price records, curated Nganya records, route votes, style ratings and non-cash points. Follow [`docs/supabase-setup.md`](docs/supabase-setup.md) to configure it; credentials are intentionally placeholders.
+- **Security review:** See [`docs/security-audit-2026-11-06.md`](docs/security-audit-2026-11-06.md) for code changes, limits and the manual production checklist. Apply all database migrations, set exact Auth redirect URLs, and publish only the `dist` folder.
+- Existing accounts from earlier providers are not migrated automatically; returning users will need to create or link a Supabase Auth account.
 - **Ma3 routes/stops** use an archived TUMI GTFS snapshot (validity through 2020-12-31) for search and rough, static geometry-based planning only. It is not a current timetable or live fleet feed; journey fares and times are estimates, and no fare payment is processed here.
 - **Train** uses the local OpenStreetMap railway GeoJSON for mapped track features and station points. No timetable or departure estimates are shown.
 - **Demand markers** are local to this device. Drivers do not receive them until a real shared backend is connected.
@@ -105,8 +67,7 @@ vercel              # follow prompts, adds env vars through the CLI
 
 ```
 ma3-app2/
-├── .env.example          ← browser-safe Supabase placeholders + optional legacy Firebase values
-├── firestore.rules       ← paste into Firebase Console → Firestore → Rules
+├── .env.example          ← browser-safe Supabase placeholders only
 ├── README.md
 ├── package.json
 ├── vite.config.ts
@@ -124,13 +85,12 @@ ma3-app2/
     │   ├── ma3_gtfs.ts            # Archived TUMI route/stop snapshot (validity through 2020)
     │   └── nairobi_railways_osm.json # Mapped OpenStreetMap railway geometry/stations
     ├── hooks/
-    │   ├── useAuth.ts             # Firebase auth state hook
-    │   └── useFirestore.ts        # Legacy Firestore hooks for older modules
+    │   └── useAuth.ts             # Supabase auth state hook
     ├── lib/
-    │   ├── firebase.ts            # Firebase app init (Auth, Firestore, Storage)
+    │   ├── supabase.ts            # Supabase client (Auth, Postgres, Realtime, Storage)
     │   ├── journey.ts             # Archived route-geometry estimates; no live arrivals/train times
     │   ├── mapLayers.ts           # MapLibre GeoJSON layer helpers
-    │   └── wallet.tsx             # In-memory wallet context (works without Firebase)
+    │   └── wallet.tsx             # In-memory demo wallet; not real money
     └── pages/
         ├── Home.tsx               # Dashboard
         ├── Login.tsx              # Google + guest sign-in
