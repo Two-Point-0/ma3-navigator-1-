@@ -54,6 +54,7 @@ vercel              # follow prompts, adds env vars through the CLI
 ## Current backend and data status
 
 - **Supabase** is the sole authentication and persistence provider. It backs Explore POIs, supermarket/product/price records, curated Nganya records, route votes, style ratings and non-cash points. Follow [`docs/supabase-setup.md`](docs/supabase-setup.md) to configure it; credentials are intentionally placeholders.
+- **Security review:** See [`docs/security-audit-2026-11-06.md`](docs/security-audit-2026-11-06.md) for code changes, limits and the manual production checklist. Apply all database migrations, set exact Auth redirect URLs, and publish only the `dist` folder.
 - Existing accounts from earlier providers are not migrated automatically; returning users will need to create or link a Supabase Auth account.
 - **Ma3 routes/stops** use an archived TUMI GTFS snapshot (validity through 2020-12-31) for search and rough, static geometry-based planning only. It is not a current timetable or live fleet feed; journey fares and times are estimates, and no fare payment is processed here.
 - **Train** uses the local OpenStreetMap railway GeoJSON for mapped track features and station points. No timetable or departure estimates are shown.

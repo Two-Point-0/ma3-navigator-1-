@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AlertTriangle, Database, LoaderCircle, MapPin, Navigation, Plane, Search, TrainFront, ChevronUp, ChevronDown, Clock, X } from "lucide-react";
-import maplibregl from "maplibre-gl";
+import * as maplibregl from "maplibre-gl";
 import MapLibreView, { MapLibreHandle } from "@/components/MapLibreView";
 import PageTabs from "@/components/PageTabs";
 import { removeLineLayer, removePointLayer, setLineLayer, setPointLayer } from "@/lib/mapLayers";
@@ -63,6 +63,10 @@ function railSegment(geometry: any, from: SgrStation | undefined, to: SgrStation
 }
 function displayAirport(value: string) { return AIRPORTS.find(item => item.code === value || item.label.toLowerCase() === value.toLowerCase() || item.name.toLowerCase() === value.toLowerCase())?.label ?? value; }
 function airportCode(value: string) { const match = value.match(/\(([A-Z0-9]{3})\)/i); return match?.[1]?.toUpperCase() ?? AIRPORTS.find(item => item.name.toLowerCase() === value.toLowerCase())?.code ?? value.trim().toUpperCase(); }
+function safeHttpsUrl(value: string | null | undefined) {
+  try { const url = new URL(value ?? ""); return url.protocol === "https:" ? url.href : null; }
+  catch { return null; }
+}
 
 export default function FlyPage() {
   const mapRef = useRef<MapLibreHandle>(null);
@@ -129,7 +133,7 @@ export default function FlyPage() {
         setSelectedSgrId(current => current || routes[0]?.id || "");
       }
       setSgrLoading(false);
-    })().catch(error => { if (!cancelled) { setSgrError(error instanceof Error ? error.message : "Could not load SGR data."); setSgrLoading(false); } });
+    })().catch(() => { if (!cancelled) { setSgrError("Could not load SGR data. Try again later."); setSgrLoading(false); } });
     return () => { cancelled = true; };
   }, [tab]);
 
@@ -149,7 +153,7 @@ export default function FlyPage() {
       if (error) throw error;
       setFlightRoutes((data ?? []) as FlightRoute[]);
       if (!data?.length) setFlightError("No sourced flights match those airports and date. Try another airport or travel date.");
-    } catch (error) { setFlightError(error instanceof Error ? error.message : "Could not search the flight-route catalogue."); }
+    } catch { setFlightError("Could not search the flight-route catalogue. Try again later."); }
     finally { setFlightLoading(false); }
   };
 
@@ -202,7 +206,7 @@ export default function FlyPage() {
           {flightError && <p role="status" style={{ color: "var(--muted2)", fontSize: ".62rem", lineHeight: 1.45, marginTop: 8 }}>{flightError}</p>}
           {flightLoading && <p style={{ color: "var(--muted2)", fontSize: ".62rem", marginTop: 8 }}><LoaderCircle size={13} /> Loading routes…</p>}
           <div style={{ display: "grid", gap: 7, marginTop: 9 }}>{flightRoutes.map(flight => <button key={flight.id} className="card" onClick={() => { setSelectedFlight(flight); setSheetHeight(37); }} style={{ width: "100%", padding: 11, textAlign: "left", color: "var(--white)", cursor: "pointer", borderColor: selectedFlight?.id === flight.id ? "var(--go)" : "var(--border2)" }}><div style={{ display: "flex", gap: 8, alignItems: "center" }}><Plane size={15} style={{ color: "var(--go)" }} /><span style={{ flex: 1 }}><b style={{ display: "block", fontSize: ".72rem" }}>{flight.airline} · {flight.flight_number}</b><small style={{ color: "var(--muted2)" }}>{flight.origin_name} ({flight.origin_code}) → {flight.destination_name} ({flight.destination_code})</small></span>{flight.fare_kes !== null && <b style={{ color: "var(--ready)", fontSize: ".68rem" }}>KES {Number(flight.fare_kes).toLocaleString()}</b>}</div><small style={{ display: "flex", gap: 5, alignItems: "center", color: "var(--muted2)", marginTop: 6 }}><Clock size={10} />{new Date(flight.departure_at).toLocaleString()} · path supplied by source</small></button>)}</div>
-          {selectedFlight && <div className="ios-glass" style={{ padding: 10, marginTop: 8, fontSize: ".6rem", color: "var(--muted2)" }}>Showing {selectedFlight.flight_number} route line on the map. <a href={selectedFlight.source_url} target="_blank" rel="noopener noreferrer" style={{ color: "var(--ready)" }}>Source ↗</a> · updated {new Date(selectedFlight.source_updated_at).toLocaleDateString()}</div>}
+          {selectedFlight && <div className="ios-glass" style={{ padding: 10, marginTop: 8, fontSize: ".6rem", color: "var(--muted2)" }}>Showing {selectedFlight.flight_number} route line on the map. {safeHttpsUrl(selectedFlight.source_url) && <a href={safeHttpsUrl(selectedFlight.source_url)!} target="_blank" rel="noopener noreferrer" style={{ color: "var(--ready)" }}>Source ↗</a>} · updated {new Date(selectedFlight.source_updated_at).toLocaleDateString()}</div>}
         </>}
 
         {tab === "sgr" && <>
@@ -210,10 +214,10 @@ export default function FlyPage() {
           {sgrLoading && <p style={{ color: "var(--muted2)", fontSize: ".64rem" }}><LoaderCircle size={14} /> Loading rail data…</p>}
           {sgrRoute ? <>
             <label>Rail service<select className="finput" value={sgrRoute.id} onChange={event => setSelectedSgrId(event.target.value)}>{sgrRoutes.map(route => <option key={route.id} value={route.id}>{route.name}</option>)}</select></label>
-            <p style={{ color: "var(--muted2)", fontSize: ".58rem", marginTop: 5 }}>{sgrRoute.operator}{sgrRoute.source_updated_at ? ` · updated ${new Date(sgrRoute.source_updated_at).toLocaleDateString()}` : ""}{sgrRoute.source_url ? <> · <a href={sgrRoute.source_url} target="_blank" rel="noopener noreferrer" style={{ color: "var(--ready)" }}>source</a></> : ""}</p>
+            <p style={{ color: "var(--muted2)", fontSize: ".58rem", marginTop: 5 }}>{sgrRoute.operator}{sgrRoute.source_updated_at ? ` · updated ${new Date(sgrRoute.source_updated_at).toLocaleDateString()}` : ""}{safeHttpsUrl(sgrRoute.source_url) ? <> · <a href={safeHttpsUrl(sgrRoute.source_url)!} target="_blank" rel="noopener noreferrer" style={{ color: "var(--ready)" }}>source</a></> : ""}</p>
             <div style={{ position: "relative", margin: "9px 0" }}><Search size={13} style={{ position: "absolute", left: 11, top: "50%", transform: "translateY(-50%)", color: "var(--ready)" }} /><input data-page-search className="finput" style={{ paddingLeft: 32 }} placeholder="Search SGR stations…" value={stationQuery} onChange={event => setStationQuery(event.target.value)} /></div>
             <div className="card" style={{ padding: 10, display: "grid", gap: 8 }}><p className="sec-label">Choose your SGR journey</p><label>Board at<select className="finput" value={selectedSgrOrigin?.id ?? ""} onChange={event => setSgrOriginId(event.target.value)}>{allRouteStations.map(station => <option key={station.id} value={station.id}>{station.name}</option>)}</select></label><label>Alight at<select className="finput" value={selectedSgrDestination?.id ?? ""} onChange={event => setSgrDestinationId(event.target.value)}>{allRouteStations.map(station => <option key={station.id} value={station.id}>{station.name}</option>)}</select></label><p style={{ fontSize: ".57rem", color: "var(--muted2)" }}>The map highlights the sourced track between these stations only.</p><div>{routeStations.map(station => <button key={station.id} onClick={() => setSgrDestinationId(station.id)} style={{ display: "flex", alignItems: "center", gap: 7, padding: "6px 0", width: "100%", textAlign: "left", color: "var(--white)", background: "transparent", border: 0, borderBottom: "1px solid var(--border)", cursor: "pointer" }}><MapPin size={12} style={{ color: station.id === sgrDestinationId ? "var(--go)" : "var(--ready)" }} /><span style={{ flex: 1, fontSize: ".63rem" }}>{station.name}</span><small style={{ color: "var(--muted2)" }}>Alight</small></button>)}</div></div>
-            <div className="card" style={{ padding: 10, marginTop: 8 }}><p className="sec-label">Published departures</p>{sgrSchedules.filter(schedule => schedule.route_id === sgrRoute.id).map(schedule => <div key={schedule.id} style={{ padding: "8px 0", borderBottom: "1px solid var(--border)" }}><b style={{ fontSize: ".67rem" }}>{schedule.train_code} · {stationName(schedule.origin_station_id)} → {stationName(schedule.destination_station_id)}</b><p style={{ color: "var(--muted2)", fontSize: ".59rem", marginTop: 4 }}>{new Date(schedule.departure_at).toLocaleString()} – {new Date(schedule.arrival_at).toLocaleTimeString()}{schedule.fare_kes !== null ? ` · KES ${Number(schedule.fare_kes).toLocaleString()}` : ""}</p><small style={{ fontSize: ".54rem", color: "var(--muted2)" }}>Source refreshed {new Date(schedule.source_updated_at).toLocaleDateString()} · <a href={schedule.source_url} target="_blank" rel="noopener noreferrer" style={{ color: "var(--ready)" }}>source</a></small></div>)}{!sgrSchedules.some(schedule => schedule.route_id === sgrRoute.id) && <p style={{ color: "var(--muted2)", fontSize: ".6rem", marginTop: 6 }}>No sourced timetable rows published yet.</p>}</div>
+            <div className="card" style={{ padding: 10, marginTop: 8 }}><p className="sec-label">Published departures</p>{sgrSchedules.filter(schedule => schedule.route_id === sgrRoute.id).map(schedule => <div key={schedule.id} style={{ padding: "8px 0", borderBottom: "1px solid var(--border)" }}><b style={{ fontSize: ".67rem" }}>{schedule.train_code} · {stationName(schedule.origin_station_id)} → {stationName(schedule.destination_station_id)}</b><p style={{ color: "var(--muted2)", fontSize: ".59rem", marginTop: 4 }}>{new Date(schedule.departure_at).toLocaleString()} – {new Date(schedule.arrival_at).toLocaleTimeString()}{schedule.fare_kes !== null ? ` · KES ${Number(schedule.fare_kes).toLocaleString()}` : ""}</p><small style={{ fontSize: ".54rem", color: "var(--muted2)" }}>Source refreshed {new Date(schedule.source_updated_at).toLocaleDateString()}{safeHttpsUrl(schedule.source_url) ? <> · <a href={safeHttpsUrl(schedule.source_url)!} target="_blank" rel="noopener noreferrer" style={{ color: "var(--ready)" }}>source</a></> : ""}</small></div>)}{!sgrSchedules.some(schedule => schedule.route_id === sgrRoute.id) && <p style={{ color: "var(--muted2)", fontSize: ".6rem", marginTop: 6 }}>No sourced timetable rows published yet.</p>}</div>
           </> : <div className="ios-glass" style={{ padding: 12, color: "var(--muted2)", fontSize: ".68rem" }}>SGR route and station information will appear here when published.</div>}
           <div className="ios-glass" style={{ padding: 9, marginTop: 8, display: "flex", gap: 7, color: "var(--muted2)", fontSize: ".56rem", lineHeight: 1.45 }}><AlertTriangle size={12} style={{ color: "var(--ready)", flexShrink: 0 }} />Only verified track geometry and dated official/authorized timetable data belong here. A map line alone is not evidence that a passenger train is operating.</div>
         </>}

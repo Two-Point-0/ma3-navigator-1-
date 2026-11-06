@@ -23,14 +23,28 @@ export default function Onboarding({ onDone }: OnboardingProps) {
   const [slide, setSlide] = useState(0);
   const [dir, setDir] = useState(1);
   const [role, setRole] = useState<Ma3Role | null>(null);
+  const [launching, setLaunching] = useState(false);
   const go = (next: number) => { setDir(next > slide ? 1 : -1); setSlide(next); };
-  const finish = () => { localStorage.setItem("ma3_onboarding_done", "1"); if (role) localStorage.setItem(ROLE_STORAGE_KEY, role); else if (!localStorage.getItem(ROLE_STORAGE_KEY)) localStorage.setItem(ROLE_STORAGE_KEY, "passenger"); onDone(); };
+  const finish = () => {
+    if (launching) return;
+    setLaunching(true);
+    localStorage.setItem("ma3_onboarding_done", "1");
+    if (role) localStorage.setItem(ROLE_STORAGE_KEY, role); else if (!localStorage.getItem(ROLE_STORAGE_KEY)) localStorage.setItem(ROLE_STORAGE_KEY, "passenger");
+    window.setTimeout(onDone, 1100);
+  };
   const current = SLIDES[slide];
   const Icon = current.icon;
   const isLast = slide === SLIDES.length - 1;
 
   return <div style={{ position: "fixed", inset: 0, zIndex: 10000, background: "var(--ink)", display: "flex", flexDirection: "column" }}>
     <button onClick={finish} style={{ position: "absolute", top: 16, right: 16, background: "none", border: "none", color: "var(--muted)", fontFamily: "var(--font)", fontSize: ".72rem", cursor: "pointer", zIndex: 10 }}>Skip</button>
+    <motion.div key={`brand-${slide}`} aria-label="Ma3 Navigator" style={{ position: "absolute", top: 34, left: "50%", translateX: "-50%", fontFamily: "var(--font-display)", fontSize: "1.45rem", fontWeight: 900, letterSpacing: "-.03em", color: "var(--white)", zIndex: 1 }}>
+      Ma<motion.span
+        animate={{ rotate: [0, 360, 720, 1080], color: ["var(--stop)", "var(--ready)", "var(--go)", "var(--stop)"] }}
+        transition={{ duration: 1.8, times: [0, 1 / 3, 2 / 3, 1], ease: "linear" }}
+        style={{ display: "inline-block", transformOrigin: "center 60%" }}
+      >3</motion.span>
+    </motion.div>
     <AnimatePresence mode="wait" custom={dir}>
       <motion.div key={slide} custom={dir} initial={{ opacity: 0, x: dir * 60 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -dir * 60 }} transition={{ duration: .32 }} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "2rem 2rem 0" }}>
         <motion.div initial={{ scale: .6, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} style={{ width: 110, height: 110, borderRadius: 32, background: `color-mix(in srgb, ${current.theme} 12%, transparent)`, border: `2px solid color-mix(in srgb, ${current.theme} 35%, transparent)`, display: "flex", alignItems: "center", justifyContent: "center", color: current.theme, marginBottom: 28 }}><Icon size={48} strokeWidth={1.5} /></motion.div>
@@ -42,8 +56,9 @@ export default function Onboarding({ onDone }: OnboardingProps) {
     <div style={{ padding: "1.5rem 2rem 2.5rem", display: "flex", flexDirection: "column", alignItems: "center", gap: 16 }}>
       {isLast && <div style={{ width: "100%", maxWidth: 360 }}><p className="sec-label">Optional: choose a starting workspace</p><div style={{ display: "grid", gap: 7 }}>{ROLES.map(({ id, label, description, Icon: RoleIcon }) => <button key={id} onClick={() => setRole(id)} style={{ display: "flex", alignItems: "center", gap: 10, textAlign: "left", padding: "10px 12px", borderRadius: 12, background: role === id ? "rgba(217,119,6,.14)" : "var(--glass)", border: `1px solid ${role === id ? "var(--ready)" : "var(--border2)"}`, color: "var(--white)", cursor: "pointer" }}><RoleIcon size={17} style={{ color: role === id ? "var(--ready)" : "var(--muted2)" }} /><span style={{ flex: 1 }}><b style={{ display: "block", fontSize: ".75rem" }}>{label}</b><small style={{ color: "var(--muted2)" }}>{description}</small></span>{role === id && <Check size={15} style={{ color: "var(--ready)" }} />}</button>)}</div></div>}
       <div style={{ display: "flex", gap: 7, alignItems: "center" }}>{SLIDES.map((_, i) => <button key={i} onClick={() => go(i)} aria-label={`Go to slide ${i + 1}`} style={{ width: i === slide ? 22 : 7, height: 7, borderRadius: 99, background: i === slide ? current.theme : "var(--border2)", border: "none", cursor: "pointer", transition: "all .3s ease" }} />)}</div>
-      <button onClick={isLast ? finish : () => go(slide + 1)} style={{ width: "100%", maxWidth: 360, padding: "14px 20px", borderRadius: 14, background: current.theme, border: "none", color: slide === 1 ? "#000" : "#fff", fontFamily: "var(--font)", fontWeight: 800, fontSize: ".9rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>{isLast ? "Enter Ma3" : "Next"}{!isLast && <ChevronRight size={16} />}</button>
+      <button onClick={isLast ? finish : () => go(slide + 1)} disabled={launching} style={{ width: "100%", maxWidth: 360, padding: "14px 20px", borderRadius: 14, background: current.theme, border: "none", color: slide === 1 ? "#000" : "#fff", fontFamily: "var(--font)", fontWeight: 800, fontSize: ".9rem", cursor: launching ? "wait" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>{launching ? "Opening Ma3…" : isLast ? "Launch Ma3" : "Next"}{!isLast && <ChevronRight size={16} />}</button>
     </div>
+    <AnimatePresence>{launching && <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={{ position: "absolute", inset: 0, zIndex: 20, background: "var(--ink)", display: "grid", placeItems: "center" }}><div style={{ textAlign: "center" }}><motion.div animate={{ rotate: [0, 360, 720, 1080], color: ["var(--stop)", "var(--ready)", "var(--go)", "var(--stop)"] }} transition={{ duration: 1.05, times: [0, 1 / 3, 2 / 3, 1], ease: "linear" }} style={{ display: "inline-block", fontFamily: "var(--font-display)", fontSize: "3rem", fontWeight: 900, transformOrigin: "center 60%" }}>3</motion.div><p style={{ marginTop: 8, fontSize: ".65rem", color: "var(--muted2)", letterSpacing: ".2em", textTransform: "uppercase" }}>Move · Market · Mirth</p></div></motion.div>}</AnimatePresence>
   </div>;
 }
 

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
-import maplibregl from "maplibre-gl";
+import * as maplibregl from "maplibre-gl";
 import { MapPin, X, Box, Navigation, Search, Utensils, BedDouble, Landmark, Clock, Bus, ChevronDown, ChevronUp } from "lucide-react";
 import { toast } from "sonner";
 import MapLibreView, { MapLibreHandle } from "@/components/MapLibreView";
@@ -76,7 +76,7 @@ export default function ExplorePage() {
         .gte("longitude", bounds.getWest()).lte("longitude", bounds.getEast())
         .order("name").range(offset, offset + pageSize - 1);
       if (current !== requestId.current) return;
-      if (error) { console.error("Explore POI query failed", error.message); setFeedStatus("error"); setPois([]); setDataSnapshot(null); return; }
+      if (error) { if (import.meta.env.DEV) console.error("Explore POI query failed", error.message); setFeedStatus("error"); setPois([]); setDataSnapshot(null); return; }
       rows.push(...(data ?? []));
       if (!data || data.length < pageSize) break;
     }
@@ -132,7 +132,7 @@ export default function ExplorePage() {
           user = data.user;
         }
         const { data, error } = await supabase!.rpc("record_nganya_poi_navigation", { p_osm_id: pin.id });
-        if (error) console.warn("Daily Explore challenge was not recorded:", error.message);
+        if (error && import.meta.env.DEV) console.warn("Daily Explore challenge was not recorded:", error.message);
         else if (Number(data) > 0) toast("Ma3 directions started · +5 community points.");
       })();
     }

@@ -21,12 +21,12 @@ export default function LoginPage() {
 
   const handleGoogle = async () => {
     try { await signInWithGoogle(); }
-    catch (error) { toast(error instanceof Error ? error.message : "Could not start Google sign-in."); }
+    catch { toast("Could not start Google sign-in. Check your connection and try again."); }
   };
 
   const handleGuest = async () => {
     try { await signInAsGuest(); navigate("/"); }
-    catch (error) { toast(error instanceof Error ? error.message : "Could not start guest access."); }
+    catch { toast("Could not start guest access. Try again later."); }
   };
 
   return (

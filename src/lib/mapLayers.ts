@@ -1,4 +1,5 @@
-import maplibregl from "maplibre-gl";
+import * as maplibregl from "maplibre-gl";
+import type { Feature, FeatureCollection, LineString, Point } from "geojson";
 
 export function setLineLayer(
   map: maplibregl.Map, id: string,
@@ -6,7 +7,7 @@ export function setLineLayer(
   color: string, weight = 3, opacity = 0.85,
   dashed = false
 ) {
-  const geojson: GeoJSON.Feature = {
+  const geojson: Feature<LineString> = {
     type: "Feature", properties: {},
     geometry: { type: "LineString", coordinates: coords.map(([lat, lon]) => [lon, lat]) },
   };
@@ -37,7 +38,7 @@ export interface PointFeature {
 }
 
 export function setPointLayer(map: maplibregl.Map, id: string, points: PointFeature[], defaultRadius = 5) {
-  const geojson: GeoJSON.FeatureCollection = {
+  const geojson: FeatureCollection<Point> = {
     type: "FeatureCollection",
     features: points.map(p => ({
       type: "Feature",

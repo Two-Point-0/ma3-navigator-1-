@@ -7,7 +7,7 @@ import {
   Bike, Car, Crown, Users, Share2, Info, Plus, UserRound, ShoppingCart, Search,
 } from "lucide-react";
 import { toast } from "sonner";
-import maplibregl from "maplibre-gl";
+import * as maplibregl from "maplibre-gl";
 import MapLibreView, { MapLibreHandle } from "@/components/MapLibreView";
 import PageTabs from "@/components/PageTabs";
 import { useWallet } from "@/lib/wallet";

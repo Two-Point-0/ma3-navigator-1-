@@ -13,7 +13,7 @@ export default class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, info: { componentStack: string }) {
-    console.error("Ma3 app crashed:", error, info.componentStack);
+    if (import.meta.env.DEV) console.error("Ma3 app crashed:", error, info.componentStack);
   }
 
   render() {
@@ -28,15 +28,8 @@ export default class ErrorBoundary extends Component<Props, State> {
           <div style={{ fontSize: "2.5rem" }}>⚠️</div>
           <h1 style={{ fontSize: "1.2rem", fontWeight: 800 }}>Something went wrong</h1>
           <p style={{ fontSize: ".85rem", color: "#9a96a8", maxWidth: 420 }}>
-            The app hit an error while loading. Try refreshing — if it keeps happening, check the browser console (F12) for details.
+            The app hit an error while loading. Try refreshing. If it keeps happening, contact support.
           </p>
-          <pre style={{
-            fontSize: ".7rem", color: "#dc2626", background: "rgba(220,38,38,.08)",
-            border: "1px solid rgba(220,38,38,.25)", borderRadius: 10, padding: "10px 14px",
-            maxWidth: 520, overflowX: "auto", textAlign: "left",
-          }}>
-            {this.state.error.message}
-          </pre>
           <button
             onClick={() => window.location.reload()}
             style={{

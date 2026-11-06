@@ -34,7 +34,7 @@ export default function TriviaGame() {
             return { question: decode(row.question), correct, answers };
           });
           if (!cancelled) setQuestions(loaded);
-        } catch (error) { if (!cancelled) setMessage(error instanceof Error ? error.message : "Could not load this trivia round."); }
+        } catch { if (!cancelled) setMessage("Could not load this trivia round. Try again later."); }
         finally { if (!cancelled) setLoading(false); }
       })();
     }, waitMs);

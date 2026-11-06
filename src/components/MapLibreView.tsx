@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useImperativeHandle, forwardRef } from "react";
-import maplibregl from "maplibre-gl";
+import * as maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 
 export interface MapLibreHandle {
@@ -85,7 +85,6 @@ const MapLibreView = forwardRef<MapLibreHandle, MapLibreViewProps>(function MapL
       center: [center[1], center[0]],
       zoom, pitch, bearing,
       attributionControl: false,
-      antialias: true,
     });
 
     mapRef.current = map;
