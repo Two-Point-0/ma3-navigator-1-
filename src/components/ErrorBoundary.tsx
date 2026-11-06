@@ -4,8 +4,7 @@ interface Props { children: ReactNode }
 interface State { error: Error | null }
 
 // Catches any render-time error anywhere in the app and shows a readable
-// message instead of leaving the user with a blank white screen — the
-// previous failure mode when Firebase init threw before React could render.
+// message instead of leaving the user with a blank white screen.
 export default class ErrorBoundary extends Component<Props, State> {
   state: State = { error: null };
 

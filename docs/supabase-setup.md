@@ -116,7 +116,7 @@ The rail layer is mapped OpenStreetMap geometry and station points, not a timeta
 
 - Never commit `.env.local` or a service key.
 - The two HOTOSM GeoJSON ZIP files are duplicates; use one. The GeoPackage ZIP is an alternative representation, not more POIs.
-- This checkout has npm and pnpm lock/workspace artefacts. Use the package manager matching this checkout's `package.json` and do not regenerate a second lockfile.
+- This repository uses npm and the checked-in `package-lock.json` as its dependency lock. Use `npm install` and keep that lockfile in sync with `package.json`.
 - Build-generated TypeScript/Vite outputs (`*.tsbuildinfo`, generated `vite.config.js`/`.d.ts`) are not source. Review `git status` before removing any untracked local output; this guide does not delete user files.
 
 

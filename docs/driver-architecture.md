@@ -20,33 +20,37 @@ Uber uses separate downloadable apps mainly for independent release cycles, stor
 
 ## What is still required for real bookings
 
-Replace the local `saveLocation` adapter in `src/pages/Driver.tsx` with an authenticated backend, preferably Firebase Realtime Database for the first pilot or a server using WebSockets for more control.
+Replace the local `saveLocation` adapter in `src/pages/Driver.tsx` with authenticated Supabase writes and private Realtime Broadcast channels. Store locations as PostGIS geography so the map can query nearby, eligible vehicles without loading every driver's coordinate.
 
 Recommended production records:
 
-```text
-/driverLocations/{driverId}
-  lat
-  lng
-  accuracy
-  updatedAt
-  routeId
-  vehicleType
-  seatsAvailable
-  status
+```sql
+create table public.driver_presence (
+  driver_id uuid primary key references public.profiles(id) on delete cascade,
+  location extensions.geography(point, 4326) not null,
+  accuracy_m double precision,
+  route_id text,
+  vehicle_type text not null,
+  seats_available smallint not null default 0,
+  status text not null check (status in ('available', 'on_trip', 'offline')),
+  verified_at timestamptz,
+  consented_at timestamptz not null,
+  expires_at timestamptz not null,
+  updated_at timestamptz not null default now()
+);
 
-/driverSessions/{driverId}
-  verified
-  consentedAt
-  expiresAt
+create index driver_presence_location_gix
+  on public.driver_presence using gist (location);
 
-/bookings/{bookingId}
-  passengerId
-  driverId
-  status
-  pickup
-  destination
-  createdAt
+create table public.bookings (
+  id uuid primary key default gen_random_uuid(),
+  passenger_id uuid not null references public.profiles(id),
+  driver_id uuid not null references public.profiles(id),
+  status text not null,
+  pickup extensions.geography(point, 4326) not null,
+  destination extensions.geography(point, 4326) not null,
+  created_at timestamptz not null default now()
+);
 ```
 
 Required safeguards:
@@ -56,7 +60,7 @@ Required safeguards:
 3. Require explicit location consent and provide a visible stop control.
 4. Expire stale coordinates and never display a driver as available indefinitely.
 5. Throttle location writes, for example every 5–10 seconds while active.
-6. Use Firebase security rules so a driver can write only their own location.
+6. Use Supabase row-level security so a verified driver can write only their own presence; expose only privacy-appropriate fields through a nearby-vehicles RPC or authorized private Realtime channel.
 7. Keep precise location private until a booking or approved operational use requires it.
 8. Add cancellation, incident reporting and support workflows before a public launch.
 
