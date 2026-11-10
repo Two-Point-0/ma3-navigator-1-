@@ -110,7 +110,7 @@ export default function DriverPage() {
 
   return <div className="inner" style={{ paddingTop: 12 }}>
     <PageTabs label="Driver sections" active={activeSection} tabs={DRIVER_TABS} onChange={jumpToSection} />
-    <DriverLiveAvailability />
+       <DriverLiveAvailability routeId={routeId} onRouteChange={setRouteId} seats={seats} onSeatsChange={setSeats} />
     <div id="driver-broadcast" className="card" style={{ padding: 18, borderTop: `3px solid ${status === "broadcasting" ? "var(--go)" : "var(--stop)"}`, scrollMarginTop: 16 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}><div><p className="sec-label">Driver workspace</p><h1 style={{ fontSize: "1.4rem", margin: 0, display: "flex", alignItems: "center", gap: 8 }}>{icon}{driverType === "matatu-driver" ? "Matatu driver" : "Carpool driver"}</h1><p style={{ color: "var(--muted2)", fontSize: ".75rem", lineHeight: 1.5, marginTop: 8 }}>{APP_MODE.demo ? "Demo mode: fictional vehicle data and simulated coordinates only." : "Location is shared only while you explicitly broadcast."} This pilot does not create a booking or verify documents automatically.</p></div><div style={{ color: status === "broadcasting" ? "var(--go)" : "var(--stop)" }}>{status === "broadcasting" ? <Wifi size={22} /> : <WifiOff size={22} />}</div></div>
       <button onClick={toggle} className={status === "broadcasting" ? "btn btn-stop" : "btn btn-go"} style={{ width: "100%", marginTop: 18 }}><Power size={15} />{status === "broadcasting" ? "Stop location preview" : "Start demo location preview"}</button>
