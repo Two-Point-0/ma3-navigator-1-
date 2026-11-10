@@ -1,0 +1,7 @@
+project_id = "ma3-navigator"
+
+[functions.mpesa-stk-push]
+verify_jwt = true
+
+[functions.mpesa-callback]
+verify_jwt = false

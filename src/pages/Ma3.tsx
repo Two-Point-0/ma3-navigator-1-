@@ -3,13 +3,15 @@ import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Search, Navigation, X, ArrowRight, Lock, Box,
-  MapPin, BusFront, TrainFront,
+  MapPin, BusFront, TrainFront, Package,
   Calendar, AlarmClock, Zap, Eye, BadgeCheck, Footprints,
 } from "lucide-react";
 import { toast } from "sonner";
 import maplibregl from "maplibre-gl";
 import MapLibreView, { MapLibreHandle } from "@/components/MapLibreView";
 import PageTabs from "@/components/PageTabs";
+import ParcelPanel from "@/components/ParcelPanel";
+import { useSheet } from "@/lib/useSheet";
 import { setLineLayer, setPointLayer, removeLineLayer, removePointLayer } from "@/lib/mapLayers";
 import { MA3_GTFS } from "@/data/ma3_gtfs";
 import {
@@ -19,7 +21,7 @@ import { haversineKm } from "@/data/ma3_core";
 import OSMRailways from "@/data/nairobi_railways_osm.json";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 
-type Panel = "search" | "planner" | "live" | "train" | null;
+type Panel = "search" | "planner" | "parcel" | "train" | null;
 
 const NAIROBI: [number, number] = [-1.2864, 36.8172];
 const ROUTES = MA3_GTFS.routes;
@@ -28,8 +30,8 @@ const STOPS_RAW = MA3_GTFS.stops as unknown as Record<string, [string, number, n
 const ROUTE_STOPS = MA3_GTFS.routeStops as Record<string, string[]>;
 const MA3_TABS = [
   { id: "search", label: "Matatu routes", Icon: Search },
-  { id: "live", label: "Live fleet", Icon: Eye },
-  { id: "train", label: "Rail stations", Icon: TrainFront },
+  { id: "parcel", label: "Parcel delivery", Icon: Package },
+  { id: "train", label: "Train stations", Icon: TrainFront },
 ] as const;
 
 type SearchResult =
@@ -161,7 +163,12 @@ export default function Ma3Page() {
   const [saveDays, setSaveDays]     = useState<string[]>([]);
   const [saveTime, setSaveTime]     = useState("07:30");
   const [showSaved, setShowSaved]   = useState(false);
-  const [panelMinimized, setPanelMinimized] = useState(true);
+  const sheet = useSheet("peek");
+  const panelMinimized = sheet.minimized;
+  const setPanelMinimized = (value: boolean | ((current: boolean) => boolean)) => {
+    const next = typeof value === "function" ? value(sheet.minimized) : value;
+    sheet.setSnap(next ? "peek" : "half");
+  };
   const [railStationQuery, setRailStationQuery] = useState("");
   const [railFromId, setRailFromId] = useState("");
   const [railToId, setRailToId] = useState("");
@@ -243,9 +250,7 @@ export default function Ma3Page() {
     const map = mapInst.current;
     if (!map) return;
     clearStatic();
-    if (panel === "live") {
-      // Live positions are not drawn until a verified location feed is configured.
-    } else if (panel === "train") {
+    if (panel === "train") {
       drawRail(map, railFrom, railTo);
     } else if (selRoute) {
       drawRoute(map, selRoute);
@@ -432,8 +437,8 @@ export default function Ma3Page() {
         height="100%" borderRadius={0} onLoad={handleMapLoad} />
 
       <div style={{ position: "absolute", top: 10, left: 10, right: 10, zIndex: 50 }}>
-        <PageTabs label="Ma3 sections" active={panel === "live" || panel === "train" ? panel : "search"} tabs={MA3_TABS}
-          onChange={value => { setPanelMinimized(true); setPanel(value as "search" | "live" | "train"); }} />
+        <PageTabs label="Ma3 sections" active={panel === "parcel" || panel === "train" ? panel : "search"} tabs={MA3_TABS}
+          onChange={value => { setPanelMinimized(true); setPanel(value as "search" | "parcel" | "train"); }} />
       </div>
 
       {/* ══════ UNIFIED SEARCH PANEL ══════ */}
@@ -441,9 +446,9 @@ export default function Ma3Page() {
         {panel === "search" && (
           <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }}
             transition={{ type: "spring", damping: 28, stiffness: 320 }}
-            className="bpanel open" style={{ maxHeight: panelMinimized ? "20vh" : "50vh" }}>
+            {...sheet.panelProps}>
             <div className="bpanel-head">
-              <button aria-label="Minimize search panel" className="handle" onClick={() => setPanelMinimized(v => !v)} />
+              <button {...sheet.gripProps} />
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 <div style={{ position: "relative", flex: 1 }}>
                   <Search size={13} style={{ position: "absolute", left: 11, top: "50%", transform: "translateY(-50%)", color: "var(--ready)" }} />
@@ -556,9 +561,9 @@ export default function Ma3Page() {
         {panel === "planner" && (
           <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }}
             transition={{ type: "spring", damping: 28, stiffness: 320 }}
-            className="bpanel open" style={{ maxHeight: panelMinimized ? "20vh" : "50vh" }}>
+            {...sheet.panelProps}>
             <div className="bpanel-head">
-              <button aria-label="Minimize panel" className="handle" onClick={() => setPanelMinimized(v => !v)} />
+              <button {...sheet.gripProps} />
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
                 <span style={{ fontFamily: "var(--font-display)", fontSize: ".88rem", fontWeight: 900 }}>Journey Planner</span>
                 <div style={{ display: "flex", gap: 6 }}>
@@ -744,31 +749,26 @@ export default function Ma3Page() {
         )}
       </AnimatePresence>
 
-      {/* ══════ MATATU PANEL ══════ */}
+      {/* ══════ PARCEL DELIVERY PANEL ══════ */}
       <AnimatePresence>
-        {panel === "live" && (
+        {panel === "parcel" && (
           <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }}
             transition={{ type: "spring", damping: 28, stiffness: 320 }}
-            className="bpanel open" style={{ maxHeight: panelMinimized ? "20vh" : "50vh" }}>
+            {...sheet.panelProps}>
             <div className="bpanel-head">
-              <button aria-label="Minimize panel" className="handle" onClick={() => setPanelMinimized(v => !v)} />
+              <button {...sheet.gripProps} />
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
-                  <BusFront size={15} style={{ color: "var(--ready)" }} />
-                  <span style={{ fontFamily: "var(--font-display)", fontSize: ".88rem", fontWeight: 900 }}>Live fleet</span>
-                  <span className="chip" style={{ background: "rgba(217,119,6,.1)", color: "var(--ready)", border: "1px solid rgba(217,119,6,.25)", fontSize: ".56rem" }}>
-                    FEED NOT CONNECTED
-                  </span>
+                  <Package size={15} style={{ color: "var(--ready)" }} />
+                  <span style={{ fontFamily: "var(--font-display)", fontSize: ".88rem", fontWeight: 900 }}>Parcel delivery</span>
+                  <span className="chip" style={{ background: "rgba(217,119,6,.1)", color: "var(--ready)", border: "1px solid rgba(217,119,6,.25)", fontSize: ".56rem" }}>DEMO · NO PAYMENT</span>
                 </div>
                 <button onClick={() => setPanel(null)} style={{ background: "none", border: "none", color: "var(--muted)", cursor: "pointer" }}><X size={18} /></button>
               </div>
             </div>
-            <div className="bpanel-scroll" style={{ padding: "0 14px 20px" }}>
-              <div className="ios-glass" style={{ padding: 13 }}>
-                <p style={{ fontSize: ".75rem", fontWeight: 700 }}>No verified real-time vehicle feed is connected.</p>
-                <p style={{ marginTop: 6, color: "var(--muted2)", fontSize: ".64rem", lineHeight: 1.5 }}>This map will stay clear rather than invent vehicle positions. Connect a permissioned AVL/GPS feed through a protected server-side adapter before enabling live locations.</p>
-                <p style={{ marginTop: 7, color: "var(--muted)", fontSize: ".57rem" }}>Archived route geometry is not a live feed and does not report a vehicle's current position.</p>
-              </div>
+            <div className="bpanel-scroll" style={{ padding: "0 14px 24px" }}>
+              <ParcelPanel routes={ROUTES} routeStops={ROUTE_STOPS} stops={STOPS_RAW}
+                onRoutePicked={id => setSelRoute(id ? ROUTES.find(r => r.id === id) ?? null : null)} />
             </div>
           </motion.div>
         )}
@@ -779,9 +779,9 @@ export default function Ma3Page() {
         {panel === "train" && (
           <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }}
             transition={{ type: "spring", damping: 28, stiffness: 320 }}
-            className="bpanel open" style={{ maxHeight: panelMinimized ? "20vh" : "50vh" }}>
+            {...sheet.panelProps}>
             <div className="bpanel-head">
-              <button aria-label="Minimize panel" className="handle" onClick={() => setPanelMinimized(v => !v)} />
+              <button {...sheet.gripProps} />
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
                   <TrainFront size={15} style={{ color: "var(--ready)" }} />

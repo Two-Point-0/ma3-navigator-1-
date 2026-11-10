@@ -3,6 +3,7 @@ import { AlertTriangle, Database, LoaderCircle, MapPin, Navigation, Plane, Searc
 import maplibregl from "maplibre-gl";
 import MapLibreView, { MapLibreHandle } from "@/components/MapLibreView";
 import PageTabs from "@/components/PageTabs";
+import { useSheet } from "@/lib/useSheet";
 import { removeLineLayer, removePointLayer, setLineLayer, setPointLayer } from "@/lib/mapLayers";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 
@@ -15,9 +16,9 @@ type SgrSchedule = { id: string; train_code: string; route_id: string; origin_st
 type Airport = { code: string; name: string; label: string };
 
 const TABS = [
-  { id: "domestic", label: "Kenya flights", Icon: Plane },
-  { id: "international", label: "Global flights", Icon: Navigation },
-  { id: "sgr", label: "SGR stations", Icon: TrainFront },
+  { id: "domestic", label: "Domestic", Icon: Plane },
+  { id: "international", label: "International", Icon: Navigation },
+  { id: "sgr", label: "SGR", Icon: TrainFront },
 ] as const;
 const AIRPORTS: Airport[] = [
   { code: "NBO", name: "Nairobi", label: "Nairobi (NBO)" }, { code: "WIL", name: "Wilson", label: "Wilson (WIL)" },
@@ -66,10 +67,10 @@ function airportCode(value: string) { const match = value.match(/\(([A-Z0-9]{3})
 
 export default function FlyPage() {
   const mapRef = useRef<MapLibreHandle>(null);
-  const dragStart = useRef<{ y: number; height: number } | null>(null);
+
   const [map, setMap] = useState<maplibregl.Map | null>(null);
   const [tab, setTab] = useState<FlyTab>("domestic");
-  const [sheetHeight, setSheetHeight] = useState(20);
+  const sheet = useSheet("peek");
   const [sheetOpen, setSheetOpen] = useState(false);
   const [origin, setOrigin] = useState("Nairobi (NBO)");
   const [destination, setDestination] = useState("Mombasa (MBA)");
@@ -177,17 +178,17 @@ export default function FlyPage() {
     }
   }, [map, tab, sgrRoute, sgrStations, selectedFlight, touristDestination, selectedSgrOrigin, selectedSgrDestination, sgrOriginId, sgrDestinationId]);
 
-  const onDragStart = (event: React.PointerEvent<HTMLDivElement>) => { dragStart.current = { y: event.clientY, height: sheetHeight }; event.currentTarget.setPointerCapture(event.pointerId); };
-  const onDragMove = (event: React.PointerEvent<HTMLDivElement>) => { if (dragStart.current) setSheetHeight(Math.max(20, Math.min(50, dragStart.current.height + ((dragStart.current.y - event.clientY) / window.innerHeight) * 100))); };
+
+
   return <div style={{ position: "relative", height: "calc(100dvh - var(--top-h) - var(--nav-h))", marginTop: "-12px", overflow: "hidden" }}>
     <MapLibreView ref={mapRef} center={NAIROBI} zoom={5} height="100%" borderRadius={0} onLoad={setMap} />
     <div style={{ position: "absolute", top: 8, left: 10, right: 10, zIndex: 20, maxWidth: 640, margin: "0 auto" }}>
       <header style={{ padding: "8px 10px", borderRadius: 14, background: "rgba(8,8,16,.78)", backdropFilter: "blur(12px)" }}><div style={{ display: "flex", alignItems: "center", gap: 7 }}><Plane size={17} style={{ color: "var(--ready)" }} /><h2 style={{ fontFamily: "var(--font-display)", fontSize: "1rem" }}>Fly & Rail</h2><span style={{ marginLeft: "auto", color: "var(--muted2)", fontSize: ".56rem" }}>Sourced route map</span></div></header>
-      <div style={{ marginTop: 7 }}><PageTabs label="Travel sections" active={tab} tabs={TABS} onChange={value => { setTab(value as FlyTab); setSheetHeight(20); setSelectedFlight(null); setSheetOpen(true); }} /></div>
+      <div style={{ marginTop: 7 }}><PageTabs label="Travel sections" active={tab} tabs={TABS} onChange={value => { setTab(value as FlyTab); sheet.setSnap("peek"); setSelectedFlight(null); setSheetOpen(true); }} /></div>
     </div>
 
-    <section className="bpanel open" style={{ display: sheetOpen ? "flex" : "none", position: "absolute", left: 0, right: 0, bottom: 0, height: `${sheetHeight}vh`, maxHeight: "calc(100% - 106px)", zIndex: 15, overflowY: "auto" }}>
-      <div className="bpanel-head" onPointerDown={onDragStart} onPointerMove={onDragMove} onPointerUp={() => { dragStart.current = null; }} style={{ position: "sticky", top: 0, zIndex: 2, padding: "9px 14px 7px", background: "rgba(12,14,24,.58)", touchAction: "none", cursor: "ns-resize" }}><div style={{ width: 38, height: 4, borderRadius: 99, background: "var(--muted)", margin: "0 auto 7px" }} /><div style={{ display: "flex", alignItems: "center", gap: 7 }}><b style={{ fontSize: ".76rem", flex: 1 }}>{tab === "sgr" ? "SGR route & departures" : `${tab === "domestic" ? "Domestic" : "International"} flight search`}</b><button className="icon-btn" aria-label={sheetHeight > 35 ? "Collapse search panel" : "Expand search panel"} onClick={() => setSheetHeight(value => value > 35 ? 20 : 50)}>{sheetHeight > 35 ? <ChevronDown size={14} /> : <ChevronUp size={14} />}</button><button className="icon-btn" aria-label="Close panel" onClick={() => setSheetOpen(false)}><X size={14} /></button></div></div>
+    <section {...sheet.panelProps} style={{ ...sheet.panelProps.style, display: sheetOpen ? "flex" : "none", flexDirection: "column" }}>
+      <div className="bpanel-head" style={{ position: "sticky", top: 0, zIndex: 2, padding: "9px 14px 7px", background: "rgba(12,14,24,.58)" }}><button {...sheet.gripProps} /><div style={{ display: "flex", alignItems: "center", gap: 7 }}><b style={{ fontSize: ".76rem", flex: 1 }}>{tab === "sgr" ? "SGR route & departures" : `${tab === "domestic" ? "Domestic" : "International"} flight search`}</b><button className="icon-btn" aria-label="Change panel height" onClick={sheet.cycle}>{sheet.snap === "full" ? <ChevronDown size={14} /> : <ChevronUp size={14} />}</button><button className="icon-btn" aria-label="Close panel" onClick={() => setSheetOpen(false)}><X size={14} /></button></div></div>
       <div style={{ padding: "0 14px 22px", maxWidth: 720, margin: "0 auto" }}>
         {tab !== "sgr" && <>
           <p style={{ color: "var(--muted2)", fontSize: ".61rem", lineHeight: 1.45, margin: "2px 0 10px" }}>Search available flight schedules. Selecting a result draws its verified route on the map.</p>
@@ -201,7 +202,7 @@ export default function FlyPage() {
           <button className="btn btn-ready" style={{ width: "100%", justifyContent: "center", marginTop: 8 }} onClick={() => void searchFlights()} disabled={flightLoading}><Search size={13} />{flightLoading ? "Searching sourced flights…" : "Search flights"}</button>
           {flightError && <p role="status" style={{ color: "var(--muted2)", fontSize: ".62rem", lineHeight: 1.45, marginTop: 8 }}>{flightError}</p>}
           {flightLoading && <p style={{ color: "var(--muted2)", fontSize: ".62rem", marginTop: 8 }}><LoaderCircle size={13} /> Loading routes…</p>}
-          <div style={{ display: "grid", gap: 7, marginTop: 9 }}>{flightRoutes.map(flight => <button key={flight.id} className="card" onClick={() => { setSelectedFlight(flight); setSheetHeight(37); }} style={{ width: "100%", padding: 11, textAlign: "left", color: "var(--white)", cursor: "pointer", borderColor: selectedFlight?.id === flight.id ? "var(--go)" : "var(--border2)" }}><div style={{ display: "flex", gap: 8, alignItems: "center" }}><Plane size={15} style={{ color: "var(--go)" }} /><span style={{ flex: 1 }}><b style={{ display: "block", fontSize: ".72rem" }}>{flight.airline} · {flight.flight_number}</b><small style={{ color: "var(--muted2)" }}>{flight.origin_name} ({flight.origin_code}) → {flight.destination_name} ({flight.destination_code})</small></span>{flight.fare_kes !== null && <b style={{ color: "var(--ready)", fontSize: ".68rem" }}>KES {Number(flight.fare_kes).toLocaleString()}</b>}</div><small style={{ display: "flex", gap: 5, alignItems: "center", color: "var(--muted2)", marginTop: 6 }}><Clock size={10} />{new Date(flight.departure_at).toLocaleString()} · path supplied by source</small></button>)}</div>
+          <div style={{ display: "grid", gap: 7, marginTop: 9 }}>{flightRoutes.map(flight => <button key={flight.id} className="card" onClick={() => { setSelectedFlight(flight); sheet.setSnap("half"); }} style={{ width: "100%", padding: 11, textAlign: "left", color: "var(--white)", cursor: "pointer", borderColor: selectedFlight?.id === flight.id ? "var(--go)" : "var(--border2)" }}><div style={{ display: "flex", gap: 8, alignItems: "center" }}><Plane size={15} style={{ color: "var(--go)" }} /><span style={{ flex: 1 }}><b style={{ display: "block", fontSize: ".72rem" }}>{flight.airline} · {flight.flight_number}</b><small style={{ color: "var(--muted2)" }}>{flight.origin_name} ({flight.origin_code}) → {flight.destination_name} ({flight.destination_code})</small></span>{flight.fare_kes !== null && <b style={{ color: "var(--ready)", fontSize: ".68rem" }}>KES {Number(flight.fare_kes).toLocaleString()}</b>}</div><small style={{ display: "flex", gap: 5, alignItems: "center", color: "var(--muted2)", marginTop: 6 }}><Clock size={10} />{new Date(flight.departure_at).toLocaleString()} · path supplied by source</small></button>)}</div>
           {selectedFlight && <div className="ios-glass" style={{ padding: 10, marginTop: 8, fontSize: ".6rem", color: "var(--muted2)" }}>Showing {selectedFlight.flight_number} route line on the map. <a href={selectedFlight.source_url} target="_blank" rel="noopener noreferrer" style={{ color: "var(--ready)" }}>Source ↗</a> · updated {new Date(selectedFlight.source_updated_at).toLocaleDateString()}</div>}
         </>}
 
