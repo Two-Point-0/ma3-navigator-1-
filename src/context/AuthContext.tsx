@@ -6,6 +6,8 @@ interface AuthContextType {
   user: User | null;
   loading: boolean;
   signInWithGoogle: () => Promise<void>;
+  sendPhoneOtp: (phone: string) => Promise<void>;
+  verifyPhoneOtp: (phone: string, token: string) => Promise<void>;
   signInAsGuest: () => Promise<void>;
   logout: () => Promise<void>;
 }
@@ -32,11 +34,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signInWithGoogle = async () => {
     if (!supabase) throw new Error("Sign-in is temporarily unavailable.");
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: { redirectTo: window.location.origin },
-    });
+    const { error } = await supabase.auth.signInWithOAuth({ provider: "google", options: { redirectTo: window.location.origin } });
     if (error) throw error;
+  };
+
+  const sendPhoneOtp = async (phone: string) => {
+    if (!supabase) throw new Error("Connect Supabase before requesting a verification code.");
+    const { error } = await supabase.auth.signInWithOtp({ phone, options: { channel: "sms" } });
+    if (error) throw error;
+  };
+
+  const verifyPhoneOtp = async (phone: string, token: string) => {
+    if (!supabase) throw new Error("Connect Supabase before verifying a phone number.");
+    const { data, error } = await supabase.auth.verifyOtp({ phone, token, type: "sms" });
+    if (error) throw error;
+    setUser(data.user);
   };
 
   const signInAsGuest = async () => {
@@ -53,7 +65,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   };
 
-  return <AuthContext.Provider value={{ user, loading, signInWithGoogle, signInAsGuest, logout }}>{children}</AuthContext.Provider>;
+  return <AuthContext.Provider value={{ user, loading, signInWithGoogle, sendPhoneOtp, verifyPhoneOtp, signInAsGuest, logout }}>{children}</AuthContext.Provider>;
 }
 
 export function useAuthContext() {

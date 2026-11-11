@@ -21,14 +21,24 @@ grant insert (user_id, route_id, latitude, longitude, accuracy_m, seats_availabl
 grant update (route_id, latitude, longitude, accuracy_m, seats_available)
   on public.ma3_driver_live_locations to authenticated;
 
+-- Location sharing and live-driver discovery require a Supabase-verified phone number.
+create or replace function public.ma3_has_verified_phone(p_user_id uuid)
+returns boolean language sql stable security definer set search_path = public, auth
+as $$
+  select exists (select 1 from auth.users u where u.id = p_user_id and u.phone_confirmed_at is not null);
+$$;
+revoke all on function public.ma3_has_verified_phone(uuid) from public, anon;
+grant execute on function public.ma3_has_verified_phone(uuid) to authenticated;
+
 -- SECURITY DEFINER is used because ordinary drivers may read only their own approval row.
--- This returns only whether a driver is approved for a route, not their verification documents.
+-- This returns only whether a phone-verified driver is approved for a route.
 create or replace function public.ma3_is_approved_driver_for_route(p_driver_id uuid, p_route_id text)
-returns boolean language sql stable security definer set search_path = public
+returns boolean language sql stable security definer set search_path = public, auth
 as $$
   select exists (
-    select 1 from public.ma3_driver_profiles p
-    where p.user_id = p_driver_id and p.status = 'approved' and p_route_id = any(p.route_ids)
+    select 1 from public.ma3_driver_profiles p join auth.users u on u.id = p.user_id
+    where p.user_id = p_driver_id and u.phone_confirmed_at is not null
+      and p.status = 'approved' and p_route_id = any(p.route_ids)
   );
 $$;
 revoke all on function public.ma3_is_approved_driver_for_route(uuid,text) from public, anon;
@@ -37,8 +47,10 @@ grant execute on function public.ma3_is_approved_driver_for_route(uuid,text) to 
 drop policy if exists "Riders see fresh approved drivers only" on public.ma3_driver_live_locations;
 create policy "Riders see fresh approved drivers only" on public.ma3_driver_live_locations
   for select to authenticated using (
-    auth.uid() = user_id
+    (auth.uid() = user_id and public.ma3_has_verified_phone(auth.uid()))
     or (
+      public.ma3_has_verified_phone(auth.uid())
+      and
       last_seen >= now() - interval '45 seconds'
       and public.ma3_is_approved_driver_for_route(user_id, route_id)
     )

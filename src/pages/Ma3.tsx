@@ -10,6 +10,8 @@ import { toast } from "sonner";
 import maplibregl from "maplibre-gl";
 import MapLibreView, { MapLibreHandle } from "@/components/MapLibreView";
 import PageTabs from "@/components/PageTabs";
+import LiveDriverMapLayer from "@/components/LiveDriverMapLayer";
+import { useAuthContext } from "@/context/AuthContext";
 import ParcelPanel from "@/components/ParcelPanel";
 import { useSheet } from "@/lib/useSheet";
 import { setLineLayer, setPointLayer, removeLineLayer, removePointLayer } from "@/lib/mapLayers";
@@ -139,6 +141,7 @@ function findRailPath(from: OSMStation, to: OSMStation): [number, number][] {
 
 export default function Ma3Page() {
   const [, setLocation] = useLocation();
+  const { user } = useAuthContext();
   const [panel, setPanel]           = useState<Panel>(null);
   const [query, setQuery]           = useState("");
   const [selRoute, setSelRoute]     = useState<typeof ROUTES[0] | null>(null);
@@ -147,7 +150,7 @@ export default function Ma3Page() {
   const [fromStop, setFromStop]     = useState<StopMatch | null>(null);
   const [toStop, setToStop]         = useState<StopMatch | null>(null);
   const [journeyOpts, setJourneyOpts] = useState<JourneyOption[] | null>(null);
-  const [lockedStop, setLockedStop] = useState<{ stop: StopMatch; routeId: string } | null>(null);
+  const [lockedStop, setLockedStop] = useState<{ stop: StopMatch; routeId: string; status: "waiting" | "walking"; expiresAt: string } | null>(null);
   const [trackedLeg, setTrackedLeg] = useState<JourneyOption["legs"][number] | null>(null);
   const [trackedPosition, setTrackedPosition] = useState<[number, number] | null>(null);
   const [trackingActive, setTrackingActive] = useState(false);
@@ -157,6 +160,8 @@ export default function Ma3Page() {
   const [mapCenter, setMapCenter]   = useState<[number, number]>(NAIROBI);
   const [exploreDestination, setExploreDestination] = useState<{ name: string; lat: number; lon: number; stop: StopMatch; distanceKm: number } | null>(null);
   const [mapReady, setMapReady] = useState(false);
+  const [liveDriversEnabled, setLiveDriversEnabled] = useState(false);
+  const [liveDriversStatus, setLiveDriversStatus] = useState("Live vehicles are off; this passenger phone's location is not shared.");
   const [savedJourneys, setSavedJourneys] = useState<{ label: string; from: StopMatch; to: StopMatch; time: string; days: string[] }[]>([]);
   const [saveForm, setSaveForm]     = useState(false);
   const [saveLabel, setSaveLabel]   = useState("");
@@ -403,21 +408,39 @@ export default function Ma3Page() {
 
   const lockIn = async (leg: JourneyOption["legs"][number]) => {
     if (!leg.routeId) { toast("Choose a matatu leg before marking a pickup stop."); return; }
-    if (!isSupabaseConfigured || !supabase) { toast("Connect Supabase to share anonymous stop demand with drivers."); return; }
+    const client = supabase;
+    if (!isSupabaseConfigured || !client) { toast("Connect Supabase before sharing pickup demand."); return; }
+    if (!user?.phone_confirmed_at) { toast("Verify your phone number before sharing pickup demand."); setLocation("/login"); return; }
     try {
-      let user = (await supabase.auth.getUser()).data.user;
-      if (!user) {
-        const { data, error } = await supabase.auth.signInAnonymously();
-        if (error || !data.user) throw error ?? new Error("Could not create a guest session.");
-        user = data.user;
-      }
-      const { error } = await supabase.rpc("set_my_ma3_stop_waiting", { p_route_id: leg.routeId, p_stop_id: leg.fromStop.id });
+      const { data, error } = await client.rpc("set_my_ma3_stop_intent", { p_route_id: leg.routeId, p_stop_id: leg.fromStop.id, p_status: "waiting", p_latitude: null, p_longitude: null, p_accuracy_m: null });
       if (error) throw error;
-      setLockedStop({ stop: leg.fromStop, routeId: leg.routeId });
-      toast(`${leg.fromStop.name} shared as an anonymous pickup request for 30 minutes.`);
+      setLockedStop({ stop: leg.fromStop, routeId: leg.routeId, status: "waiting", expiresAt: String(data) });
+      toast(`${leg.fromStop.name} shared as an anonymous waiting count for 30 minutes.`);
     } catch (error) {
       toast(error instanceof Error ? error.message : "Could not share your pickup stop. Check the Supabase setup.");
     }
+  };
+
+  const markWalkingToStop = () => {
+    if (!lockedStop) return;
+    if (!user?.phone_confirmed_at) { toast("Verify your phone number before sharing pickup demand."); setLocation("/login"); return; }
+    if (!navigator.geolocation) { toast("One-time location checking is not available in this browser."); return; }
+    navigator.geolocation.getCurrentPosition(async position => {
+      const { latitude, longitude, accuracy } = position.coords;
+      if (accuracy > 100) { toast("GPS accuracy is too low. Try again outdoors with precise location enabled."); return; }
+      const distanceKm = haversineKm(latitude, longitude, lockedStop.stop.lat, lockedStop.stop.lon);
+      if (distanceKm > 0.8) { toast(`You are about ${Math.round(distanceKm * 1000)} m from ${lockedStop.stop.name}; walking status starts within 800 m.`); return; }
+      const client = supabase;
+      if (!isSupabaseConfigured || !client) { toast("Connect Supabase before sharing walking status."); return; }
+      try {
+        const { data, error } = await client.rpc("set_my_ma3_stop_intent", { p_route_id: lockedStop.routeId, p_stop_id: lockedStop.stop.id, p_status: "walking", p_latitude: latitude, p_longitude: longitude, p_accuracy_m: accuracy });
+        if (error) throw error;
+        setLockedStop(current => current ? { ...current, status: "walking", expiresAt: String(data) } : current);
+        toast(`Walking-to-stage count shared for ${lockedStop.stop.name}. Your exact location is not stored.`);
+      } catch (error) {
+        toast(error instanceof Error ? error.message : "Could not confirm walking status.");
+      }
+    }, error => toast(error.code === error.PERMISSION_DENIED ? "Allow one-time location access to confirm walking proximity." : "Could not get a reliable location fix; try again."), { enableHighAccuracy: true, maximumAge: 0, timeout: 15000 });
   };
 
   const cancelStopWaiting = async () => {
@@ -435,6 +458,8 @@ export default function Ma3Page() {
     <div style={{ position: "relative", height: "calc(100vh - var(--top-h) - var(--nav-h))", marginTop: "-12px" }}>
       <MapLibreView ref={mapRef} center={mapCenter} zoom={12} pitch={pitch} bearing={bearing}
         height="100%" borderRadius={0} onLoad={handleMapLoad} />
+      <LiveDriverMapLayer map={mapReady ? mapInst.current : null} routeId={selRoute?.id ?? null}
+        enabled={liveDriversEnabled} phoneVerified={Boolean(user?.phone_confirmed_at)} onStatus={setLiveDriversStatus} />
 
       <div style={{ position: "absolute", top: 10, left: 10, right: 10, zIndex: 50 }}>
         <PageTabs label="Ma3 sections" active={panel === "parcel" || panel === "train" ? panel : "search"} tabs={MA3_TABS}
@@ -483,6 +508,12 @@ export default function Ma3Page() {
                     <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 3 }}>
                       <span style={{ fontSize: ".58rem", color: "var(--muted)" }}>Archived route shape · static map geometry only</span>
                     </div>
+                    <button className={liveDriversEnabled ? "btn btn-ready" : "btn btn-ghost"} style={{ width: "100%", marginTop: 7, justifyContent: "center", fontSize: ".64rem", padding: 8 }}
+                      aria-pressed={liveDriversEnabled}
+                      onClick={() => { if (!user?.phone_confirmed_at) { setLocation("/login"); return; } setLiveDriversEnabled(value => !value); }}>
+                      {liveDriversEnabled ? "Hide live vehicles" : "Show live vehicles on this route"}
+                    </button>
+                    <p style={{ margin: "5px 0 0", fontSize: ".57rem", color: "var(--muted2)", lineHeight: 1.4 }}>{liveDriversStatus} This does not share passenger GPS.</p>
                   </div>
                 </motion.div>
               )}
@@ -698,7 +729,10 @@ export default function Ma3Page() {
                           </div>
                           <button aria-label="Cancel pickup request" onClick={() => void cancelStopWaiting()} style={{ background: "none", border: "none", color: "var(--muted)", cursor: "pointer" }}><X size={13} /></button>
                         </div>
-                        <p style={{ fontSize: ".61rem", color: "var(--muted2)", lineHeight: 1.5 }}>Your pickup stop is shared as an anonymous count for this route. It expires after 30 minutes; drivers cannot see your account or phone location.</p>
+                        <p style={{ fontSize: ".61rem", color: "var(--muted2)", lineHeight: 1.5 }}>{lockedStop.status === "walking" ? "Walking intent is shared as an anonymous count for 10 minutes. A one-time GPS fix was checked against an 800 m straight-line radius; exact coordinates are not stored or shown to drivers." : "Your selected stop is shared as a self-reported anonymous waiting count for 30 minutes. Drivers cannot see your account or phone location."}</p>
+                        <button className="btn btn-ghost" style={{ width: "100%", marginTop: 8, justifyContent: "center", fontSize: ".64rem", padding: 8 }} onClick={markWalkingToStop}>
+                          <Navigation size={11} /> {lockedStop.status === "walking" ? "Refresh walking status" : "I’m walking to this stage"}
+                        </button>
                       </motion.div>
                     )}
                   </AnimatePresence>
