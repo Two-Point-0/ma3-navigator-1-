@@ -4,21 +4,25 @@ The app reads shared Explore, Market and Mirth data from Supabase. The matching 
 
 ## 1. Create the Supabase project
 
-1. Create a project at [Supabase](https://supabase.com/).
-2. In **SQL Editor**, run these scripts in order:
-   1. `supabase/migrations/20261008_initial_ma3.sql`
-   2. `supabase/migrations/20261009_explore_market_nganya.sql`
-   3. `supabase/migrations/20261012_ma3_transit_tables.sql`
-   4. `supabase/seed/demo_catalog.sql` (only seeds the five retailer reference rows—no fake products or shelf prices).
-3. In **Project Settings → API**, copy the project URL and public `anon` key. Do **not** use a service-role/secret key in the app.
-4. Copy `.env.example` to `.env.local` in the repository root and fill:
+1. Create a project at [Supabase](https://supabase.com/) and securely save its project reference and database password.
+2. In the VS Code terminal at the repository root, link this checkout to your project. This checkout already contains `supabase/config.toml`; do not run `supabase init` again.
 
-   ```env
-   VITE_SUPABASE_URL=https://YOUR_PROJECT.supabase.co
-   VITE_SUPABASE_ANON_KEY=YOUR_PUBLIC_ANON_KEY
+   ```powershell
+   npx.cmd supabase login
+   npx.cmd supabase link --project-ref YOUR_PROJECT_REF
+   npx.cmd supabase migration list
+   npx.cmd supabase db push --dry-run
    ```
 
-   `.env.local` is Git-ignored. Restart the dev server after changing it.
+   Check the project reference and dry-run output. If the pending migrations are expected, apply them with `npx.cmd supabase db push`. This is the recommended current workflow; manually running only the first three migrations in the SQL Editor would leave the prepared backend incomplete. Run `supabase/seed/demo_catalog.sql` only if its reference rows are needed; it does not provide real retailer products or prices.
+3. In **Project Settings → API Keys**, copy the project URL and the **publishable** key. Add them to a Git-ignored `.env.local` file:
+
+   ```env
+   VITE_SUPABASE_URL=https://YOUR_PROJECT_REF.supabase.co
+   VITE_SUPABASE_PUBLISHABLE_KEY=YOUR_PUBLIC_PUBLISHABLE_KEY
+   ```
+
+   The client also supports the older `VITE_SUPABASE_ANON_KEY` name. Never put a service-role/secret key in a `VITE_` variable, React code, `.env.local` or GitHub. Restart the dev server after changing the environment file.
 
 ## 2. Upload products and five-store prices
 
@@ -140,6 +144,14 @@ The UI intentionally does not display setup instructions. Keep credentials, impo
 The Trivia card can request a small round from the public Open Trivia Database only when a user opens Trivia; this avoids bundling question banks into the initial app. The service is keyless/free, limits each request to 50 questions, permits only one category per request, and documents a five-second per-IP rate limit. Its questions use CC BY-SA 4.0, so keep attribution in the Trivia panel and follow that license for redistributed adaptations. Do not make a request on every keystroke or for every app visitor at page load. Source: https://opentdb.com/api_config.php.
 
 Game rules and visuals do not need to be hard-copied to a remote database. For compact single-player games, keep logic in small lazy-loaded modules; use a backend only for accounts, saves, matchmaking, multiplayer state, leaderboards or moderation. For chess UI, check component licenses carefully: Lichess Chessground is GPL-3.0-or-later, has no chess rules engine, and requires a GPL-compatible distribution when used in a website. Source: https://github.com/lichess-org/chessground.
+
+## Current two-phone location and stage-demand flow (updated 2026-11-11)
+
+Apply the new `supabase/migrations/20261111_ma3_walk_to_stop.sql` after the earlier driver migration. The passenger must sign in with a Supabase phone-verified account before sharing stage demand. A passenger may select a pickup stop as a self-reported waiting count (active for 30 minutes), then explicitly choose **I’m walking to this stage**. That button requests one location fix; the server accepts walking intent only if the reported GPS accuracy is 100 metres or better and the passenger is within an 800-metre straight-line radius of the selected stop. The function receives the coordinates for validation but does not persist them. The walking status expires from the active count after 10 minutes.
+
+An approved, phone-verified driver can retrieve only the selected route’s per-stage waiting and walking totals through `get_ma3_waiting_counts`. The driver sees no passenger name, phone number or exact position. The Driver screen refreshes these totals every 15 seconds (polling, not an instant Realtime subscription). Passengers can also choose to view fresh approved live driver points for a selected route without transmitting their own GPS. Driver locations are published only after **Go Online**, and stale points stop appearing after 45 seconds. Because the app is a PWA, do not promise background GPS after the page is closed.
+
+Before using the driver phone, an authorised administrator must approve its verified account and exact route IDs in `ma3_driver_profiles`. Role selection is not approval. Check the RPC and RLS behavior using an unapproved test account and a different route. The app remains demo-gated in `src/lib/appMode.ts`; applying migrations alone does not enable real transport, pricing, payment or driver services. Expiry removes demand from counts but does not itself prove physical row deletion; configure and verify expired-row cleanup and retention before a public launch.
 
 ## 12. Private profile photos
 

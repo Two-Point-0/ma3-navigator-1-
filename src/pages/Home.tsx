@@ -41,6 +41,21 @@ export default function HomePage() {
         </div>
       </Link>
 
+      <Link href="/location-share">
+        <div className="card" style={{ padding: "12px 16px", marginBottom: 18, display: "flex", alignItems: "center", justifyContent: "space-between", background: "rgba(34,197,94,.06)", borderColor: "rgba(34,197,94,.24)", cursor: "pointer" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
+            <div style={{ width: 36, height: 36, borderRadius: 10, background: "rgba(34,197,94,.12)", border: "1px solid rgba(34,197,94,.25)", display: "grid", placeItems: "center" }}>
+              <MapPin size={16} style={{ color: "var(--go)" }} />
+            </div>
+            <span>
+              <b style={{ display: "block", fontSize: ".76rem" }}>Share location</b>
+              <small style={{ color: "var(--muted2)", fontSize: ".59rem" }}>Pair both phones · each person controls sharing</small>
+            </span>
+          </div>
+          <ArrowRight size={14} style={{ color: "var(--muted2)" }} />
+        </div>
+      </Link>
+
       <p className="sec-label" style={{ marginBottom: 9 }}>Your six spaces</p>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,280px),1fr))", gap: 9, marginBottom: 14 }}>
         {SECTIONS.map(({ href, icon: Icon, color, label, desc, features }, index) => (

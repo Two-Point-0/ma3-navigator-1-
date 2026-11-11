@@ -1,0 +1,669 @@
+sku,name,normalized_name,category,brand,pack_size,barcode,image_url,active
+SAMPLE-0001,Jogoo Maize flour (unga),jogoo maize flour (unga),Staples,Jogoo,1 kg,,,true
+SAMPLE-0002,Jogoo Maize flour (unga),jogoo maize flour (unga),Staples,Jogoo,2 kg,,,true
+SAMPLE-0003,Jogoo Maize flour (unga),jogoo maize flour (unga),Staples,Jogoo,5 kg,,,true
+SAMPLE-0004,Pembe Maize flour (unga),pembe maize flour (unga),Staples,Pembe,1 kg,,,true
+SAMPLE-0005,Pembe Maize flour (unga),pembe maize flour (unga),Staples,Pembe,2 kg,,,true
+SAMPLE-0006,Pembe Maize flour (unga),pembe maize flour (unga),Staples,Pembe,5 kg,,,true
+SAMPLE-0007,Soko Maize flour (unga),soko maize flour (unga),Staples,Soko,1 kg,,,true
+SAMPLE-0008,Soko Maize flour (unga),soko maize flour (unga),Staples,Soko,2 kg,,,true
+SAMPLE-0009,Soko Maize flour (unga),soko maize flour (unga),Staples,Soko,5 kg,,,true
+SAMPLE-0010,Dola Maize flour (unga),dola maize flour (unga),Staples,Dola,1 kg,,,true
+SAMPLE-0011,Dola Maize flour (unga),dola maize flour (unga),Staples,Dola,2 kg,,,true
+SAMPLE-0012,Dola Maize flour (unga),dola maize flour (unga),Staples,Dola,5 kg,,,true
+SAMPLE-0013,Ajab Maize flour (unga),ajab maize flour (unga),Staples,Ajab,1 kg,,,true
+SAMPLE-0014,Ajab Maize flour (unga),ajab maize flour (unga),Staples,Ajab,2 kg,,,true
+SAMPLE-0015,Ajab Maize flour (unga),ajab maize flour (unga),Staples,Ajab,5 kg,,,true
+SAMPLE-0016,Hostess Maize flour (unga),hostess maize flour (unga),Staples,Hostess,1 kg,,,true
+SAMPLE-0017,Hostess Maize flour (unga),hostess maize flour (unga),Staples,Hostess,2 kg,,,true
+SAMPLE-0018,Hostess Maize flour (unga),hostess maize flour (unga),Staples,Hostess,5 kg,,,true
+SAMPLE-0019,Exe Wheat flour,exe wheat flour,Staples,Exe,1 kg,,,true
+SAMPLE-0020,Exe Wheat flour,exe wheat flour,Staples,Exe,2 kg,,,true
+SAMPLE-0021,Pembe Wheat flour,pembe wheat flour,Staples,Pembe,1 kg,,,true
+SAMPLE-0022,Pembe Wheat flour,pembe wheat flour,Staples,Pembe,2 kg,,,true
+SAMPLE-0023,Ajab Wheat flour,ajab wheat flour,Staples,Ajab,1 kg,,,true
+SAMPLE-0024,Ajab Wheat flour,ajab wheat flour,Staples,Ajab,2 kg,,,true
+SAMPLE-0025,Mombasa Maize Millers Wheat flour,mombasa maize millers wheat flour,Staples,Mombasa Maize Millers,1 kg,,,true
+SAMPLE-0026,Mombasa Maize Millers Wheat flour,mombasa maize millers wheat flour,Staples,Mombasa Maize Millers,2 kg,,,true
+SAMPLE-0027,Daawat Rice (pishori),daawat rice (pishori),Staples,Daawat,1 kg,,,true
+SAMPLE-0028,Daawat Rice (pishori),daawat rice (pishori),Staples,Daawat,2 kg,,,true
+SAMPLE-0029,Daawat Rice (pishori),daawat rice (pishori),Staples,Daawat,5 kg,,,true
+SAMPLE-0030,Mwea Rice (pishori),mwea rice (pishori),Staples,Mwea,1 kg,,,true
+SAMPLE-0031,Mwea Rice (pishori),mwea rice (pishori),Staples,Mwea,2 kg,,,true
+SAMPLE-0032,Mwea Rice (pishori),mwea rice (pishori),Staples,Mwea,5 kg,,,true
+SAMPLE-0033,Tilda Rice (pishori),tilda rice (pishori),Staples,Tilda,1 kg,,,true
+SAMPLE-0034,Tilda Rice (pishori),tilda rice (pishori),Staples,Tilda,2 kg,,,true
+SAMPLE-0035,Tilda Rice (pishori),tilda rice (pishori),Staples,Tilda,5 kg,,,true
+SAMPLE-0036,Pearl Rice (pishori),pearl rice (pishori),Staples,Pearl,1 kg,,,true
+SAMPLE-0037,Pearl Rice (pishori),pearl rice (pishori),Staples,Pearl,2 kg,,,true
+SAMPLE-0038,Pearl Rice (pishori),pearl rice (pishori),Staples,Pearl,5 kg,,,true
+SAMPLE-0039,Basmati Gold Rice (pishori),basmati gold rice (pishori),Staples,Basmati Gold,1 kg,,,true
+SAMPLE-0040,Basmati Gold Rice (pishori),basmati gold rice (pishori),Staples,Basmati Gold,2 kg,,,true
+SAMPLE-0041,Basmati Gold Rice (pishori),basmati gold rice (pishori),Staples,Basmati Gold,5 kg,,,true
+SAMPLE-0042,Ndiwa Rice (long grain),ndiwa rice (long grain),Staples,Ndiwa,1 kg,,,true
+SAMPLE-0043,Ndiwa Rice (long grain),ndiwa rice (long grain),Staples,Ndiwa,2 kg,,,true
+SAMPLE-0044,Pearl Rice (long grain),pearl rice (long grain),Staples,Pearl,1 kg,,,true
+SAMPLE-0045,Pearl Rice (long grain),pearl rice (long grain),Staples,Pearl,2 kg,,,true
+SAMPLE-0046,Fresh Fri Rice (long grain),fresh fri rice (long grain),Staples,Fresh Fri,1 kg,,,true
+SAMPLE-0047,Fresh Fri Rice (long grain),fresh fri rice (long grain),Staples,Fresh Fri,2 kg,,,true
+SAMPLE-0048,Daawat Rice (long grain),daawat rice (long grain),Staples,Daawat,1 kg,,,true
+SAMPLE-0049,Daawat Rice (long grain),daawat rice (long grain),Staples,Daawat,2 kg,,,true
+SAMPLE-0050,Mumias Sugar,mumias sugar,Staples,Mumias,1 kg,,,true
+SAMPLE-0051,Mumias Sugar,mumias sugar,Staples,Mumias,2 kg,,,true
+SAMPLE-0052,Kabras Sugar,kabras sugar,Staples,Kabras,1 kg,,,true
+SAMPLE-0053,Kabras Sugar,kabras sugar,Staples,Kabras,2 kg,,,true
+SAMPLE-0054,Sony Sugar,sony sugar,Staples,Sony,1 kg,,,true
+SAMPLE-0055,Sony Sugar,sony sugar,Staples,Sony,2 kg,,,true
+SAMPLE-0056,Kensugar Sugar,kensugar sugar,Staples,Kensugar,1 kg,,,true
+SAMPLE-0057,Kensugar Sugar,kensugar sugar,Staples,Kensugar,2 kg,,,true
+SAMPLE-0058,Butali Sugar,butali sugar,Staples,Butali,1 kg,,,true
+SAMPLE-0059,Butali Sugar,butali sugar,Staples,Butali,2 kg,,,true
+SAMPLE-0060,Santa Lucia Spaghetti,santa lucia spaghetti,Staples,Santa Lucia,400 g,,,true
+SAMPLE-0061,Santa Lucia Spaghetti,santa lucia spaghetti,Staples,Santa Lucia,500 g,,,true
+SAMPLE-0062,Del Monte Spaghetti,del monte spaghetti,Staples,Del Monte,400 g,,,true
+SAMPLE-0063,Del Monte Spaghetti,del monte spaghetti,Staples,Del Monte,500 g,,,true
+SAMPLE-0064,Kenpasta Spaghetti,kenpasta spaghetti,Staples,Kenpasta,400 g,,,true
+SAMPLE-0065,Kenpasta Spaghetti,kenpasta spaghetti,Staples,Kenpasta,500 g,,,true
+SAMPLE-0066,Dola Spaghetti,dola spaghetti,Staples,Dola,400 g,,,true
+SAMPLE-0067,Dola Spaghetti,dola spaghetti,Staples,Dola,500 g,,,true
+SAMPLE-0068,Santa Lucia Macaroni,santa lucia macaroni,Staples,Santa Lucia,400 g,,,true
+SAMPLE-0069,Santa Lucia Macaroni,santa lucia macaroni,Staples,Santa Lucia,500 g,,,true
+SAMPLE-0070,Kenpasta Macaroni,kenpasta macaroni,Staples,Kenpasta,400 g,,,true
+SAMPLE-0071,Kenpasta Macaroni,kenpasta macaroni,Staples,Kenpasta,500 g,,,true
+SAMPLE-0072,Dola Macaroni,dola macaroni,Staples,Dola,400 g,,,true
+SAMPLE-0073,Dola Macaroni,dola macaroni,Staples,Dola,500 g,,,true
+SAMPLE-0074,Mwitu Beans (dry),mwitu beans (dry),Staples,Mwitu,1 kg,,,true
+SAMPLE-0075,Mwitu Beans (dry),mwitu beans (dry),Staples,Mwitu,2 kg,,,true
+SAMPLE-0076,Soko Beans (dry),soko beans (dry),Staples,Soko,1 kg,,,true
+SAMPLE-0077,Soko Beans (dry),soko beans (dry),Staples,Soko,2 kg,,,true
+SAMPLE-0078,Nyayo Beans (dry),nyayo beans (dry),Staples,Nyayo,1 kg,,,true
+SAMPLE-0079,Nyayo Beans (dry),nyayo beans (dry),Staples,Nyayo,2 kg,,,true
+SAMPLE-0080,Local Beans (dry),local beans (dry),Staples,Local,1 kg,,,true
+SAMPLE-0081,Local Beans (dry),local beans (dry),Staples,Local,2 kg,,,true
+SAMPLE-0082,Soko Green grams (ndengu),soko green grams (ndengu),Staples,Soko,500 g,,,true
+SAMPLE-0083,Soko Green grams (ndengu),soko green grams (ndengu),Staples,Soko,1 kg,,,true
+SAMPLE-0084,Local Green grams (ndengu),local green grams (ndengu),Staples,Local,500 g,,,true
+SAMPLE-0085,Local Green grams (ndengu),local green grams (ndengu),Staples,Local,1 kg,,,true
+SAMPLE-0086,Njugu Green grams (ndengu),njugu green grams (ndengu),Staples,Njugu,500 g,,,true
+SAMPLE-0087,Njugu Green grams (ndengu),njugu green grams (ndengu),Staples,Njugu,1 kg,,,true
+SAMPLE-0088,Soko Lentils,soko lentils,Staples,Soko,500 g,,,true
+SAMPLE-0089,Soko Lentils,soko lentils,Staples,Soko,1 kg,,,true
+SAMPLE-0090,Pearl Lentils,pearl lentils,Staples,Pearl,500 g,,,true
+SAMPLE-0091,Pearl Lentils,pearl lentils,Staples,Pearl,1 kg,,,true
+SAMPLE-0092,Local Lentils,local lentils,Staples,Local,500 g,,,true
+SAMPLE-0093,Local Lentils,local lentils,Staples,Local,1 kg,,,true
+SAMPLE-0094,Kensalt Salt,kensalt salt,Staples,Kensalt,500 g,,,true
+SAMPLE-0095,Kensalt Salt,kensalt salt,Staples,Kensalt,1 kg,,,true
+SAMPLE-0096,Maldon Salt,maldon salt,Staples,Maldon,500 g,,,true
+SAMPLE-0097,Maldon Salt,maldon salt,Staples,Maldon,1 kg,,,true
+SAMPLE-0098,Chef Salt,chef salt,Staples,Chef,500 g,,,true
+SAMPLE-0099,Chef Salt,chef salt,Staples,Chef,1 kg,,,true
+SAMPLE-0100,Kapa Salt,kapa salt,Staples,Kapa,500 g,,,true
+SAMPLE-0101,Kapa Salt,kapa salt,Staples,Kapa,1 kg,,,true
+SAMPLE-0102,Jogoo Porridge flour,jogoo porridge flour,Staples,Jogoo,500 g,,,true
+SAMPLE-0103,Jogoo Porridge flour,jogoo porridge flour,Staples,Jogoo,1 kg,,,true
+SAMPLE-0104,Soko Porridge flour,soko porridge flour,Staples,Soko,500 g,,,true
+SAMPLE-0105,Soko Porridge flour,soko porridge flour,Staples,Soko,1 kg,,,true
+SAMPLE-0106,Pembe Porridge flour,pembe porridge flour,Staples,Pembe,500 g,,,true
+SAMPLE-0107,Pembe Porridge flour,pembe porridge flour,Staples,Pembe,1 kg,,,true
+SAMPLE-0108,Kenya Millers Porridge flour,kenya millers porridge flour,Staples,Kenya Millers,500 g,,,true
+SAMPLE-0109,Kenya Millers Porridge flour,kenya millers porridge flour,Staples,Kenya Millers,1 kg,,,true
+SAMPLE-0110,Elianto Cooking oil,elianto cooking oil,Cooking,Elianto,500 ml,,,true
+SAMPLE-0111,Elianto Cooking oil,elianto cooking oil,Cooking,Elianto,1 L,,,true
+SAMPLE-0112,Elianto Cooking oil,elianto cooking oil,Cooking,Elianto,2 L,,,true
+SAMPLE-0113,Elianto Cooking oil,elianto cooking oil,Cooking,Elianto,3 L,,,true
+SAMPLE-0114,Rina Cooking oil,rina cooking oil,Cooking,Rina,500 ml,,,true
+SAMPLE-0115,Rina Cooking oil,rina cooking oil,Cooking,Rina,1 L,,,true
+SAMPLE-0116,Rina Cooking oil,rina cooking oil,Cooking,Rina,2 L,,,true
+SAMPLE-0117,Rina Cooking oil,rina cooking oil,Cooking,Rina,3 L,,,true
+SAMPLE-0118,Fresh Fri Cooking oil,fresh fri cooking oil,Cooking,Fresh Fri,500 ml,,,true
+SAMPLE-0119,Fresh Fri Cooking oil,fresh fri cooking oil,Cooking,Fresh Fri,1 L,,,true
+SAMPLE-0120,Fresh Fri Cooking oil,fresh fri cooking oil,Cooking,Fresh Fri,2 L,,,true
+SAMPLE-0121,Fresh Fri Cooking oil,fresh fri cooking oil,Cooking,Fresh Fri,3 L,,,true
+SAMPLE-0122,Kimbo Cooking oil,kimbo cooking oil,Cooking,Kimbo,500 ml,,,true
+SAMPLE-0123,Kimbo Cooking oil,kimbo cooking oil,Cooking,Kimbo,1 L,,,true
+SAMPLE-0124,Kimbo Cooking oil,kimbo cooking oil,Cooking,Kimbo,2 L,,,true
+SAMPLE-0125,Kimbo Cooking oil,kimbo cooking oil,Cooking,Kimbo,3 L,,,true
+SAMPLE-0126,Golden Fry Cooking oil,golden fry cooking oil,Cooking,Golden Fry,500 ml,,,true
+SAMPLE-0127,Golden Fry Cooking oil,golden fry cooking oil,Cooking,Golden Fry,1 L,,,true
+SAMPLE-0128,Golden Fry Cooking oil,golden fry cooking oil,Cooking,Golden Fry,2 L,,,true
+SAMPLE-0129,Golden Fry Cooking oil,golden fry cooking oil,Cooking,Golden Fry,3 L,,,true
+SAMPLE-0130,Postman Cooking oil,postman cooking oil,Cooking,Postman,500 ml,,,true
+SAMPLE-0131,Postman Cooking oil,postman cooking oil,Cooking,Postman,1 L,,,true
+SAMPLE-0132,Postman Cooking oil,postman cooking oil,Cooking,Postman,2 L,,,true
+SAMPLE-0133,Postman Cooking oil,postman cooking oil,Cooking,Postman,3 L,,,true
+SAMPLE-0134,Kasuku Cooking fat,kasuku cooking fat,Cooking,Kasuku,250 g,,,true
+SAMPLE-0135,Kasuku Cooking fat,kasuku cooking fat,Cooking,Kasuku,500 g,,,true
+SAMPLE-0136,Kimbo Cooking fat,kimbo cooking fat,Cooking,Kimbo,250 g,,,true
+SAMPLE-0137,Kimbo Cooking fat,kimbo cooking fat,Cooking,Kimbo,500 g,,,true
+SAMPLE-0138,Cowboy Cooking fat,cowboy cooking fat,Cooking,Cowboy,250 g,,,true
+SAMPLE-0139,Cowboy Cooking fat,cowboy cooking fat,Cooking,Cowboy,500 g,,,true
+SAMPLE-0140,Prestige Cooking fat,prestige cooking fat,Cooking,Prestige,250 g,,,true
+SAMPLE-0141,Prestige Cooking fat,prestige cooking fat,Cooking,Prestige,500 g,,,true
+SAMPLE-0142,Blue Band Margarine,blue band margarine,Cooking,Blue Band,250 g,,,true
+SAMPLE-0143,Blue Band Margarine,blue band margarine,Cooking,Blue Band,500 g,,,true
+SAMPLE-0144,Prestige Margarine,prestige margarine,Cooking,Prestige,250 g,,,true
+SAMPLE-0145,Prestige Margarine,prestige margarine,Cooking,Prestige,500 g,,,true
+SAMPLE-0146,Kasuku Margarine,kasuku margarine,Cooking,Kasuku,250 g,,,true
+SAMPLE-0147,Kasuku Margarine,kasuku margarine,Cooking,Kasuku,500 g,,,true
+SAMPLE-0148,Royco Margarine,royco margarine,Cooking,Royco,250 g,,,true
+SAMPLE-0149,Royco Margarine,royco margarine,Cooking,Royco,500 g,,,true
+SAMPLE-0150,Pomodoro Tomato paste,pomodoro tomato paste,Cooking,Pomodoro,70 g,,,true
+SAMPLE-0151,Pomodoro Tomato paste,pomodoro tomato paste,Cooking,Pomodoro,200 g,,,true
+SAMPLE-0152,Del Monte Tomato paste,del monte tomato paste,Cooking,Del Monte,70 g,,,true
+SAMPLE-0153,Del Monte Tomato paste,del monte tomato paste,Cooking,Del Monte,200 g,,,true
+SAMPLE-0154,Kenchic Tomato paste,kenchic tomato paste,Cooking,Kenchic,70 g,,,true
+SAMPLE-0155,Kenchic Tomato paste,kenchic tomato paste,Cooking,Kenchic,200 g,,,true
+SAMPLE-0156,Tomato Gold Tomato paste,tomato gold tomato paste,Cooking,Tomato Gold,70 g,,,true
+SAMPLE-0157,Tomato Gold Tomato paste,tomato gold tomato paste,Cooking,Tomato Gold,200 g,,,true
+SAMPLE-0158,Royco Stock cubes,royco stock cubes,Cooking,Royco,10 pack,,,true
+SAMPLE-0159,Royco Stock cubes,royco stock cubes,Cooking,Royco,24 pack,,,true
+SAMPLE-0160,Knorr Stock cubes,knorr stock cubes,Cooking,Knorr,10 pack,,,true
+SAMPLE-0161,Knorr Stock cubes,knorr stock cubes,Cooking,Knorr,24 pack,,,true
+SAMPLE-0162,Maggi Stock cubes,maggi stock cubes,Cooking,Maggi,10 pack,,,true
+SAMPLE-0163,Maggi Stock cubes,maggi stock cubes,Cooking,Maggi,24 pack,,,true
+SAMPLE-0164,Pilau Masala Curry powder,pilau masala curry powder,Cooking,Pilau Masala,50 g,,,true
+SAMPLE-0165,Pilau Masala Curry powder,pilau masala curry powder,Cooking,Pilau Masala,100 g,,,true
+SAMPLE-0166,Kitui Curry powder,kitui curry powder,Cooking,Kitui,50 g,,,true
+SAMPLE-0167,Kitui Curry powder,kitui curry powder,Cooking,Kitui,100 g,,,true
+SAMPLE-0168,Pwani Curry powder,pwani curry powder,Cooking,Pwani,50 g,,,true
+SAMPLE-0169,Pwani Curry powder,pwani curry powder,Cooking,Pwani,100 g,,,true
+SAMPLE-0170,Royco Curry powder,royco curry powder,Cooking,Royco,50 g,,,true
+SAMPLE-0171,Royco Curry powder,royco curry powder,Cooking,Royco,100 g,,,true
+SAMPLE-0172,Brookside Fresh milk,brookside fresh milk,Dairy,Brookside,500 ml,,,true
+SAMPLE-0173,Brookside Fresh milk,brookside fresh milk,Dairy,Brookside,1 L,,,true
+SAMPLE-0174,Tuzo Fresh milk,tuzo fresh milk,Dairy,Tuzo,500 ml,,,true
+SAMPLE-0175,Tuzo Fresh milk,tuzo fresh milk,Dairy,Tuzo,1 L,,,true
+SAMPLE-0176,Ilara Fresh milk,ilara fresh milk,Dairy,Ilara,500 ml,,,true
+SAMPLE-0177,Ilara Fresh milk,ilara fresh milk,Dairy,Ilara,1 L,,,true
+SAMPLE-0178,Daima Fresh milk,daima fresh milk,Dairy,Daima,500 ml,,,true
+SAMPLE-0179,Daima Fresh milk,daima fresh milk,Dairy,Daima,1 L,,,true
+SAMPLE-0180,New KCC Fresh milk,new kcc fresh milk,Dairy,New KCC,500 ml,,,true
+SAMPLE-0181,New KCC Fresh milk,new kcc fresh milk,Dairy,New KCC,1 L,,,true
+SAMPLE-0182,Brookside Long-life milk,brookside long-life milk,Dairy,Brookside,500 ml,,,true
+SAMPLE-0183,Brookside Long-life milk,brookside long-life milk,Dairy,Brookside,1 L,,,true
+SAMPLE-0184,Tuzo Long-life milk,tuzo long-life milk,Dairy,Tuzo,500 ml,,,true
+SAMPLE-0185,Tuzo Long-life milk,tuzo long-life milk,Dairy,Tuzo,1 L,,,true
+SAMPLE-0186,Daima Long-life milk,daima long-life milk,Dairy,Daima,500 ml,,,true
+SAMPLE-0187,Daima Long-life milk,daima long-life milk,Dairy,Daima,1 L,,,true
+SAMPLE-0188,Fresha Long-life milk,fresha long-life milk,Dairy,Fresha,500 ml,,,true
+SAMPLE-0189,Fresha Long-life milk,fresha long-life milk,Dairy,Fresha,1 L,,,true
+SAMPLE-0190,Ilara Long-life milk,ilara long-life milk,Dairy,Ilara,500 ml,,,true
+SAMPLE-0191,Ilara Long-life milk,ilara long-life milk,Dairy,Ilara,1 L,,,true
+SAMPLE-0192,Brookside Yoghurt,brookside yoghurt,Dairy,Brookside,250 ml,,,true
+SAMPLE-0193,Brookside Yoghurt,brookside yoghurt,Dairy,Brookside,500 ml,,,true
+SAMPLE-0194,Daima Yoghurt,daima yoghurt,Dairy,Daima,250 ml,,,true
+SAMPLE-0195,Daima Yoghurt,daima yoghurt,Dairy,Daima,500 ml,,,true
+SAMPLE-0196,Fresha Yoghurt,fresha yoghurt,Dairy,Fresha,250 ml,,,true
+SAMPLE-0197,Fresha Yoghurt,fresha yoghurt,Dairy,Fresha,500 ml,,,true
+SAMPLE-0198,Tuzo Yoghurt,tuzo yoghurt,Dairy,Tuzo,250 ml,,,true
+SAMPLE-0199,Tuzo Yoghurt,tuzo yoghurt,Dairy,Tuzo,500 ml,,,true
+SAMPLE-0200,Brookside Cheese slices,brookside cheese slices,Dairy,Brookside,200 g,,,true
+SAMPLE-0201,Brookside Cheese slices,brookside cheese slices,Dairy,Brookside,400 g,,,true
+SAMPLE-0202,Happy Cow Cheese slices,happy cow cheese slices,Dairy,Happy Cow,200 g,,,true
+SAMPLE-0203,Happy Cow Cheese slices,happy cow cheese slices,Dairy,Happy Cow,400 g,,,true
+SAMPLE-0204,Alpine Cheese slices,alpine cheese slices,Dairy,Alpine,200 g,,,true
+SAMPLE-0205,Alpine Cheese slices,alpine cheese slices,Dairy,Alpine,400 g,,,true
+SAMPLE-0206,Kenchic Eggs,kenchic eggs,Dairy,Kenchic,Tray of 30,,,true
+SAMPLE-0207,Kenchic Eggs,kenchic eggs,Dairy,Kenchic,6 pack,,,true
+SAMPLE-0208,Local farm Eggs,local farm eggs,Dairy,Local farm,Tray of 30,,,true
+SAMPLE-0209,Local farm Eggs,local farm eggs,Dairy,Local farm,6 pack,,,true
+SAMPLE-0210,Pembe Eggs,pembe eggs,Dairy,Pembe,Tray of 30,,,true
+SAMPLE-0211,Pembe Eggs,pembe eggs,Dairy,Pembe,6 pack,,,true
+SAMPLE-0212,Brookside Butter,brookside butter,Dairy,Brookside,250 g,,,true
+SAMPLE-0213,Brookside Butter,brookside butter,Dairy,Brookside,500 g,,,true
+SAMPLE-0214,Alpine Butter,alpine butter,Dairy,Alpine,250 g,,,true
+SAMPLE-0215,Alpine Butter,alpine butter,Dairy,Alpine,500 g,,,true
+SAMPLE-0216,Lurpak Butter,lurpak butter,Dairy,Lurpak,250 g,,,true
+SAMPLE-0217,Lurpak Butter,lurpak butter,Dairy,Lurpak,500 g,,,true
+SAMPLE-0218,Superloaf Bread (white),superloaf bread (white),Breakfast,Superloaf,400 g,,,true
+SAMPLE-0219,Superloaf Bread (white),superloaf bread (white),Breakfast,Superloaf,800 g,,,true
+SAMPLE-0220,Festive Bread (white),festive bread (white),Breakfast,Festive,400 g,,,true
+SAMPLE-0221,Festive Bread (white),festive bread (white),Breakfast,Festive,800 g,,,true
+SAMPLE-0222,Broadway Bread (white),broadway bread (white),Breakfast,Broadway,400 g,,,true
+SAMPLE-0223,Broadway Bread (white),broadway bread (white),Breakfast,Broadway,800 g,,,true
+SAMPLE-0224,Elliots Bread (white),elliots bread (white),Breakfast,Elliots,400 g,,,true
+SAMPLE-0225,Elliots Bread (white),elliots bread (white),Breakfast,Elliots,800 g,,,true
+SAMPLE-0226,Superloaf Bread (brown),superloaf bread (brown),Breakfast,Superloaf,400 g,,,true
+SAMPLE-0227,Superloaf Bread (brown),superloaf bread (brown),Breakfast,Superloaf,800 g,,,true
+SAMPLE-0228,Festive Bread (brown),festive bread (brown),Breakfast,Festive,400 g,,,true
+SAMPLE-0229,Festive Bread (brown),festive bread (brown),Breakfast,Festive,800 g,,,true
+SAMPLE-0230,Broadway Bread (brown),broadway bread (brown),Breakfast,Broadway,400 g,,,true
+SAMPLE-0231,Broadway Bread (brown),broadway bread (brown),Breakfast,Broadway,800 g,,,true
+SAMPLE-0232,Elliots Bread (brown),elliots bread (brown),Breakfast,Elliots,400 g,,,true
+SAMPLE-0233,Elliots Bread (brown),elliots bread (brown),Breakfast,Elliots,800 g,,,true
+SAMPLE-0234,Ketepa Tea leaves,ketepa tea leaves,Breakfast,Ketepa,100 g,,,true
+SAMPLE-0235,Ketepa Tea leaves,ketepa tea leaves,Breakfast,Ketepa,250 g,,,true
+SAMPLE-0236,Ketepa Tea leaves,ketepa tea leaves,Breakfast,Ketepa,500 g,,,true
+SAMPLE-0237,Tazo Tea leaves,tazo tea leaves,Breakfast,Tazo,100 g,,,true
+SAMPLE-0238,Tazo Tea leaves,tazo tea leaves,Breakfast,Tazo,250 g,,,true
+SAMPLE-0239,Tazo Tea leaves,tazo tea leaves,Breakfast,Tazo,500 g,,,true
+SAMPLE-0240,Kericho Gold Tea leaves,kericho gold tea leaves,Breakfast,Kericho Gold,100 g,,,true
+SAMPLE-0241,Kericho Gold Tea leaves,kericho gold tea leaves,Breakfast,Kericho Gold,250 g,,,true
+SAMPLE-0242,Kericho Gold Tea leaves,kericho gold tea leaves,Breakfast,Kericho Gold,500 g,,,true
+SAMPLE-0243,Chai Bora Tea leaves,chai bora tea leaves,Breakfast,Chai Bora,100 g,,,true
+SAMPLE-0244,Chai Bora Tea leaves,chai bora tea leaves,Breakfast,Chai Bora,250 g,,,true
+SAMPLE-0245,Chai Bora Tea leaves,chai bora tea leaves,Breakfast,Chai Bora,500 g,,,true
+SAMPLE-0246,Zesta Tea leaves,zesta tea leaves,Breakfast,Zesta,100 g,,,true
+SAMPLE-0247,Zesta Tea leaves,zesta tea leaves,Breakfast,Zesta,250 g,,,true
+SAMPLE-0248,Zesta Tea leaves,zesta tea leaves,Breakfast,Zesta,500 g,,,true
+SAMPLE-0249,Ketepa Pride Tea bags,ketepa pride tea bags,Breakfast,Ketepa Pride,50 bags,,,true
+SAMPLE-0250,Ketepa Pride Tea bags,ketepa pride tea bags,Breakfast,Ketepa Pride,100 bags,,,true
+SAMPLE-0251,Kericho Gold Tea bags,kericho gold tea bags,Breakfast,Kericho Gold,50 bags,,,true
+SAMPLE-0252,Kericho Gold Tea bags,kericho gold tea bags,Breakfast,Kericho Gold,100 bags,,,true
+SAMPLE-0253,Lipton Tea bags,lipton tea bags,Breakfast,Lipton,50 bags,,,true
+SAMPLE-0254,Lipton Tea bags,lipton tea bags,Breakfast,Lipton,100 bags,,,true
+SAMPLE-0255,Zesta Tea bags,zesta tea bags,Breakfast,Zesta,50 bags,,,true
+SAMPLE-0256,Zesta Tea bags,zesta tea bags,Breakfast,Zesta,100 bags,,,true
+SAMPLE-0257,Nescafe Instant coffee,nescafe instant coffee,Breakfast,Nescafe,50 g,,,true
+SAMPLE-0258,Nescafe Instant coffee,nescafe instant coffee,Breakfast,Nescafe,100 g,,,true
+SAMPLE-0259,Nescafe Instant coffee,nescafe instant coffee,Breakfast,Nescafe,200 g,,,true
+SAMPLE-0260,Dormans Instant coffee,dormans instant coffee,Breakfast,Dormans,50 g,,,true
+SAMPLE-0261,Dormans Instant coffee,dormans instant coffee,Breakfast,Dormans,100 g,,,true
+SAMPLE-0262,Dormans Instant coffee,dormans instant coffee,Breakfast,Dormans,200 g,,,true
+SAMPLE-0263,Africafe Instant coffee,africafe instant coffee,Breakfast,Africafe,50 g,,,true
+SAMPLE-0264,Africafe Instant coffee,africafe instant coffee,Breakfast,Africafe,100 g,,,true
+SAMPLE-0265,Africafe Instant coffee,africafe instant coffee,Breakfast,Africafe,200 g,,,true
+SAMPLE-0266,Kenya Coffee Instant coffee,kenya coffee instant coffee,Breakfast,Kenya Coffee,50 g,,,true
+SAMPLE-0267,Kenya Coffee Instant coffee,kenya coffee instant coffee,Breakfast,Kenya Coffee,100 g,,,true
+SAMPLE-0268,Kenya Coffee Instant coffee,kenya coffee instant coffee,Breakfast,Kenya Coffee,200 g,,,true
+SAMPLE-0269,Kellogg's Cornflakes,kellogg's cornflakes,Breakfast,Kellogg's,250 g,,,true
+SAMPLE-0270,Kellogg's Cornflakes,kellogg's cornflakes,Breakfast,Kellogg's,500 g,,,true
+SAMPLE-0271,Weetabix Cornflakes,weetabix cornflakes,Breakfast,Weetabix,250 g,,,true
+SAMPLE-0272,Weetabix Cornflakes,weetabix cornflakes,Breakfast,Weetabix,500 g,,,true
+SAMPLE-0273,Jungle Oats Cornflakes,jungle oats cornflakes,Breakfast,Jungle Oats,250 g,,,true
+SAMPLE-0274,Jungle Oats Cornflakes,jungle oats cornflakes,Breakfast,Jungle Oats,500 g,,,true
+SAMPLE-0275,Pride Cornflakes,pride cornflakes,Breakfast,Pride,250 g,,,true
+SAMPLE-0276,Pride Cornflakes,pride cornflakes,Breakfast,Pride,500 g,,,true
+SAMPLE-0277,Jungle Oats Oats,jungle oats oats,Breakfast,Jungle Oats,500 g,,,true
+SAMPLE-0278,Jungle Oats Oats,jungle oats oats,Breakfast,Jungle Oats,1 kg,,,true
+SAMPLE-0279,Quaker Oats,quaker oats,Breakfast,Quaker,500 g,,,true
+SAMPLE-0280,Quaker Oats,quaker oats,Breakfast,Quaker,1 kg,,,true
+SAMPLE-0281,Pride Oats,pride oats,Breakfast,Pride,500 g,,,true
+SAMPLE-0282,Pride Oats,pride oats,Breakfast,Pride,1 kg,,,true
+SAMPLE-0283,Peptang Peanut butter,peptang peanut butter,Breakfast,Peptang,250 g,,,true
+SAMPLE-0284,Peptang Peanut butter,peptang peanut butter,Breakfast,Peptang,400 g,,,true
+SAMPLE-0285,Cadbury Peanut butter,cadbury peanut butter,Breakfast,Cadbury,250 g,,,true
+SAMPLE-0286,Cadbury Peanut butter,cadbury peanut butter,Breakfast,Cadbury,400 g,,,true
+SAMPLE-0287,Nutri Peanut butter,nutri peanut butter,Breakfast,Nutri,250 g,,,true
+SAMPLE-0288,Nutri Peanut butter,nutri peanut butter,Breakfast,Nutri,400 g,,,true
+SAMPLE-0289,Skippy Peanut butter,skippy peanut butter,Breakfast,Skippy,250 g,,,true
+SAMPLE-0290,Skippy Peanut butter,skippy peanut butter,Breakfast,Skippy,400 g,,,true
+SAMPLE-0291,Kenya Orchards Jam,kenya orchards jam,Breakfast,Kenya Orchards,400 g,,,true
+SAMPLE-0292,Kenya Orchards Jam,kenya orchards jam,Breakfast,Kenya Orchards,450 g,,,true
+SAMPLE-0293,Wilkin Jam,wilkin jam,Breakfast,Wilkin,400 g,,,true
+SAMPLE-0294,Wilkin Jam,wilkin jam,Breakfast,Wilkin,450 g,,,true
+SAMPLE-0295,Golden Fry Jam,golden fry jam,Breakfast,Golden Fry,400 g,,,true
+SAMPLE-0296,Golden Fry Jam,golden fry jam,Breakfast,Golden Fry,450 g,,,true
+SAMPLE-0297,Coca-Cola Soda,coca-cola soda,Drinks,Coca-Cola,300 ml,,,true
+SAMPLE-0298,Coca-Cola Soda,coca-cola soda,Drinks,Coca-Cola,500 ml,,,true
+SAMPLE-0299,Coca-Cola Soda,coca-cola soda,Drinks,Coca-Cola,1.25 L,,,true
+SAMPLE-0300,Coca-Cola Soda,coca-cola soda,Drinks,Coca-Cola,2 L,,,true
+SAMPLE-0301,Fanta Soda,fanta soda,Drinks,Fanta,300 ml,,,true
+SAMPLE-0302,Fanta Soda,fanta soda,Drinks,Fanta,500 ml,,,true
+SAMPLE-0303,Fanta Soda,fanta soda,Drinks,Fanta,1.25 L,,,true
+SAMPLE-0304,Fanta Soda,fanta soda,Drinks,Fanta,2 L,,,true
+SAMPLE-0305,Sprite Soda,sprite soda,Drinks,Sprite,300 ml,,,true
+SAMPLE-0306,Sprite Soda,sprite soda,Drinks,Sprite,500 ml,,,true
+SAMPLE-0307,Sprite Soda,sprite soda,Drinks,Sprite,1.25 L,,,true
+SAMPLE-0308,Sprite Soda,sprite soda,Drinks,Sprite,2 L,,,true
+SAMPLE-0309,Pepsi Soda,pepsi soda,Drinks,Pepsi,300 ml,,,true
+SAMPLE-0310,Pepsi Soda,pepsi soda,Drinks,Pepsi,500 ml,,,true
+SAMPLE-0311,Pepsi Soda,pepsi soda,Drinks,Pepsi,1.25 L,,,true
+SAMPLE-0312,Pepsi Soda,pepsi soda,Drinks,Pepsi,2 L,,,true
+SAMPLE-0313,Stoney Soda,stoney soda,Drinks,Stoney,300 ml,,,true
+SAMPLE-0314,Stoney Soda,stoney soda,Drinks,Stoney,500 ml,,,true
+SAMPLE-0315,Stoney Soda,stoney soda,Drinks,Stoney,1.25 L,,,true
+SAMPLE-0316,Stoney Soda,stoney soda,Drinks,Stoney,2 L,,,true
+SAMPLE-0317,Krest Soda,krest soda,Drinks,Krest,300 ml,,,true
+SAMPLE-0318,Krest Soda,krest soda,Drinks,Krest,500 ml,,,true
+SAMPLE-0319,Krest Soda,krest soda,Drinks,Krest,1.25 L,,,true
+SAMPLE-0320,Krest Soda,krest soda,Drinks,Krest,2 L,,,true
+SAMPLE-0321,Dasani Bottled water,dasani bottled water,Drinks,Dasani,500 ml,,,true
+SAMPLE-0322,Dasani Bottled water,dasani bottled water,Drinks,Dasani,1 L,,,true
+SAMPLE-0323,Dasani Bottled water,dasani bottled water,Drinks,Dasani,5 L,,,true
+SAMPLE-0324,Keringet Bottled water,keringet bottled water,Drinks,Keringet,500 ml,,,true
+SAMPLE-0325,Keringet Bottled water,keringet bottled water,Drinks,Keringet,1 L,,,true
+SAMPLE-0326,Keringet Bottled water,keringet bottled water,Drinks,Keringet,5 L,,,true
+SAMPLE-0327,Highlands Bottled water,highlands bottled water,Drinks,Highlands,500 ml,,,true
+SAMPLE-0328,Highlands Bottled water,highlands bottled water,Drinks,Highlands,1 L,,,true
+SAMPLE-0329,Highlands Bottled water,highlands bottled water,Drinks,Highlands,5 L,,,true
+SAMPLE-0330,Aquamist Bottled water,aquamist bottled water,Drinks,Aquamist,500 ml,,,true
+SAMPLE-0331,Aquamist Bottled water,aquamist bottled water,Drinks,Aquamist,1 L,,,true
+SAMPLE-0332,Aquamist Bottled water,aquamist bottled water,Drinks,Aquamist,5 L,,,true
+SAMPLE-0333,Quencher Bottled water,quencher bottled water,Drinks,Quencher,500 ml,,,true
+SAMPLE-0334,Quencher Bottled water,quencher bottled water,Drinks,Quencher,1 L,,,true
+SAMPLE-0335,Quencher Bottled water,quencher bottled water,Drinks,Quencher,5 L,,,true
+SAMPLE-0336,Minute Maid Juice,minute maid juice,Drinks,Minute Maid,500 ml,,,true
+SAMPLE-0337,Minute Maid Juice,minute maid juice,Drinks,Minute Maid,1 L,,,true
+SAMPLE-0338,Minute Maid Juice,minute maid juice,Drinks,Minute Maid,2 L,,,true
+SAMPLE-0339,Del Monte Juice,del monte juice,Drinks,Del Monte,500 ml,,,true
+SAMPLE-0340,Del Monte Juice,del monte juice,Drinks,Del Monte,1 L,,,true
+SAMPLE-0341,Del Monte Juice,del monte juice,Drinks,Del Monte,2 L,,,true
+SAMPLE-0342,Delmonte Juice,delmonte juice,Drinks,Delmonte,500 ml,,,true
+SAMPLE-0343,Delmonte Juice,delmonte juice,Drinks,Delmonte,1 L,,,true
+SAMPLE-0344,Delmonte Juice,delmonte juice,Drinks,Delmonte,2 L,,,true
+SAMPLE-0345,Pick n Peel Juice,pick n peel juice,Drinks,Pick n Peel,500 ml,,,true
+SAMPLE-0346,Pick n Peel Juice,pick n peel juice,Drinks,Pick n Peel,1 L,,,true
+SAMPLE-0347,Pick n Peel Juice,pick n peel juice,Drinks,Pick n Peel,2 L,,,true
+SAMPLE-0348,Afia Juice,afia juice,Drinks,Afia,500 ml,,,true
+SAMPLE-0349,Afia Juice,afia juice,Drinks,Afia,1 L,,,true
+SAMPLE-0350,Afia Juice,afia juice,Drinks,Afia,2 L,,,true
+SAMPLE-0351,Red Bull Energy drink,red bull energy drink,Drinks,Red Bull,250 ml,,,true
+SAMPLE-0352,Red Bull Energy drink,red bull energy drink,Drinks,Red Bull,500 ml,,,true
+SAMPLE-0353,Monster Energy drink,monster energy drink,Drinks,Monster,250 ml,,,true
+SAMPLE-0354,Monster Energy drink,monster energy drink,Drinks,Monster,500 ml,,,true
+SAMPLE-0355,Predator Energy drink,predator energy drink,Drinks,Predator,250 ml,,,true
+SAMPLE-0356,Predator Energy drink,predator energy drink,Drinks,Predator,500 ml,,,true
+SAMPLE-0357,Power Play Energy drink,power play energy drink,Drinks,Power Play,250 ml,,,true
+SAMPLE-0358,Power Play Energy drink,power play energy drink,Drinks,Power Play,500 ml,,,true
+SAMPLE-0359,Cadbury Drinking chocolate,cadbury drinking chocolate,Drinks,Cadbury,200 g,,,true
+SAMPLE-0360,Cadbury Drinking chocolate,cadbury drinking chocolate,Drinks,Cadbury,400 g,,,true
+SAMPLE-0361,Nestle Milo Drinking chocolate,nestle milo drinking chocolate,Drinks,Nestle Milo,200 g,,,true
+SAMPLE-0362,Nestle Milo Drinking chocolate,nestle milo drinking chocolate,Drinks,Nestle Milo,400 g,,,true
+SAMPLE-0363,Ovaltine Drinking chocolate,ovaltine drinking chocolate,Drinks,Ovaltine,200 g,,,true
+SAMPLE-0364,Ovaltine Drinking chocolate,ovaltine drinking chocolate,Drinks,Ovaltine,400 g,,,true
+SAMPLE-0365,Crown Biscuits,crown biscuits,Snacks,Crown,100 g,,,true
+SAMPLE-0366,Crown Biscuits,crown biscuits,Snacks,Crown,200 g,,,true
+SAMPLE-0367,Crown Biscuits,crown biscuits,Snacks,Crown,400 g,,,true
+SAMPLE-0368,Britania Biscuits,britania biscuits,Snacks,Britania,100 g,,,true
+SAMPLE-0369,Britania Biscuits,britania biscuits,Snacks,Britania,200 g,,,true
+SAMPLE-0370,Britania Biscuits,britania biscuits,Snacks,Britania,400 g,,,true
+SAMPLE-0371,Oreo Biscuits,oreo biscuits,Snacks,Oreo,100 g,,,true
+SAMPLE-0372,Oreo Biscuits,oreo biscuits,Snacks,Oreo,200 g,,,true
+SAMPLE-0373,Oreo Biscuits,oreo biscuits,Snacks,Oreo,400 g,,,true
+SAMPLE-0374,Tuc Biscuits,tuc biscuits,Snacks,Tuc,100 g,,,true
+SAMPLE-0375,Tuc Biscuits,tuc biscuits,Snacks,Tuc,200 g,,,true
+SAMPLE-0376,Tuc Biscuits,tuc biscuits,Snacks,Tuc,400 g,,,true
+SAMPLE-0377,Mikado Biscuits,mikado biscuits,Snacks,Mikado,100 g,,,true
+SAMPLE-0378,Mikado Biscuits,mikado biscuits,Snacks,Mikado,200 g,,,true
+SAMPLE-0379,Mikado Biscuits,mikado biscuits,Snacks,Mikado,400 g,,,true
+SAMPLE-0380,Digestive Biscuits,digestive biscuits,Snacks,Digestive,100 g,,,true
+SAMPLE-0381,Digestive Biscuits,digestive biscuits,Snacks,Digestive,200 g,,,true
+SAMPLE-0382,Digestive Biscuits,digestive biscuits,Snacks,Digestive,400 g,,,true
+SAMPLE-0383,Pringles Crisps,pringles crisps,Snacks,Pringles,50 g,,,true
+SAMPLE-0384,Pringles Crisps,pringles crisps,Snacks,Pringles,100 g,,,true
+SAMPLE-0385,Pringles Crisps,pringles crisps,Snacks,Pringles,165 g,,,true
+SAMPLE-0386,Lays Crisps,lays crisps,Snacks,Lays,50 g,,,true
+SAMPLE-0387,Lays Crisps,lays crisps,Snacks,Lays,100 g,,,true
+SAMPLE-0388,Lays Crisps,lays crisps,Snacks,Lays,165 g,,,true
+SAMPLE-0389,Kenchic Crisps,kenchic crisps,Snacks,Kenchic,50 g,,,true
+SAMPLE-0390,Kenchic Crisps,kenchic crisps,Snacks,Kenchic,100 g,,,true
+SAMPLE-0391,Kenchic Crisps,kenchic crisps,Snacks,Kenchic,165 g,,,true
+SAMPLE-0392,Kettle Crisps,kettle crisps,Snacks,Kettle,50 g,,,true
+SAMPLE-0393,Kettle Crisps,kettle crisps,Snacks,Kettle,100 g,,,true
+SAMPLE-0394,Kettle Crisps,kettle crisps,Snacks,Kettle,165 g,,,true
+SAMPLE-0395,Crisps Plus Crisps,crisps plus crisps,Snacks,Crisps Plus,50 g,,,true
+SAMPLE-0396,Crisps Plus Crisps,crisps plus crisps,Snacks,Crisps Plus,100 g,,,true
+SAMPLE-0397,Crisps Plus Crisps,crisps plus crisps,Snacks,Crisps Plus,165 g,,,true
+SAMPLE-0398,Cadbury Chocolate bar,cadbury chocolate bar,Snacks,Cadbury,45 g,,,true
+SAMPLE-0399,Cadbury Chocolate bar,cadbury chocolate bar,Snacks,Cadbury,100 g,,,true
+SAMPLE-0400,Nestle Chocolate bar,nestle chocolate bar,Snacks,Nestle,45 g,,,true
+SAMPLE-0401,Nestle Chocolate bar,nestle chocolate bar,Snacks,Nestle,100 g,,,true
+SAMPLE-0402,Snickers Chocolate bar,snickers chocolate bar,Snacks,Snickers,45 g,,,true
+SAMPLE-0403,Snickers Chocolate bar,snickers chocolate bar,Snacks,Snickers,100 g,,,true
+SAMPLE-0404,Kit Kat Chocolate bar,kit kat chocolate bar,Snacks,Kit Kat,45 g,,,true
+SAMPLE-0405,Kit Kat Chocolate bar,kit kat chocolate bar,Snacks,Kit Kat,100 g,,,true
+SAMPLE-0406,Mentos Sweets,mentos sweets,Snacks,Mentos,50 g,,,true
+SAMPLE-0407,Mentos Sweets,mentos sweets,Snacks,Mentos,150 g,,,true
+SAMPLE-0408,Haribo Sweets,haribo sweets,Snacks,Haribo,50 g,,,true
+SAMPLE-0409,Haribo Sweets,haribo sweets,Snacks,Haribo,150 g,,,true
+SAMPLE-0410,Lolly Sweets,lolly sweets,Snacks,Lolly,50 g,,,true
+SAMPLE-0411,Lolly Sweets,lolly sweets,Snacks,Lolly,150 g,,,true
+SAMPLE-0412,Fruity Sweets,fruity sweets,Snacks,Fruity,50 g,,,true
+SAMPLE-0413,Fruity Sweets,fruity sweets,Snacks,Fruity,150 g,,,true
+SAMPLE-0414,Nuts Plus Groundnuts,nuts plus groundnuts,Snacks,Nuts Plus,250 g,,,true
+SAMPLE-0415,Nuts Plus Groundnuts,nuts plus groundnuts,Snacks,Nuts Plus,500 g,,,true
+SAMPLE-0416,Local Groundnuts,local groundnuts,Snacks,Local,250 g,,,true
+SAMPLE-0417,Local Groundnuts,local groundnuts,Snacks,Local,500 g,,,true
+SAMPLE-0418,Kitui Groundnuts,kitui groundnuts,Snacks,Kitui,250 g,,,true
+SAMPLE-0419,Kitui Groundnuts,kitui groundnuts,Snacks,Kitui,500 g,,,true
+SAMPLE-0420,Local farm Tomatoes,local farm tomatoes,Fresh produce,Local farm,1 kg,,,true
+SAMPLE-0421,Local farm Tomatoes,local farm tomatoes,Fresh produce,Local farm,500 g,,,true
+SAMPLE-0422,Local farm Onions,local farm onions,Fresh produce,Local farm,1 kg,,,true
+SAMPLE-0423,Local farm Onions,local farm onions,Fresh produce,Local farm,500 g,,,true
+SAMPLE-0424,Red Bull Farms Onions,red bull farms onions,Fresh produce,Red Bull Farms,1 kg,,,true
+SAMPLE-0425,Red Bull Farms Onions,red bull farms onions,Fresh produce,Red Bull Farms,500 g,,,true
+SAMPLE-0426,Local farm Potatoes,local farm potatoes,Fresh produce,Local farm,1 kg,,,true
+SAMPLE-0427,Local farm Potatoes,local farm potatoes,Fresh produce,Local farm,2 kg,,,true
+SAMPLE-0428,Nyandarua Potatoes,nyandarua potatoes,Fresh produce,Nyandarua,1 kg,,,true
+SAMPLE-0429,Nyandarua Potatoes,nyandarua potatoes,Fresh produce,Nyandarua,2 kg,,,true
+SAMPLE-0430,Local farm Sukuma wiki,local farm sukuma wiki,Fresh produce,Local farm,bunch,,,true
+SAMPLE-0431,Local farm Sukuma wiki,local farm sukuma wiki,Fresh produce,Local farm,500 g,,,true
+SAMPLE-0432,Local farm Spinach,local farm spinach,Fresh produce,Local farm,bunch,,,true
+SAMPLE-0433,Local farm Spinach,local farm spinach,Fresh produce,Local farm,500 g,,,true
+SAMPLE-0434,Local farm Cabbage,local farm cabbage,Fresh produce,Local farm,medium,,,true
+SAMPLE-0435,Local farm Cabbage,local farm cabbage,Fresh produce,Local farm,large,,,true
+SAMPLE-0436,Local farm Carrots,local farm carrots,Fresh produce,Local farm,1 kg,,,true
+SAMPLE-0437,Local farm Carrots,local farm carrots,Fresh produce,Local farm,500 g,,,true
+SAMPLE-0438,Local farm Bananas,local farm bananas,Fresh produce,Local farm,1 kg,,,true
+SAMPLE-0439,Local farm Bananas,local farm bananas,Fresh produce,Local farm,bunch,,,true
+SAMPLE-0440,Ripe Bananas,ripe bananas,Fresh produce,Ripe,1 kg,,,true
+SAMPLE-0441,Ripe Bananas,ripe bananas,Fresh produce,Ripe,bunch,,,true
+SAMPLE-0442,Hass Avocado,hass avocado,Fresh produce,Hass,each,,,true
+SAMPLE-0443,Hass Avocado,hass avocado,Fresh produce,Hass,4 pack,,,true
+SAMPLE-0444,Fuerte Avocado,fuerte avocado,Fresh produce,Fuerte,each,,,true
+SAMPLE-0445,Fuerte Avocado,fuerte avocado,Fresh produce,Fuerte,4 pack,,,true
+SAMPLE-0446,Local farm Oranges,local farm oranges,Fresh produce,Local farm,1 kg,,,true
+SAMPLE-0447,Local farm Oranges,local farm oranges,Fresh produce,Local farm,6 pack,,,true
+SAMPLE-0448,Local farm Watermelon,local farm watermelon,Fresh produce,Local farm,1 kg,,,true
+SAMPLE-0449,Local farm Watermelon,local farm watermelon,Fresh produce,Local farm,whole,,,true
+SAMPLE-0450,Apple Mangoes,apple mangoes,Fresh produce,Apple,1 kg,,,true
+SAMPLE-0451,Apple Mangoes,apple mangoes,Fresh produce,Apple,each,,,true
+SAMPLE-0452,Ngowe Mangoes,ngowe mangoes,Fresh produce,Ngowe,1 kg,,,true
+SAMPLE-0453,Ngowe Mangoes,ngowe mangoes,Fresh produce,Ngowe,each,,,true
+SAMPLE-0454,Farmers Choice Beef,farmers choice beef,Meat & fish,Farmers Choice,500 g,,,true
+SAMPLE-0455,Farmers Choice Beef,farmers choice beef,Meat & fish,Farmers Choice,1 kg,,,true
+SAMPLE-0456,Choice Cuts Beef,choice cuts beef,Meat & fish,Choice Cuts,500 g,,,true
+SAMPLE-0457,Choice Cuts Beef,choice cuts beef,Meat & fish,Choice Cuts,1 kg,,,true
+SAMPLE-0458,Butcher Beef,butcher beef,Meat & fish,Butcher,500 g,,,true
+SAMPLE-0459,Butcher Beef,butcher beef,Meat & fish,Butcher,1 kg,,,true
+SAMPLE-0460,Kenchic Chicken (whole),kenchic chicken (whole),Meat & fish,Kenchic,1.2 kg,,,true
+SAMPLE-0461,Kenchic Chicken (whole),kenchic chicken (whole),Meat & fish,Kenchic,1.6 kg,,,true
+SAMPLE-0462,Farmers Choice Chicken (whole),farmers choice chicken (whole),Meat & fish,Farmers Choice,1.2 kg,,,true
+SAMPLE-0463,Farmers Choice Chicken (whole),farmers choice chicken (whole),Meat & fish,Farmers Choice,1.6 kg,,,true
+SAMPLE-0464,Brookside Chicken (whole),brookside chicken (whole),Meat & fish,Brookside,1.2 kg,,,true
+SAMPLE-0465,Brookside Chicken (whole),brookside chicken (whole),Meat & fish,Brookside,1.6 kg,,,true
+SAMPLE-0466,Farmers Choice Sausages,farmers choice sausages,Meat & fish,Farmers Choice,500 g,,,true
+SAMPLE-0467,Farmers Choice Sausages,farmers choice sausages,Meat & fish,Farmers Choice,1 kg,,,true
+SAMPLE-0468,Choice Meats Sausages,choice meats sausages,Meat & fish,Choice Meats,500 g,,,true
+SAMPLE-0469,Choice Meats Sausages,choice meats sausages,Meat & fish,Choice Meats,1 kg,,,true
+SAMPLE-0470,Kenchic Sausages,kenchic sausages,Meat & fish,Kenchic,500 g,,,true
+SAMPLE-0471,Kenchic Sausages,kenchic sausages,Meat & fish,Kenchic,1 kg,,,true
+SAMPLE-0472,Quality Meats Sausages,quality meats sausages,Meat & fish,Quality Meats,500 g,,,true
+SAMPLE-0473,Quality Meats Sausages,quality meats sausages,Meat & fish,Quality Meats,1 kg,,,true
+SAMPLE-0474,Lake Victoria Tilapia,lake victoria tilapia,Meat & fish,Lake Victoria,each,,,true
+SAMPLE-0475,Lake Victoria Tilapia,lake victoria tilapia,Meat & fish,Lake Victoria,1 kg,,,true
+SAMPLE-0476,Fresh Catch Tilapia,fresh catch tilapia,Meat & fish,Fresh Catch,each,,,true
+SAMPLE-0477,Fresh Catch Tilapia,fresh catch tilapia,Meat & fish,Fresh Catch,1 kg,,,true
+SAMPLE-0478,Lake Victoria Omena (dried fish),lake victoria omena (dried fish),Meat & fish,Lake Victoria,250 g,,,true
+SAMPLE-0479,Lake Victoria Omena (dried fish),lake victoria omena (dried fish),Meat & fish,Lake Victoria,500 g,,,true
+SAMPLE-0480,Local Omena (dried fish),local omena (dried fish),Meat & fish,Local,250 g,,,true
+SAMPLE-0481,Local Omena (dried fish),local omena (dried fish),Meat & fish,Local,500 g,,,true
+SAMPLE-0482,Omo Washing powder,omo washing powder,Household,Omo,500 g,,,true
+SAMPLE-0483,Omo Washing powder,omo washing powder,Household,Omo,1 kg,,,true
+SAMPLE-0484,Omo Washing powder,omo washing powder,Household,Omo,2 kg,,,true
+SAMPLE-0485,Ariel Washing powder,ariel washing powder,Household,Ariel,500 g,,,true
+SAMPLE-0486,Ariel Washing powder,ariel washing powder,Household,Ariel,1 kg,,,true
+SAMPLE-0487,Ariel Washing powder,ariel washing powder,Household,Ariel,2 kg,,,true
+SAMPLE-0488,Sunlight Washing powder,sunlight washing powder,Household,Sunlight,500 g,,,true
+SAMPLE-0489,Sunlight Washing powder,sunlight washing powder,Household,Sunlight,1 kg,,,true
+SAMPLE-0490,Sunlight Washing powder,sunlight washing powder,Household,Sunlight,2 kg,,,true
+SAMPLE-0491,Toss Washing powder,toss washing powder,Household,Toss,500 g,,,true
+SAMPLE-0492,Toss Washing powder,toss washing powder,Household,Toss,1 kg,,,true
+SAMPLE-0493,Toss Washing powder,toss washing powder,Household,Toss,2 kg,,,true
+SAMPLE-0494,Ushindi Washing powder,ushindi washing powder,Household,Ushindi,500 g,,,true
+SAMPLE-0495,Ushindi Washing powder,ushindi washing powder,Household,Ushindi,1 kg,,,true
+SAMPLE-0496,Ushindi Washing powder,ushindi washing powder,Household,Ushindi,2 kg,,,true
+SAMPLE-0497,Menengai Bar soap,menengai bar soap,Household,Menengai,200 g,,,true
+SAMPLE-0498,Menengai Bar soap,menengai bar soap,Household,Menengai,800 g,,,true
+SAMPLE-0499,Geisha Bar soap,geisha bar soap,Household,Geisha,200 g,,,true
+SAMPLE-0500,Geisha Bar soap,geisha bar soap,Household,Geisha,800 g,,,true
+SAMPLE-0501,Sunlight Bar soap,sunlight bar soap,Household,Sunlight,200 g,,,true
+SAMPLE-0502,Sunlight Bar soap,sunlight bar soap,Household,Sunlight,800 g,,,true
+SAMPLE-0503,Dettol Bar soap,dettol bar soap,Household,Dettol,200 g,,,true
+SAMPLE-0504,Dettol Bar soap,dettol bar soap,Household,Dettol,800 g,,,true
+SAMPLE-0505,Sunlight Dish soap,sunlight dish soap,Household,Sunlight,500 ml,,,true
+SAMPLE-0506,Sunlight Dish soap,sunlight dish soap,Household,Sunlight,1 L,,,true
+SAMPLE-0507,Vim Dish soap,vim dish soap,Household,Vim,500 ml,,,true
+SAMPLE-0508,Vim Dish soap,vim dish soap,Household,Vim,1 L,,,true
+SAMPLE-0509,Ajax Dish soap,ajax dish soap,Household,Ajax,500 ml,,,true
+SAMPLE-0510,Ajax Dish soap,ajax dish soap,Household,Ajax,1 L,,,true
+SAMPLE-0511,Domestos Dish soap,domestos dish soap,Household,Domestos,500 ml,,,true
+SAMPLE-0512,Domestos Dish soap,domestos dish soap,Household,Domestos,1 L,,,true
+SAMPLE-0513,Jik Bleach,jik bleach,Household,Jik,500 ml,,,true
+SAMPLE-0514,Jik Bleach,jik bleach,Household,Jik,1 L,,,true
+SAMPLE-0515,Domestos Bleach,domestos bleach,Household,Domestos,500 ml,,,true
+SAMPLE-0516,Domestos Bleach,domestos bleach,Household,Domestos,1 L,,,true
+SAMPLE-0517,Harpic Bleach,harpic bleach,Household,Harpic,500 ml,,,true
+SAMPLE-0518,Harpic Bleach,harpic bleach,Household,Harpic,1 L,,,true
+SAMPLE-0519,Rose Toilet paper,rose toilet paper,Household,Rose,4 rolls,,,true
+SAMPLE-0520,Rose Toilet paper,rose toilet paper,Household,Rose,10 rolls,,,true
+SAMPLE-0521,Kleenex Toilet paper,kleenex toilet paper,Household,Kleenex,4 rolls,,,true
+SAMPLE-0522,Kleenex Toilet paper,kleenex toilet paper,Household,Kleenex,10 rolls,,,true
+SAMPLE-0523,Softcare Toilet paper,softcare toilet paper,Household,Softcare,4 rolls,,,true
+SAMPLE-0524,Softcare Toilet paper,softcare toilet paper,Household,Softcare,10 rolls,,,true
+SAMPLE-0525,Fay Toilet paper,fay toilet paper,Household,Fay,4 rolls,,,true
+SAMPLE-0526,Fay Toilet paper,fay toilet paper,Household,Fay,10 rolls,,,true
+SAMPLE-0527,Velvex Toilet paper,velvex toilet paper,Household,Velvex,4 rolls,,,true
+SAMPLE-0528,Velvex Toilet paper,velvex toilet paper,Household,Velvex,10 rolls,,,true
+SAMPLE-0529,Rose Tissue paper,rose tissue paper,Household,Rose,single box,,,true
+SAMPLE-0530,Rose Tissue paper,rose tissue paper,Household,Rose,3 pack,,,true
+SAMPLE-0531,Fay Tissue paper,fay tissue paper,Household,Fay,single box,,,true
+SAMPLE-0532,Fay Tissue paper,fay tissue paper,Household,Fay,3 pack,,,true
+SAMPLE-0533,Kleenex Tissue paper,kleenex tissue paper,Household,Kleenex,single box,,,true
+SAMPLE-0534,Kleenex Tissue paper,kleenex tissue paper,Household,Kleenex,3 pack,,,true
+SAMPLE-0535,Kibo Matchbox,kibo matchbox,Household,Kibo,10 pack,,,true
+SAMPLE-0536,Kibo Matchbox,kibo matchbox,Household,Kibo,20 pack,,,true
+SAMPLE-0537,Cobra Matchbox,cobra matchbox,Household,Cobra,10 pack,,,true
+SAMPLE-0538,Cobra Matchbox,cobra matchbox,Household,Cobra,20 pack,,,true
+SAMPLE-0539,Lion Matchbox,lion matchbox,Household,Lion,10 pack,,,true
+SAMPLE-0540,Lion Matchbox,lion matchbox,Household,Lion,20 pack,,,true
+SAMPLE-0541,Local Charcoal,local charcoal,Household,Local,2 kg,,,true
+SAMPLE-0542,Local Charcoal,local charcoal,Household,Local,5 kg,,,true
+SAMPLE-0543,Jikoni Charcoal,jikoni charcoal,Household,Jikoni,2 kg,,,true
+SAMPLE-0544,Jikoni Charcoal,jikoni charcoal,Household,Jikoni,5 kg,,,true
+SAMPLE-0545,Total Cooking gas refill,total cooking gas refill,Household,Total,6 kg,,,true
+SAMPLE-0546,Total Cooking gas refill,total cooking gas refill,Household,Total,13 kg,,,true
+SAMPLE-0547,K-Gas Cooking gas refill,k-gas cooking gas refill,Household,K-Gas,6 kg,,,true
+SAMPLE-0548,K-Gas Cooking gas refill,k-gas cooking gas refill,Household,K-Gas,13 kg,,,true
+SAMPLE-0549,ProGas Cooking gas refill,progas cooking gas refill,Household,ProGas,6 kg,,,true
+SAMPLE-0550,ProGas Cooking gas refill,progas cooking gas refill,Household,ProGas,13 kg,,,true
+SAMPLE-0551,Hashi Cooking gas refill,hashi cooking gas refill,Household,Hashi,6 kg,,,true
+SAMPLE-0552,Hashi Cooking gas refill,hashi cooking gas refill,Household,Hashi,13 kg,,,true
+SAMPLE-0553,Colgate Toothpaste,colgate toothpaste,Personal care,Colgate,50 ml,,,true
+SAMPLE-0554,Colgate Toothpaste,colgate toothpaste,Personal care,Colgate,100 ml,,,true
+SAMPLE-0555,Close Up Toothpaste,close up toothpaste,Personal care,Close Up,50 ml,,,true
+SAMPLE-0556,Close Up Toothpaste,close up toothpaste,Personal care,Close Up,100 ml,,,true
+SAMPLE-0557,Aquafresh Toothpaste,aquafresh toothpaste,Personal care,Aquafresh,50 ml,,,true
+SAMPLE-0558,Aquafresh Toothpaste,aquafresh toothpaste,Personal care,Aquafresh,100 ml,,,true
+SAMPLE-0559,Oral-B Toothpaste,oral-b toothpaste,Personal care,Oral-B,50 ml,,,true
+SAMPLE-0560,Oral-B Toothpaste,oral-b toothpaste,Personal care,Oral-B,100 ml,,,true
+SAMPLE-0561,Vaseline Body lotion,vaseline body lotion,Personal care,Vaseline,200 ml,,,true
+SAMPLE-0562,Vaseline Body lotion,vaseline body lotion,Personal care,Vaseline,400 ml,,,true
+SAMPLE-0563,Nivea Body lotion,nivea body lotion,Personal care,Nivea,200 ml,,,true
+SAMPLE-0564,Nivea Body lotion,nivea body lotion,Personal care,Nivea,400 ml,,,true
+SAMPLE-0565,Johnson's Body lotion,johnson's body lotion,Personal care,Johnson's,200 ml,,,true
+SAMPLE-0566,Johnson's Body lotion,johnson's body lotion,Personal care,Johnson's,400 ml,,,true
+SAMPLE-0567,Dove Body lotion,dove body lotion,Personal care,Dove,200 ml,,,true
+SAMPLE-0568,Dove Body lotion,dove body lotion,Personal care,Dove,400 ml,,,true
+SAMPLE-0569,Dove Shower gel,dove shower gel,Personal care,Dove,250 ml,,,true
+SAMPLE-0570,Dove Shower gel,dove shower gel,Personal care,Dove,500 ml,,,true
+SAMPLE-0571,Lux Shower gel,lux shower gel,Personal care,Lux,250 ml,,,true
+SAMPLE-0572,Lux Shower gel,lux shower gel,Personal care,Lux,500 ml,,,true
+SAMPLE-0573,Nivea Shower gel,nivea shower gel,Personal care,Nivea,250 ml,,,true
+SAMPLE-0574,Nivea Shower gel,nivea shower gel,Personal care,Nivea,500 ml,,,true
+SAMPLE-0575,Dettol Shower gel,dettol shower gel,Personal care,Dettol,250 ml,,,true
+SAMPLE-0576,Dettol Shower gel,dettol shower gel,Personal care,Dettol,500 ml,,,true
+SAMPLE-0577,Nivea Deodorant,nivea deodorant,Personal care,Nivea,150 ml,,,true
+SAMPLE-0578,Nivea Deodorant,nivea deodorant,Personal care,Nivea,50 ml roll-on,,,true
+SAMPLE-0579,Rexona Deodorant,rexona deodorant,Personal care,Rexona,150 ml,,,true
+SAMPLE-0580,Rexona Deodorant,rexona deodorant,Personal care,Rexona,50 ml roll-on,,,true
+SAMPLE-0581,Sure Deodorant,sure deodorant,Personal care,Sure,150 ml,,,true
+SAMPLE-0582,Sure Deodorant,sure deodorant,Personal care,Sure,50 ml roll-on,,,true
+SAMPLE-0583,Axe Deodorant,axe deodorant,Personal care,Axe,150 ml,,,true
+SAMPLE-0584,Axe Deodorant,axe deodorant,Personal care,Axe,50 ml roll-on,,,true
+SAMPLE-0585,Dove Shampoo,dove shampoo,Personal care,Dove,200 ml,,,true
+SAMPLE-0586,Dove Shampoo,dove shampoo,Personal care,Dove,400 ml,,,true
+SAMPLE-0587,Head & Shoulders Shampoo,head & shoulders shampoo,Personal care,Head & Shoulders,200 ml,,,true
+SAMPLE-0588,Head & Shoulders Shampoo,head & shoulders shampoo,Personal care,Head & Shoulders,400 ml,,,true
+SAMPLE-0589,Pantene Shampoo,pantene shampoo,Personal care,Pantene,200 ml,,,true
+SAMPLE-0590,Pantene Shampoo,pantene shampoo,Personal care,Pantene,400 ml,,,true
+SAMPLE-0591,Sunsilk Shampoo,sunsilk shampoo,Personal care,Sunsilk,200 ml,,,true
+SAMPLE-0592,Sunsilk Shampoo,sunsilk shampoo,Personal care,Sunsilk,400 ml,,,true
+SAMPLE-0593,Always Sanitary pads,always sanitary pads,Personal care,Always,8 pack,,,true
+SAMPLE-0594,Always Sanitary pads,always sanitary pads,Personal care,Always,16 pack,,,true
+SAMPLE-0595,Kotex Sanitary pads,kotex sanitary pads,Personal care,Kotex,8 pack,,,true
+SAMPLE-0596,Kotex Sanitary pads,kotex sanitary pads,Personal care,Kotex,16 pack,,,true
+SAMPLE-0597,Softcare Sanitary pads,softcare sanitary pads,Personal care,Softcare,8 pack,,,true
+SAMPLE-0598,Softcare Sanitary pads,softcare sanitary pads,Personal care,Softcare,16 pack,,,true
+SAMPLE-0599,Molped Sanitary pads,molped sanitary pads,Personal care,Molped,8 pack,,,true
+SAMPLE-0600,Molped Sanitary pads,molped sanitary pads,Personal care,Molped,16 pack,,,true
+SAMPLE-0601,Vaseline Petroleum jelly,vaseline petroleum jelly,Personal care,Vaseline,50 ml,,,true
+SAMPLE-0602,Vaseline Petroleum jelly,vaseline petroleum jelly,Personal care,Vaseline,250 ml,,,true
+SAMPLE-0603,Blue Seal Petroleum jelly,blue seal petroleum jelly,Personal care,Blue Seal,50 ml,,,true
+SAMPLE-0604,Blue Seal Petroleum jelly,blue seal petroleum jelly,Personal care,Blue Seal,250 ml,,,true
+SAMPLE-0605,Baby Care Petroleum jelly,baby care petroleum jelly,Personal care,Baby Care,50 ml,,,true
+SAMPLE-0606,Baby Care Petroleum jelly,baby care petroleum jelly,Personal care,Baby Care,250 ml,,,true
+SAMPLE-0607,Pampers Diapers,pampers diapers,Baby,Pampers,Small 30,,,true
+SAMPLE-0608,Pampers Diapers,pampers diapers,Baby,Pampers,Medium 40,,,true
+SAMPLE-0609,Pampers Diapers,pampers diapers,Baby,Pampers,Large 40,,,true
+SAMPLE-0610,Huggies Diapers,huggies diapers,Baby,Huggies,Small 30,,,true
+SAMPLE-0611,Huggies Diapers,huggies diapers,Baby,Huggies,Medium 40,,,true
+SAMPLE-0612,Huggies Diapers,huggies diapers,Baby,Huggies,Large 40,,,true
+SAMPLE-0613,Softcare Diapers,softcare diapers,Baby,Softcare,Small 30,,,true
+SAMPLE-0614,Softcare Diapers,softcare diapers,Baby,Softcare,Medium 40,,,true
+SAMPLE-0615,Softcare Diapers,softcare diapers,Baby,Softcare,Large 40,,,true
+SAMPLE-0616,Molfix Diapers,molfix diapers,Baby,Molfix,Small 30,,,true
+SAMPLE-0617,Molfix Diapers,molfix diapers,Baby,Molfix,Medium 40,,,true
+SAMPLE-0618,Molfix Diapers,molfix diapers,Baby,Molfix,Large 40,,,true
+SAMPLE-0619,Nan Baby milk formula,nan baby milk formula,Baby,Nan,400 g,,,true
+SAMPLE-0620,Nan Baby milk formula,nan baby milk formula,Baby,Nan,800 g,,,true
+SAMPLE-0621,Lactogen Baby milk formula,lactogen baby milk formula,Baby,Lactogen,400 g,,,true
+SAMPLE-0622,Lactogen Baby milk formula,lactogen baby milk formula,Baby,Lactogen,800 g,,,true
+SAMPLE-0623,Cerelac Baby milk formula,cerelac baby milk formula,Baby,Cerelac,400 g,,,true
+SAMPLE-0624,Cerelac Baby milk formula,cerelac baby milk formula,Baby,Cerelac,800 g,,,true
+SAMPLE-0625,SMA Baby milk formula,sma baby milk formula,Baby,SMA,400 g,,,true
+SAMPLE-0626,SMA Baby milk formula,sma baby milk formula,Baby,SMA,800 g,,,true
+SAMPLE-0627,Pampers Baby wipes,pampers baby wipes,Baby,Pampers,56 wipes,,,true
+SAMPLE-0628,Pampers Baby wipes,pampers baby wipes,Baby,Pampers,80 wipes,,,true
+SAMPLE-0629,Huggies Baby wipes,huggies baby wipes,Baby,Huggies,56 wipes,,,true
+SAMPLE-0630,Huggies Baby wipes,huggies baby wipes,Baby,Huggies,80 wipes,,,true
+SAMPLE-0631,Softcare Baby wipes,softcare baby wipes,Baby,Softcare,56 wipes,,,true
+SAMPLE-0632,Softcare Baby wipes,softcare baby wipes,Baby,Softcare,80 wipes,,,true
+SAMPLE-0633,Kenya Stationers Exercise book,kenya stationers exercise book,School & office,Kenya Stationers,48 pages,,,true
+SAMPLE-0634,Kenya Stationers Exercise book,kenya stationers exercise book,School & office,Kenya Stationers,96 pages,,,true
+SAMPLE-0635,Croxley Exercise book,croxley exercise book,School & office,Croxley,48 pages,,,true
+SAMPLE-0636,Croxley Exercise book,croxley exercise book,School & office,Croxley,96 pages,,,true
+SAMPLE-0637,Bic Exercise book,bic exercise book,School & office,Bic,48 pages,,,true
+SAMPLE-0638,Bic Exercise book,bic exercise book,School & office,Bic,96 pages,,,true
+SAMPLE-0639,Bic Pens,bic pens,School & office,Bic,single,,,true
+SAMPLE-0640,Bic Pens,bic pens,School & office,Bic,10 pack,,,true
+SAMPLE-0641,Parker Pens,parker pens,School & office,Parker,single,,,true
+SAMPLE-0642,Parker Pens,parker pens,School & office,Parker,10 pack,,,true
+SAMPLE-0643,Pilot Pens,pilot pens,School & office,Pilot,single,,,true
+SAMPLE-0644,Pilot Pens,pilot pens,School & office,Pilot,10 pack,,,true
+SAMPLE-0645,Staedtler Pencils,staedtler pencils,School & office,Staedtler,10 pack,,,true
+SAMPLE-0646,Staedtler Pencils,staedtler pencils,School & office,Staedtler,12 pack,,,true
+SAMPLE-0647,Faber-Castell Pencils,faber-castell pencils,School & office,Faber-Castell,10 pack,,,true
+SAMPLE-0648,Faber-Castell Pencils,faber-castell pencils,School & office,Faber-Castell,12 pack,,,true
+SAMPLE-0649,Bic Pencils,bic pencils,School & office,Bic,10 pack,,,true
+SAMPLE-0650,Bic Pencils,bic pencils,School & office,Bic,12 pack,,,true
+SAMPLE-0651,Oraimo Phone charger,oraimo phone charger,Electronics,Oraimo,2A,,,true
+SAMPLE-0652,Oraimo Phone charger,oraimo phone charger,Electronics,Oraimo,fast charge,,,true
+SAMPLE-0653,Samsung Phone charger,samsung phone charger,Electronics,Samsung,2A,,,true
+SAMPLE-0654,Samsung Phone charger,samsung phone charger,Electronics,Samsung,fast charge,,,true
+SAMPLE-0655,Tecno Phone charger,tecno phone charger,Electronics,Tecno,2A,,,true
+SAMPLE-0656,Tecno Phone charger,tecno phone charger,Electronics,Tecno,fast charge,,,true
+SAMPLE-0657,Duracell Batteries AA,duracell batteries aa,Electronics,Duracell,4 pack,,,true
+SAMPLE-0658,Duracell Batteries AA,duracell batteries aa,Electronics,Duracell,8 pack,,,true
+SAMPLE-0659,Eveready Batteries AA,eveready batteries aa,Electronics,Eveready,4 pack,,,true
+SAMPLE-0660,Eveready Batteries AA,eveready batteries aa,Electronics,Eveready,8 pack,,,true
+SAMPLE-0661,Panasonic Batteries AA,panasonic batteries aa,Electronics,Panasonic,4 pack,,,true
+SAMPLE-0662,Panasonic Batteries AA,panasonic batteries aa,Electronics,Panasonic,8 pack,,,true
+SAMPLE-0663,Philips Light bulb LED,philips light bulb led,Electronics,Philips,9 W,,,true
+SAMPLE-0664,Philips Light bulb LED,philips light bulb led,Electronics,Philips,12 W,,,true
+SAMPLE-0665,Osram Light bulb LED,osram light bulb led,Electronics,Osram,9 W,,,true
+SAMPLE-0666,Osram Light bulb LED,osram light bulb led,Electronics,Osram,12 W,,,true
+SAMPLE-0667,Ibra Light bulb LED,ibra light bulb led,Electronics,Ibra,9 W,,,true
+SAMPLE-0668,Ibra Light bulb LED,ibra light bulb led,Electronics,Ibra,12 W,,,true

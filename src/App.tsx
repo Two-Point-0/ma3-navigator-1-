@@ -20,7 +20,9 @@ const MarketPage = lazy(() => import("@/pages/Market"));
 const MirthPage = lazy(() => import("@/pages/Mirth"));
 const ExplorePage = lazy(() => import("@/pages/Explore"));
 const ProfilePage = lazy(() => import("@/pages/Profile"));
+const LocationSharePage = lazy(() => import("@/pages/LocationShare"));
 const DriverPage = lazy(() => import("@/pages/Driver"));
+const WalletPage = lazy(() => import("@/pages/Wallet"));
 const NotFound = lazy(() => import("@/pages/NotFound"));
 
 const NAV_ITEMS = [
@@ -49,7 +51,7 @@ function TopBar() {
   return (
     <div className="topbar">
       <div style={{ position: "absolute", left: "1.1rem" }}>
-        <Link href="/profile">
+        <Link href="/wallet">
           <div className="token-pill" style={{ cursor: "pointer" }}>
             <WalletIcon size={12} /><span>Wallet</span>
           </div>
@@ -187,7 +189,9 @@ function AppShell() {
           <Route path="/mirth" component={MirthPage} />
           <Route path="/explore" component={ExplorePage} />
           <Route path="/profile" component={ProfilePage} />
+          <Route path="/location-share" component={LocationSharePage} />
           <Route path="/driver" component={DriverPage} />
+          <Route path="/wallet" component={WalletPage} />
           <Route component={NotFound} />
         </Switch>
         </Suspense>

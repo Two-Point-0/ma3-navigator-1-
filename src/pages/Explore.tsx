@@ -6,6 +6,7 @@ import { MapPin, X, Box, Navigation, Search, Utensils, BedDouble, Landmark, Cloc
 import { toast } from "sonner";
 import MapLibreView, { MapLibreHandle } from "@/components/MapLibreView";
 import PageTabs from "@/components/PageTabs";
+import { useSheet } from "@/lib/useSheet";
 import { BusinessPin, PinCategory, PIN_CATEGORY_META } from "@/data/ma3_core";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 
@@ -52,7 +53,7 @@ export default function ExplorePage() {
   const [activeHotspotCategory, setActiveHotspotCategory] = useState<ExploreCategory>("food");
   const [hotspotQuery, setHotspotQuery] = useState("");
   const [selectedPin, setSelectedPin] = useState<BusinessPin | null>(null);
-  const [selectedPinCollapsed, setSelectedPinCollapsed] = useState(true);
+  const sheet = useSheet("peek");
   const [is3D, setIs3D] = useState(false);
   const [mapCenter, setMapCenter] = useState<[number, number]>(NAIROBI);
   const mapRef = useRef<MapLibreHandle>(null);
@@ -146,28 +147,33 @@ export default function ExplorePage() {
     setHotspotQuery(""); setSelectedPin(null);
   };
   const statusLabel = feedStatus === "loading" ? "Loading mapped places…" : feedStatus === "disconnected" ? "Places are not available right now" : feedStatus === "error" ? "Could not load places" : feedStatus === "zoom" ? "Zoom in for nearby places" : `Mapped places${dataSnapshot ? ` · ${dataSnapshot}` : ""}`;
-  useEffect(() => { setSelectedPinCollapsed(true); }, [selectedPin?.id]);
+  useEffect(() => { sheet.setSnap(selectedPin ? "half" : "peek"); }, [selectedPin?.id]);
 
   return <div style={{ position: "relative", height: "calc(100vh - var(--top-h) - var(--nav-h))", marginTop: "-12px", overflow: "hidden" }}>
     <MapLibreView ref={mapRef} center={mapCenter} zoom={13} pitch={is3D ? 48 : 0} bearing={is3D ? -14 : 0} height="100%" borderRadius={0} onLoad={handleMapLoad} />
     <div style={{ position: "absolute", top: 10, left: 10, right: 10, zIndex: 50 }}>
       <PageTabs label="Explore sections" active={activeTab} tabs={TABS} onChange={setSection} />
-      <div style={{ position: "relative", marginBottom: 7 }}><Search size={13} style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "var(--ready)" }} /><input data-page-search autoFocus className="finput" style={{ paddingLeft: 34, paddingRight: 34, background: "rgba(8,8,16,.9)" }} placeholder={`Search ${EXPLORE_CATEGORIES.find(category => category.id === activeHotspotCategory)?.label} by name or area…`} value={hotspotQuery} onChange={event => setHotspotQuery(event.target.value)} /><button aria-label="Clear hotspot search" onClick={() => setHotspotQuery("")} style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", border: 0, background: "transparent", color: "var(--muted2)", cursor: "pointer" }}><X size={14} /></button></div>
-      {activeHotspotCategory && hotspotQuery.trim() && <div className="ios-glass" style={{ marginBottom: 7, padding: 5, maxHeight: 180, overflowY: "auto" }}>{categoryResults.map(pin => <button key={pin.id} onClick={() => { setMapCenter([pin.lat, pin.lon]); mapRef.current?.flyTo(pin.lon, pin.lat, 16); setSelectedPin(pin); }} style={{ width: "100%", padding: "8px 9px", display: "flex", textAlign: "left", border: 0, borderBottom: "1px solid var(--border)", background: "transparent", color: "var(--white)", cursor: "pointer" }}><MapPin size={13} style={{ color: "var(--ready)", marginRight: 8, flexShrink: 0 }} /><span><b style={{ display: "block", fontSize: ".68rem" }}>{pin.name}</b><small style={{ color: "var(--muted2)" }}>{pin.locality || pin.subType || "Mapped place"}</small></span></button>)}{categoryResults.length === 0 && <p style={{ padding: 10, color: "var(--muted2)", fontSize: ".63rem" }}>No matches in this map area. Pan or zoom to search nearby.</p>}</div>}
       <div style={{ display: "inline-flex", padding: "5px 9px", borderRadius: 8, background: "rgba(8,8,16,.82)", border: "1px solid var(--border)", color: "var(--muted2)", fontSize: ".55rem" }}>{statusLabel}</div>
     </div>
-    <button aria-label={is3D ? "Switch to 2D map" : "Switch to 3D map"} onClick={() => setIs3D(value => !value)} style={{ position: "absolute", right: 12, bottom: 28, zIndex: 60, width: 40, height: 40, borderRadius: 12, border: "1px solid var(--border2)", background: "rgba(8,8,16,.82)", color: "var(--ready)", display: "grid", placeItems: "center" }}><Box size={17} /></button>
+    <button aria-label={is3D ? "Switch to 2D map" : "Switch to 3D map"} onClick={() => setIs3D(value => !value)} style={{ position: "absolute", right: 12, top: 112, zIndex: 60, width: 40, height: 40, borderRadius: 12, border: "1px solid var(--border2)", background: "rgba(8,8,16,.82)", color: "var(--ready)", display: "grid", placeItems: "center" }}><Box size={17} /></button>
 
-    <AnimatePresence>{selectedPin && <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} transition={{ type: "spring", damping: 26, stiffness: 300 }} className="bpanel open" style={{ position: "absolute", bottom: 0, left: 0, right: 0, zIndex: 200, maxHeight: selectedPinCollapsed ? "20vh" : "50vh", overflowY: "auto", padding: "8px 1rem 1.5rem" }}>
-      <button aria-label={selectedPinCollapsed ? "Expand place details" : "Collapse place details to show map"} onClick={() => setSelectedPinCollapsed(value => !value)} style={{ display: "block", width: "100%", padding: "3px 0 8px", color: "var(--muted2)", border: 0, background: "transparent", cursor: "pointer" }}><span style={{ display: "block", width: 38, height: 4, borderRadius: 99, background: "var(--muted)", margin: "0 auto 6px" }} />{selectedPinCollapsed ? <ChevronUp size={13} /> : <ChevronDown size={13} />}</button>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}><div><p style={{ fontFamily: "var(--font-display)", fontSize: ".95rem", fontWeight: 900 }}>{selectedPin.name}</p><p style={{ fontSize: ".68rem", color: "var(--ready)" }}>{EXPLORE_CATEGORIES.find(category => category.id === exploreCategory(selectedPin))?.label || "Place"}{selectedPin.subType ? ` · ${selectedPin.subType}` : ""}</p></div><button className="icon-btn" onClick={() => setSelectedPin(null)}><X size={15} /></button></div>
-      {!selectedPinCollapsed && <>
+    <div {...sheet.panelProps}>
+      <div className="bpanel-head" style={{ padding: "2px 14px 8px" }}>
+        <button {...sheet.gripProps} />
+        {selectedPin ? <div style={{ marginTop: 4 }}><div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}><div><p style={{ fontFamily: "var(--font-display)", fontSize: ".95rem", fontWeight: 900 }}>{selectedPin.name}</p><p style={{ fontSize: ".68rem", color: "var(--ready)" }}>{EXPLORE_CATEGORIES.find(category => category.id === exploreCategory(selectedPin))?.label || "Place"}{selectedPin.subType ? ` · ${selectedPin.subType}` : ""}</p></div><button className="icon-btn" onClick={() => setSelectedPin(null)}><X size={15} /></button></div></div> : <div style={{ position: "relative", marginTop: 2 }}><Search size={13} style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "var(--ready)" }} /><input data-page-search className="finput" style={{ paddingLeft: 34, paddingRight: 34 }} placeholder={`Search ${EXPLORE_CATEGORIES.find(category => category.id === activeHotspotCategory)?.label} by name or area…`} value={hotspotQuery} onChange={event => setHotspotQuery(event.target.value)} /><button aria-label="Clear search" onClick={() => setHotspotQuery("")} style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", border: 0, background: "transparent", color: "var(--muted2)", cursor: "pointer" }}><X size={14} /></button></div>}
+      </div>
+      <div className="bpanel-scroll" style={{ padding: "0 14px 20px" }}>
+        {selectedPin ? <>
       {(selectedPin.locality || selectedPin.county) && <p style={{ fontSize: ".65rem", color: "var(--muted2)", marginBottom: 7 }}>{[selectedPin.locality, selectedPin.county].filter(Boolean).join(", ")}</p>}
       {selectedPin.openingHours && <p style={{ display: "flex", gap: 6, alignItems: "center", fontSize: ".65rem", color: "var(--muted2)", marginBottom: 7 }}><Clock size={12} />{selectedPin.openingHours}</p>}
       {(selectedPin.floor || selectedPin.unit) && <p style={{ fontSize: ".65rem", color: "var(--muted2)", marginBottom: 7 }}>{[selectedPin.floor, selectedPin.unit].filter(Boolean).join(" · ")}</p>}
       {selectedPin.notes && <p style={{ fontSize: ".7rem", color: "var(--muted2)", marginBottom: 9 }}>{selectedPin.notes}</p>}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 7 }}><button className="btn btn-go" style={{ width: "100%" }} onClick={() => { sessionStorage.setItem("ma3_destination", JSON.stringify({ name: selectedPin.name, lat: selectedPin.lat, lon: selectedPin.lon })); void startMatatuDirections(selectedPin); setLocation("/ma3"); }}><Bus size={13} /> Plan by Ma3</button><button className="btn btn-ready" style={{ width: "100%" }} onClick={() => { sessionStorage.setItem("ma3_fly_destination", JSON.stringify({ name: selectedPin.name, lat: selectedPin.lat, lon: selectedPin.lon })); setLocation("/fly"); }}><Navigation size={13} /> Travel options</button></div>
-      </>}
-    </motion.div>}</AnimatePresence>
+      </> : <>
+          {activeHotspotCategory && hotspotQuery.trim() && <div className="ios-glass" style={{ marginBottom: 7, padding: 5 }}>{categoryResults.map(pin => <button key={pin.id} onClick={() => { setMapCenter([pin.lat, pin.lon]); mapRef.current?.flyTo(pin.lon, pin.lat, 16); setSelectedPin(pin); }} style={{ width: "100%", padding: "8px 9px", display: "flex", textAlign: "left", border: 0, borderBottom: "1px solid var(--border)", background: "transparent", color: "var(--white)", cursor: "pointer" }}><MapPin size={13} style={{ color: "var(--ready)", marginRight: 8, flexShrink: 0 }} /><span><b style={{ display: "block", fontSize: ".68rem" }}>{pin.name}</b><small style={{ color: "var(--muted2)" }}>{pin.locality || pin.subType || "Mapped place"}</small></span></button>)}{categoryResults.length === 0 && <p style={{ padding: 10, color: "var(--muted2)", fontSize: ".63rem" }}>No matches in this map area. Pan or zoom to search nearby.</p>}</div>}
+          {!hotspotQuery.trim() && <p style={{ color: "var(--muted2)", fontSize: ".63rem", lineHeight: 1.5 }}>Type a name or area above, or tap a pin on the map. Drag the bar up to see more, or down to see the map.</p>}
+        </>}
+      </div>
+    </div>
   </div>;
 }

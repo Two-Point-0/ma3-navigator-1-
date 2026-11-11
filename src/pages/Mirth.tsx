@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Gamepad2, Search, Heart, ThumbsUp, Users, X, Swords, MessageSquareQuote, Crown, Dices, Brain, Grid3x3, BusFront, LoaderCircle, Trophy, Star, MapPin, Sparkles, Shield, Volume2, Route, PlusCircle } from "lucide-react";
 import { toast } from "sonner";
 import PageTabs from "@/components/PageTabs";
+import { useSheet } from "@/lib/useSheet";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 import MapLibreView, { MapLibreHandle } from "@/components/MapLibreView";
 import maplibregl from "maplibre-gl";
@@ -52,8 +53,7 @@ function kenyaDate() { return new Intl.DateTimeFormat("en-CA", { timeZone: "Afri
 export default function MirthPage() {
   const [section, setSection] = useState<Section>("games");
   const [sheetOpen, setSheetOpen] = useState(false);
-  const [sheetHeight, setSheetHeight] = useState(20);
-  const sheetDrag = useRef<{ y: number; height: number } | null>(null);
+  const sheet = useSheet("peek");
   const [gameQuery, setGameQuery] = useState("");
   const [gameChoice, setGameChoice] = useState(GAMES[0].id);
   const [gameRadius, setGameRadius] = useState(5);
@@ -305,12 +305,12 @@ export default function MirthPage() {
     <div style={{ position: "fixed", top: "var(--top-h)", left: 0, right: 0, bottom: "var(--nav-h)", zIndex: 0 }}><MapLibreView ref={mirthMapRef} center={NAIROBI} zoom={10} height="100%" borderRadius={0} onLoad={setMirthMap} /></div>
     <div className="inner" style={{ position: "absolute", top: 10, left: 0, right: 0, zIndex: 20 }}>
     <header style={{ padding: "0 0 .5rem" }}><div style={{ display: "flex", alignItems: "center", gap: 7 }}><Gamepad2 size={18} style={{ color: "var(--ready)" }} /><h2 style={{ fontFamily: "var(--font-display)", fontSize: "1.1rem" }}>Mirth</h2><span style={{ marginLeft: "auto", fontSize: ".55rem", color: "var(--muted2)" }}>Games · Nganya · Challenges</span></div></header>
-    <PageTabs label="Mirth sections" active={section} tabs={TAB_OPTIONS} onChange={id => { setSection(id as Section); setSheetHeight(20); setSheetOpen(true); }} />
+    <PageTabs label="Mirth sections" active={section} tabs={TAB_OPTIONS} onChange={id => { setSection(id as Section); sheet.setSnap("peek"); setSheetOpen(true); }} />
     </div>
 
-    <AnimatePresence>{sheetOpen && <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} transition={{ type: "spring", damping: 28, stiffness: 320 }} className="bpanel open" style={{ position: "fixed", bottom: "var(--nav-h)", height: `${sheetHeight}vh`, maxHeight: "calc(100dvh - var(--top-h) - var(--nav-h) - 24px)" }}>
-      <div className="bpanel-head" onPointerDown={event => { sheetDrag.current = { y: event.clientY, height: sheetHeight }; event.currentTarget.setPointerCapture(event.pointerId); }} onPointerMove={event => { if (sheetDrag.current) setSheetHeight(Math.max(20, Math.min(50, sheetDrag.current.height + ((sheetDrag.current.y - event.clientY) / window.innerHeight) * 100))); }} onPointerUp={() => { sheetDrag.current = null; }} style={{ touchAction: "none", cursor: "ns-resize" }}>
-        <button aria-label={sheetHeight > 35 ? "Collapse panel" : "Expand panel"} className="handle" onClick={() => setSheetHeight(height => height > 35 ? 20 : 50)} />
+    <AnimatePresence>{sheetOpen && <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} transition={{ type: "spring", damping: 28, stiffness: 320 }} {...sheet.panelProps}>
+      <div className="bpanel-head">
+        <button {...sheet.gripProps} />
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}><b style={{ flex: 1, fontSize: ".75rem" }}>{section === "games" ? "Find a game" : section === "nganya" ? "Nganya route battle" : "Daily challenges"}</b><button className="icon-btn" aria-label="Close panel" onClick={() => setSheetOpen(false)}><X size={14} /></button></div>
       </div>
       <div className="bpanel-scroll" style={{ padding: "0 14px 20px" }}><div className="inner" style={{ padding: "0 0 18px" }}>

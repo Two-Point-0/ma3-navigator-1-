@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import maplibregl from "maplibre-gl";
 import MapLibreView, { MapLibreHandle } from "@/components/MapLibreView";
 import PageTabs from "@/components/PageTabs";
+import { useSheet } from "@/lib/useSheet";
 import { useWallet } from "@/lib/wallet";
 import { useShoppingBasket } from "@/lib/shoppingBasket";
 import { MA3_GTFS } from "@/data/ma3_gtfs";
@@ -105,7 +106,7 @@ type RideStage = "idle" | "searching" | "drivers" | "booked";
 export default function NdaiPage() {
   const [tab, setTab]         = useState<Tab>("ride");
   const [sheetOpen, setSheetOpen] = useState(false);
-  const [sheetHeight, setSheetHeight] = useState(20);
+  const sheet = useSheet("peek");
   const [stage, setStage]     = useState<RideStage>("idle");
   const [rideId, setRideId]   = useState("comfort");
   const [pickup, setPickup]   = useState("");
@@ -196,7 +197,7 @@ export default function NdaiPage() {
         onLoad={m => { mapInst.current = m; }} />
 
       <div style={{ position: "absolute", top: 10, left: 10, right: 10, zIndex: 50 }}>
-        <PageTabs label="Ndai sections" active={tab} tabs={NDAI_TABS} onChange={value => { setTab(value as Tab); setSheetHeight(20); setSheetOpen(true); }} />
+        <PageTabs label="Ndai sections" active={tab} tabs={NDAI_TABS} onChange={value => { setTab(value as Tab); sheet.setSnap("peek"); setSheetOpen(true); }} />
       </div>
 
       {/* ══════ RIDE TAB (amber/yellow-taxi theme) ══════ */}
@@ -204,9 +205,9 @@ export default function NdaiPage() {
         {sheetOpen && tab === "ride" && stage !== "booked" && (
           <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }}
             transition={{ type: "spring", damping: 28, stiffness: 300 }}
-            className="bpanel open" style={{ height: `${sheetHeight}vh`, maxHeight: "calc(100% - 90px)", overflowY: "auto" }}>
+            {...sheet.panelProps}>
             <div className="bpanel-head">
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}><button aria-label={sheetHeight > 35 ? "Collapse panel" : "Expand panel"} className="handle" onClick={() => setSheetHeight(height => height > 35 ? 20 : 50)} /><button className="icon-btn" aria-label="Close panel" onClick={() => setSheetOpen(false)}><X size={14} /></button></div>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}><button {...sheet.gripProps} /><button className="icon-btn" aria-label="Close panel" onClick={() => setSheetOpen(false)}><X size={14} /></button></div>
             </div>
             <div style={{ display: "flex", gap: 6, padding: "6px 14px 10px", overflowX: "auto", scrollbarWidth: "none" }}>
               {RIDE_TYPES.map(rt => {
@@ -312,8 +313,8 @@ export default function NdaiPage() {
       <AnimatePresence>
         {sheetOpen && tab === "ride" && stage === "booked" && driver && (
           <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} transition={{ type: "spring", damping: 26, stiffness: 300 }}
-            className="bpanel open" style={{ maxHeight: "50vh", overflowY: "auto", padding: "0 1rem 2rem" }}>
-            <div className="bpanel-head"><div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}><button className="handle" aria-label="Collapse panel" /><button className="icon-btn" aria-label="Close panel" onClick={() => setSheetOpen(false)}><X size={14} /></button></div></div>
+            {...sheet.panelProps} style={{ ...sheet.panelProps.style, padding: "0 1rem 2rem" }}>
+            <div className="bpanel-head"><div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}><button {...sheet.gripProps} /><button className="icon-btn" aria-label="Close panel" onClick={() => setSheetOpen(false)}><X size={14} /></button></div></div>
             <div style={{ textAlign: "center", marginBottom: 16 }}>
               <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring", stiffness: 260 }}>
                 <CheckCircle size={42} style={{ color: "var(--go)", margin: "0 auto 8px" }} />
@@ -359,9 +360,9 @@ export default function NdaiPage() {
         {sheetOpen && tab === "carpool" && !bookedCarpool && (
           <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }}
             transition={{ type: "spring", damping: 28, stiffness: 300 }}
-            className="bpanel open" style={{ height: `${sheetHeight}vh`, maxHeight: "calc(100% - 90px)", overflowY: "auto" }}>
+            {...sheet.panelProps}>
             <div className="bpanel-head">
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}><button aria-label={sheetHeight > 35 ? "Collapse panel" : "Expand panel"} className="handle" onClick={() => setSheetHeight(height => height > 35 ? 20 : 50)} /><button className="icon-btn" aria-label="Close panel" onClick={() => setSheetOpen(false)}><X size={14} /></button></div>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}><button {...sheet.gripProps} /><button className="icon-btn" aria-label="Close panel" onClick={() => setSheetOpen(false)}><X size={14} /></button></div>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
                   <Share2 size={15} style={{ color: "var(--ready)" }} />
@@ -456,8 +457,8 @@ export default function NdaiPage() {
       <AnimatePresence>
         {sheetOpen && tab === "carpool" && bookedCarpool && (
           <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} transition={{ type: "spring", damping: 26, stiffness: 300 }}
-            className="bpanel open" style={{ maxHeight: "50vh", overflowY: "auto", padding: "0 1rem 2rem" }}>
-            <div className="bpanel-head"><div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}><button className="handle" aria-label="Collapse panel" /><button className="icon-btn" aria-label="Close panel" onClick={() => setSheetOpen(false)}><X size={14} /></button></div></div>
+            {...sheet.panelProps} style={{ ...sheet.panelProps.style, padding: "0 1rem 2rem" }}>
+            <div className="bpanel-head"><div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}><button {...sheet.gripProps} /><button className="icon-btn" aria-label="Close panel" onClick={() => setSheetOpen(false)}><X size={14} /></button></div></div>
             <div style={{ textAlign: "center", marginBottom: 14 }}>
               <CheckCircle size={40} style={{ color: "var(--go)", margin: "0 auto 8px" }} />
               <p style={{ fontFamily: "var(--font-display)", fontSize: "1rem", fontWeight: 900, color: "var(--go)" }}>Seat Reserved</p>
@@ -488,8 +489,8 @@ export default function NdaiPage() {
     {sheetOpen && tab === "delivery" && delStage === "idle" && (
       <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }}
         transition={{ type: "spring", damping: 28, stiffness: 300 }}
-        className="bpanel open" style={{ height: `${sheetHeight}vh`, maxHeight: "calc(100% - 90px)", overflowY: "auto", padding: "0 1rem 1.4rem" }}>
-        <div className="bpanel-head"><div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}><button aria-label={sheetHeight > 35 ? "Collapse panel" : "Expand panel"} className="handle" onClick={() => setSheetHeight(height => height > 35 ? 20 : 50)} /><button className="icon-btn" aria-label="Close panel" onClick={() => setSheetOpen(false)}><X size={14} /></button></div>
+        {...sheet.panelProps} style={{ ...sheet.panelProps.style, padding: "0 1rem 1.4rem" }}>
+        <div className="bpanel-head"><div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}><button {...sheet.gripProps} /><button className="icon-btn" aria-label="Close panel" onClick={() => setSheetOpen(false)}><X size={14} /></button></div>
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
           <Bike size={18} style={{ color: "var(--ready)" }} />
           <span style={{ fontFamily: "var(--font-display)", fontSize: ".92rem", fontWeight: 900 }}>Boda Basket</span>
@@ -516,8 +517,8 @@ export default function NdaiPage() {
     )}
     {sheetOpen && tab === "delivery" && delStage === "drafted" && (
       <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} transition={{ type: "spring", damping: 26, stiffness: 300 }}
-        className="bpanel open" style={{ maxHeight: "50vh", overflowY: "auto", padding: "0 1rem 1.6rem", textAlign: "center" }}>
-        <div className="bpanel-head"><div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}><button className="handle" aria-label="Collapse panel" /><button className="icon-btn" aria-label="Close panel" onClick={() => setSheetOpen(false)}><X size={14} /></button></div></div>
+        {...sheet.panelProps} style={{ ...sheet.panelProps.style, padding: "0 1rem 1.6rem", textAlign: "center" }}>
+        <div className="bpanel-head"><div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}><button {...sheet.gripProps} /><button className="icon-btn" aria-label="Close panel" onClick={() => setSheetOpen(false)}><X size={14} /></button></div></div>
         <CheckCircle size={34} style={{ color: "var(--ready)", margin: "8px auto" }} />
         <p style={{ fontFamily: "var(--font-display)", fontSize: ".95rem", fontWeight: 900, color: "var(--ready)", marginBottom: 4 }}>Shopping request draft prepared</p>
         <p style={{ fontSize: ".65rem", color: "var(--muted2)", lineHeight: 1.5, marginBottom: 10 }}>This draft stays in the current page only. It has not been sent to a rider; no stock was checked, no delivery fee was quoted and no payment was taken.</p>

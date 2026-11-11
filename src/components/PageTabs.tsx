@@ -14,11 +14,14 @@ interface PageTabsProps {
 }
 
 export default function PageTabs({ label, active, tabs, onChange }: PageTabsProps) {
+  const tones = ["stop", "ready", "go"] as const;
+  const traffic = tabs.length === 3;
   return (
     <nav className="page-tabs" aria-label={label} role="tablist">
-      {tabs.map(({ id, label: text, Icon }) => (
+      {tabs.map(({ id, label: text, Icon }, index) => (
         <button
           key={id}
+          data-tone={traffic ? tones[index] : "ready"}
           type="button"
           role="tab"
           aria-selected={active === id}
