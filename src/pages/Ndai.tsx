@@ -1,4 +1,4 @@
-import { useMemo, useState, useRef } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import { Link } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -140,6 +140,22 @@ export default function NdaiPage() {
   const estimatedOfferFuel = estimateFuelCost(offerDistance);
   const estimatedOfferShare = passengerFuelShare(offerDistance, offerSeats);
   const { items: shopItems, selectedBranch: shopBranch } = useShoppingBasket();
+
+  // Arriving from the Market checkout: open the delivery tab, or start a ride to the store.
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem("ndai_destination");
+      if (!raw) return;
+      sessionStorage.removeItem("ndai_destination");
+      const handoff = JSON.parse(raw) as { tab?: string; name?: string };
+      if (handoff.tab === "delivery") { setTab("delivery"); setSheetOpen(true); return; }
+      setTab("ride");
+      if (handoff.name) setDest(handoff.name);
+      setSheetOpen(true);
+      toast("Destination set. Enter your pickup point.");
+    } catch { /* ignore a bad handoff */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const visibleCarpoolOffers = useMemo(() => {
     const query = carpoolQuery.trim().toLowerCase();
     return [...myOffers, ...CARPOOL_OFFERS].filter(offer => !query || `${offer.driverName} ${offer.fromArea} ${offer.toArea} ${offer.carModel} ${offer.routeId}`.toLowerCase().includes(query));

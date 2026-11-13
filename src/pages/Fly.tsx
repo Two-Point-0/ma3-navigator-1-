@@ -9,7 +9,7 @@ import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 
 type FlyTab = "domestic" | "international" | "sgr";
 type Coordinate = [number, number];
-type FlightRoute = { id: string; service_type: "domestic" | "international"; airline: string; flight_number: string; origin_code: string; origin_name: string; destination_code: string; destination_name: string; departure_at: string; arrival_at: string; fare_kes: number | null; geometry: any; source_url: string; source_updated_at: string };
+type FlightRoute = { id: string; service_type: "domestic" | "international"; airline: string; flight_number: string; origin_code: string; origin_name: string; destination_code: string; destination_name: string; departure_at: string; arrival_at: string; fare_kes: number | null; geometry: any; source_url: string; source_updated_at: string; booking_url?: string | null };
 type SgrRoute = { id: string; name: string; operator: string; geometry: any; source_url: string | null; source_updated_at: string | null };
 type SgrStation = { id: string; name: string; route_id: string | null; latitude: number; longitude: number; sequence_number: number | null };
 type SgrSchedule = { id: string; train_code: string; route_id: string; origin_station_id: string; destination_station_id: string; departure_at: string; arrival_at: string; fare_kes: number | null; source_url: string; source_updated_at: string };
@@ -141,7 +141,7 @@ export default function FlyPage() {
     if (!originCode || !destinationCode || originCode === destinationCode) { setFlightError("Choose two different airports to search."); return; }
     setFlightLoading(true);
     try {
-      let request = supabase.from("flight_routes").select("id,service_type,airline,flight_number,origin_code,origin_name,destination_code,destination_name,departure_at,arrival_at,fare_kes,geometry,source_url,source_updated_at")
+      let request = supabase.from("flight_routes").select("id,service_type,airline,flight_number,origin_code,origin_name,destination_code,destination_name,departure_at,arrival_at,fare_kes,geometry,source_url,source_updated_at,booking_url")
         .eq("active", true).eq("service_type", tab).eq("origin_code", originCode).eq("destination_code", destinationCode)
         .gte("departure_at", travelDate ? new Date(`${travelDate}T00:00:00`).toISOString() : new Date(Date.now() - 86400000).toISOString())
         .order("departure_at").limit(30);
@@ -203,7 +203,7 @@ export default function FlyPage() {
           {flightError && <p role="status" style={{ color: "var(--muted2)", fontSize: ".62rem", lineHeight: 1.45, marginTop: 8 }}>{flightError}</p>}
           {flightLoading && <p style={{ color: "var(--muted2)", fontSize: ".62rem", marginTop: 8 }}><LoaderCircle size={13} /> Loading routes…</p>}
           <div style={{ display: "grid", gap: 7, marginTop: 9 }}>{flightRoutes.map(flight => <button key={flight.id} className="card" onClick={() => { setSelectedFlight(flight); sheet.setSnap("half"); }} style={{ width: "100%", padding: 11, textAlign: "left", color: "var(--white)", cursor: "pointer", borderColor: selectedFlight?.id === flight.id ? "var(--go)" : "var(--border2)" }}><div style={{ display: "flex", gap: 8, alignItems: "center" }}><Plane size={15} style={{ color: "var(--go)" }} /><span style={{ flex: 1 }}><b style={{ display: "block", fontSize: ".72rem" }}>{flight.airline} · {flight.flight_number}</b><small style={{ color: "var(--muted2)" }}>{flight.origin_name} ({flight.origin_code}) → {flight.destination_name} ({flight.destination_code})</small></span>{flight.fare_kes !== null && <b style={{ color: "var(--ready)", fontSize: ".68rem" }}>KES {Number(flight.fare_kes).toLocaleString()}</b>}</div><small style={{ display: "flex", gap: 5, alignItems: "center", color: "var(--muted2)", marginTop: 6 }}><Clock size={10} />{new Date(flight.departure_at).toLocaleString()} · path supplied by source</small></button>)}</div>
-          {selectedFlight && <div className="ios-glass" style={{ padding: 10, marginTop: 8, fontSize: ".6rem", color: "var(--muted2)" }}>Showing {selectedFlight.flight_number} route line on the map. <a href={selectedFlight.source_url} target="_blank" rel="noopener noreferrer" style={{ color: "var(--ready)" }}>Source ↗</a> · updated {new Date(selectedFlight.source_updated_at).toLocaleDateString()}</div>}
+          {selectedFlight && <div className="ios-glass" style={{ padding: 10, marginTop: 8, fontSize: ".6rem", color: "var(--muted2)" }}>Showing {selectedFlight.flight_number} route line on the map. <a href={selectedFlight.source_url} target="_blank" rel="noopener noreferrer" style={{ color: "var(--ready)" }}>Source ↗</a> · updated {new Date(selectedFlight.source_updated_at).toLocaleDateString()}<a className="btn btn-go" style={{ display: "flex", justifyContent: "center", marginTop: 8, padding: 9 }} target="_blank" rel="noopener noreferrer" href={selectedFlight.booking_url || `https://www.google.com/travel/flights?q=${encodeURIComponent(`Flights from ${selectedFlight.origin_code} to ${selectedFlight.destination_code}`)}`}>{selectedFlight.booking_url ? `Book with ${selectedFlight.airline} ↗` : "Check prices and book on Google Flights ↗"}</a><span style={{ display: "block", marginTop: 5 }}>Ma3 does not sell tickets. You book and pay on the airline or booking site.</span></div>}
         </>}
 
         {tab === "sgr" && <>

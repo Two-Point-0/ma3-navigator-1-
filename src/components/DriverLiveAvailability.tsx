@@ -15,9 +15,11 @@ interface DriverLiveAvailabilityProps {
   onRouteChange: (routeId: string) => void;
   seats: number;
   onSeatsChange: (seats: number) => void;
+  /** told whenever the driver goes online or offline */
+  onOnlineChange?: (online: boolean) => void;
 }
 
-export default function DriverLiveAvailability({ routeId, onRouteChange, seats, onSeatsChange }: DriverLiveAvailabilityProps) {
+export default function DriverLiveAvailability({ routeId, onRouteChange, seats, onSeatsChange, onOnlineChange }: DriverLiveAvailabilityProps) {
   const { user, loading } = useAuthContext();
   const [approval, setApproval] = useState<Approval | null>(null);
   const [approvalLoading, setApprovalLoading] = useState(true);
@@ -26,6 +28,8 @@ export default function DriverLiveAvailability({ routeId, onRouteChange, seats, 
   const [coords, setCoords] = useState<Coords | null>(null);
   const [lastSent, setLastSent] = useState<string | null>(null);
   const [message, setMessage] = useState("");
+
+  useEffect(() => { onOnlineChange?.(online); }, [online]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const approvedRoutes = useMemo(() => approval?.status === "approved"
     ? ROUTES.filter(route => approval.route_ids.includes(route.id)) : [], [approval]);

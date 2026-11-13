@@ -14,12 +14,13 @@ import LiveDriverMapLayer from "@/components/LiveDriverMapLayer";
 import { useAuthContext } from "@/context/AuthContext";
 import ParcelPanel from "@/components/ParcelPanel";
 import { useSheet } from "@/lib/useSheet";
-import { setLineLayer, setPointLayer, removeLineLayer, removePointLayer } from "@/lib/mapLayers";
+import { setLineLayer, setPointLayer, removeLineLayer, removePointLayer, setRouteLine, setLabelledStops, fitAboveSheet, LabelledStop } from "@/lib/mapLayers";
+import { classifyMotion, computeTripProgress, MOTION_LABEL, MOTION_TONE, stopsAlongRoute, MotionState } from "@/lib/tripProgress";
 import { MA3_GTFS } from "@/data/ma3_gtfs";
 import {
   searchStops, planJourney, StopMatch, JourneyOption,
 } from "@/lib/journey";
-import { haversineKm } from "@/data/ma3_core";
+import { haversineKm, AVG_MATATU_SPEED_KMH } from "@/data/ma3_core";
 import OSMRailways from "@/data/nairobi_railways_osm.json";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 
@@ -156,6 +157,14 @@ export default function Ma3Page() {
   const [trackingActive, setTrackingActive] = useState(false);
   const [trackingStatus, setTrackingStatus] = useState("");
   const arrivalAlerted = useRef(false);
+  const [boarded, setBoarded] = useState(false);
+  const [followMe, setFollowMe] = useState(false);
+  const [trackedSpeed, setTrackedSpeed] = useState<number | null>(null);
+  const lastFix = useRef<{ t: number; lat: number; lon: number } | null>(null);
+  const speedEma = useRef<number | null>(null);
+  const alertStage = useRef(0);
+  const lastFrame = useRef<[number, number][] | null>(null);
+  const coveredPx = useRef(0);
   const [is3D, setIs3D]             = useState(false);
   const [mapCenter, setMapCenter]   = useState<[number, number]>(NAIROBI);
   const [exploreDestination, setExploreDestination] = useState<{ name: string; lat: number; lon: number; stop: StopMatch; distanceKm: number } | null>(null);
@@ -170,6 +179,16 @@ export default function Ma3Page() {
   const [showSaved, setShowSaved]   = useState(false);
   const sheet = useSheet("peek");
   const panelMinimized = sheet.minimized;
+  coveredPx.current = panel ? sheet.height : 0;
+  /** Zoom the map to show the given [lat, lon] points above the open panel. */
+  const frameMap = useCallback((points: [number, number][]) => {
+    const map = mapInst.current;
+    if (!map || !points.length) return;
+    lastFrame.current = points;
+    fitAboveSheet(map, points.map(([lat, lon]) => [lon, lat] as [number, number]), coveredPx.current, 15);
+  }, []);
+  // When the panel is dragged taller or shorter, keep the whole trip in view above it.
+  useEffect(() => { if (lastFrame.current && !followMe) frameMap(lastFrame.current); }, [sheet.snap, panel]);
   const setPanelMinimized = (value: boolean | ((current: boolean) => boolean)) => {
     const next = typeof value === "function" ? value(sheet.minimized) : value;
     sheet.setSnap(next ? "peek" : "half");
@@ -219,13 +238,14 @@ export default function Ma3Page() {
     removePointLayer(map, "selected-rail-stations");
     removePointLayer(map, "route-stops");
     removePointLayer(map, "planner-pts");
+    removePointLayer(map, "journey-stops");
   }, []);
 
   const drawRoute = useCallback((map: maplibregl.Map, route: typeof ROUTES[0]) => {
     clearStatic();
     const shape = SHAPES[route.id];
     if (shape?.length) {
-      setLineLayer(map, `route-${route.id}`, shape, route.c, 5, 0.9);
+      setRouteLine(map, `route-${route.id}`, shape, route.c, 5, 0.95);
       const mid = shape[~~(shape.length / 2)];
       const el = document.createElement("div");
       el.innerHTML = `<div style="background:${route.c};color:#fff;padding:3px 9px;border-radius:99px;font-size:11px;font-weight:700;font-family:'DM Mono',monospace;box-shadow:0 2px 6px rgba(0,0,0,.4)">${route.sn}</div>`;
@@ -234,10 +254,11 @@ export default function Ma3Page() {
     const stopIds = ROUTE_STOPS[route.id] ?? [];
     const pts = stopIds.map((sid, i) => {
       const s = STOPS_RAW[sid];
-      return s ? { id: sid, lat: s[1], lon: s[2], color: route.c, radius: (i === 0 || i === stopIds.length - 1) ? 6 : 4 } : null;
-    }).filter(Boolean) as { id: string; lat: number; lon: number; color: string; radius: number }[];
-    setPointLayer(map, "route-stops", pts, 4);
-  }, [clearStatic]);
+      return s ? { id: sid, name: s[0], lat: s[1], lon: s[2], color: route.c, terminal: i === 0 || i === stopIds.length - 1 } : null;
+    }).filter(Boolean) as LabelledStop[];
+    setLabelledStops(map, "route-stops", pts);
+    frameMap(shape?.length ? shape : pts.map(point => [point.lat, point.lon] as [number, number]));
+  }, [clearStatic, frameMap]);
 
   const drawRail = useCallback((map: maplibregl.Map, from?: OSMStation, to?: OSMStation) => {
     clearStatic();
@@ -268,8 +289,17 @@ export default function Ma3Page() {
     if (!trackedLeg || !trackingActive) return;
     if (!navigator.geolocation) { setTrackingStatus("Location is not available on this device."); setTrackingActive(false); return; }
     setTrackingStatus("Waiting for your phone location…");
+    lastFix.current = null; speedEma.current = null; setTrackedSpeed(null);
     const watchId = navigator.geolocation.watchPosition(position => {
-      setTrackedPosition([position.coords.latitude, position.coords.longitude]);
+      const { latitude, longitude } = position.coords;
+      let speed = position.coords.speed;
+      if ((speed === null || Number.isNaN(speed)) && lastFix.current) {
+        const seconds = (position.timestamp - lastFix.current.t) / 1000;
+        if (seconds > 0.5) speed = (haversineKm(lastFix.current.lat, lastFix.current.lon, latitude, longitude) * 1000) / seconds;
+      }
+      lastFix.current = { t: position.timestamp, lat: latitude, lon: longitude };
+      if (speed !== null && Number.isFinite(speed)) { speedEma.current = speedEma.current === null ? speed : speedEma.current * 0.6 + speed * 0.4; setTrackedSpeed(speedEma.current); }
+      setTrackedPosition([latitude, longitude]);
     }, () => {
       setTrackingStatus("Location permission is needed to follow your trip on the map.");
       setTrackingActive(false);
@@ -277,38 +307,81 @@ export default function Ma3Page() {
     return () => navigator.geolocation.clearWatch(watchId);
   }, [trackedLeg, trackingActive]);
 
+  const trackedRoute = useMemo(() => trackedLeg?.routeId && trackedLeg.type === "matatu" ? shapeBetweenStops(trackedLeg.routeId, trackedLeg.fromStop, trackedLeg.toStop) : [], [trackedLeg]);
+  const trackedStops = useMemo(() => {
+    if (!trackedLeg?.routeId || trackedRoute.length < 2) return [];
+    const candidates = (ROUTE_STOPS[trackedLeg.routeId] ?? []).flatMap(id => { const stop = STOPS_RAW[id]; return stop ? [{ id, name: stop[0], lat: stop[1], lon: stop[2] }] : []; });
+    return stopsAlongRoute(trackedRoute, candidates, trackedLeg.fromStop, trackedLeg.toStop);
+  }, [trackedLeg, trackedRoute]);
+  const progress = useMemo(() => computeTripProgress(trackedRoute, trackedStops, trackedPosition), [trackedRoute, trackedStops, trackedPosition]);
+  const moveState: MotionState = trackingActive ? classifyMotion(trackedSpeed) : "unknown";
+  const tabTone = trackingActive ? MOTION_TONE[moveState] : "idle";
+
+  // Draw the leg once: outlined line with direction arrows, every stop named along it, whole trip in view.
   useEffect(() => {
     const map = mapInst.current;
     if (!mapReady || !map) return;
     if (!trackedLeg?.routeId || trackedLeg.type !== "matatu") {
-      removeLineLayer(map, "tracked-journey-route"); removeLineLayer(map, "tracked-journey-progress"); removePointLayer(map, "tracked-journey-points");
+      removeLineLayer(map, "tracked-journey-route"); removeLineLayer(map, "tracked-journey-progress"); removePointLayer(map, "tracked-journey-points"); removePointLayer(map, "tracked-journey-stops");
       return;
     }
-    const route = shapeBetweenStops(trackedLeg.routeId, trackedLeg.fromStop, trackedLeg.toStop);
-    if (route.length < 2) { setTrackingStatus("No mapped route shape is available for this leg."); return; }
-    setLineLayer(map, "tracked-journey-route", route, trackedLeg.routeColor ?? "#d97706", 5, .42);
+    if (trackedRoute.length < 2) { setTrackingStatus("No mapped route shape is available for this leg."); return; }
+    setRouteLine(map, "tracked-journey-route", trackedRoute, trackedLeg.routeColor ?? "#d97706", 5, .6);
+    setFollowMe(false);
+    frameMap(trackedRoute);
+  }, [mapReady, trackedLeg, trackedRoute, frameMap]);
+
+  // Once on board, tell the driver (anonymously) which stop you get off at.
+  const alightShared = useRef<string | null>(null);
+  useEffect(() => {
+    const routeId = trackedLeg?.routeId;
+    if (boarded && routeId && trackedLeg && supabase && user?.phone_confirmed_at) {
+      void supabase.rpc("set_my_ma3_alighting", { p_route_id: routeId, p_stop_id: trackedLeg.toStop.id }).then(({ error }) => {
+        if (error) { console.warn("Driver was not told your stop", error.message); return; }
+        alightShared.current = routeId; toast(`Driver told: someone is getting off at ${trackedLeg.toStop.name}.`);
+      });
+      return;
+    }
+    if (alightShared.current && supabase) { void supabase.rpc("cancel_my_ma3_alighting", { p_route_id: alightShared.current }); alightShared.current = null; }
+  }, [boarded, trackedLeg, user?.phone_confirmed_at]);
+
+  // Update the moving dot, the progress line and the greyed-out passed stops.
+  useEffect(() => {
+    const map = mapInst.current;
+    if (!mapReady || !map || !trackedLeg?.routeId || trackedRoute.length < 2 || !progress) return;
+    const routeColor = trackedLeg.routeColor ?? "#d97706";
+    setLabelledStops(map, "tracked-journey-stops", trackedStops.map((stop, index) => ({
+      id: stop.id, name: stop.name, lat: stop.lat, lon: stop.lon, color: routeColor,
+      terminal: index === 0 || index === trackedStops.length - 1, passed: progress.passedIds.has(stop.id) && index !== trackedStops.length - 1,
+    })));
     const location = trackedPosition;
-    if (location) {
-      let nearest = 0, nearestKm = Infinity;
-      route.forEach(([lat, lon], index) => { const distance = haversineKm(location[0], location[1], lat, lon); if (distance < nearestKm) { nearestKm = distance; nearest = index; } });
-      const snapped = route[nearest];
-      setLineLayer(map, "tracked-journey-progress", route.slice(0, nearest + 1), "#16a34a", 6, .98);
-      setPointLayer(map, "tracked-journey-points", [
-        { id: "phone-location", lat: snapped[0], lon: snapped[1], color: nearestKm <= .8 ? "#16a34a" : "#d97706", radius: 9 },
-        { id: "alight-stop", lat: trackedLeg.toStop.lat, lon: trackedLeg.toStop.lon, color: "#dc2626", radius: 8 },
-      ], 8);
-      setTrackingStatus(nearestKm > 1.5 ? "You appear off this archived route; the dot is snapped to the nearest route point." : `Following your phone on the route to ${trackedLeg.toStop.name}.`);
-      map.easeTo({ center: [snapped[1], snapped[0]], duration: 550 });
-      if (haversineKm(location[0], location[1], trackedLeg.toStop.lat, trackedLeg.toStop.lon) <= .15 && !arrivalAlerted.current) {
-        arrivalAlerted.current = true; setTrackingStatus(`Near ${trackedLeg.toStop.name} — your selected stop.`); setTrackingActive(false); toast(`You are near ${trackedLeg.toStop.name}.`);
-      }
-    } else {
+    if (!location) {
       setPointLayer(map, "tracked-journey-points", [
         { id: "board-stop", lat: trackedLeg.fromStop.lat, lon: trackedLeg.fromStop.lon, color: "#16a34a", radius: 8 },
         { id: "alight-stop", lat: trackedLeg.toStop.lat, lon: trackedLeg.toStop.lon, color: "#dc2626", radius: 8 },
       ], 8);
+      return;
     }
-  }, [mapReady, trackedLeg, trackedPosition]);
+    const nearest = trackedRoute.findIndex(point => point[0] === progress.snapped[0] && point[1] === progress.snapped[1]);
+    setLineLayer(map, "tracked-journey-progress", trackedRoute.slice(0, Math.max(1, nearest) + 1), routeColor, 7, 1);
+    const dotColor = moveState === "moving" ? "#16a34a" : moveState === "stopped" ? "#dc2626" : "#d97706";
+    setPointLayer(map, "tracked-journey-points", [
+      { id: "phone-location", lat: progress.snapped[0], lon: progress.snapped[1], color: dotColor, radius: 9 },
+      { id: "alight-stop", lat: trackedLeg.toStop.lat, lon: trackedLeg.toStop.lon, color: "#dc2626", radius: 8 },
+    ], 8);
+    setTrackingStatus(progress.offRouteKm > 1.5 ? "You appear off this archived route; the dot is snapped to the nearest route point." : boarded ? `On board · get off at ${trackedLeg.toStop.name}` : `Follow your phone to ${trackedLeg.fromStop.name}, then board.`);
+    if (followMe) map.easeTo({ center: [progress.snapped[1], progress.snapped[0]], duration: 550 });
+    // Auto-detect boarding: moving at vehicle speed, along the route, away from the start.
+    if (!boarded && progress.offRouteKm < 0.3 && progress.travelledKm > 0.2 && (trackedSpeed ?? 0) >= 2.5) {
+      setBoarded(true); toast("Looks like you are on board. I will tell you when to get off.");
+    }
+    if (boarded && alertStage.current < 1 && progress.stopsLeft <= 1 && progress.remainingKm > 0.15) {
+      alertStage.current = 1; toast(`Next stop is yours: ${trackedLeg.toStop.name}. Get ready to get off.`); try { navigator.vibrate?.([200, 100, 200]); } catch { /* not supported */ }
+    }
+    if (haversineKm(location[0], location[1], trackedLeg.toStop.lat, trackedLeg.toStop.lon) <= .15 && !arrivalAlerted.current) {
+      arrivalAlerted.current = true; alertStage.current = 2; setBoarded(false); setTrackingStatus(`Near ${trackedLeg.toStop.name}, your selected stop.`); setTrackingActive(false); toast(`You are at ${trackedLeg.toStop.name}. Get off now.`); try { navigator.vibrate?.([400, 150, 400, 150, 400]); } catch { /* not supported */ }
+    }
+  }, [mapReady, trackedLeg, trackedRoute, trackedStops, progress, trackedPosition, boarded, followMe, moveState, trackedSpeed]);
 
   useEffect(() => {
     const map = mapInst.current;
@@ -318,7 +391,7 @@ export default function Ma3Page() {
       { id: "destination", lat: exploreDestination.lat, lon: exploreDestination.lon, color: "#dc2626", radius: 9 },
     ], 7);
     setLineLayer(map, "explore-walk-approx", [[exploreDestination.stop.lat, exploreDestination.stop.lon], [exploreDestination.lat, exploreDestination.lon]], "#16a34a", 3, .9, true);
-    mapRef.current?.fitBounds([[Math.min(exploreDestination.stop.lon, exploreDestination.lon), Math.min(exploreDestination.stop.lat, exploreDestination.lat)], [Math.max(exploreDestination.stop.lon, exploreDestination.lon), Math.max(exploreDestination.stop.lat, exploreDestination.lat)]], 72);
+    frameMap([[exploreDestination.stop.lat, exploreDestination.stop.lon], [exploreDestination.lat, exploreDestination.lon]]);
   }, [mapReady, exploreDestination]);
 
   const selectRoute = (route: typeof ROUTES[0]) => {
@@ -347,6 +420,15 @@ export default function Ma3Page() {
       const servingRouteIds = (MA3_GTFS.stopRoutes as Record<string, string[]>)[nearest.id] ?? [];
       const firstRoute = nearest.distance <= 30 ? ROUTES.find(route => servingRouteIds.includes(route.id)) : undefined;
       if (firstRoute) { selectRoute(firstRoute); toast(`Closest archived Ma3 stop: ${nearest.name}. Select your origin to plan the matatu legs.`); }
+      // If the phone shares its location, plan the whole trip now and zoom out to show all of it.
+      if (nearest.distance <= 30 && navigator.geolocation) navigator.geolocation.getCurrentPosition(position => {
+        const here = Object.entries(STOPS_RAW).map(([id, st]) => ({ id, name: st[0], lat: st[1], lon: st[2], d: haversineKm(position.coords.latitude, position.coords.longitude, st[1], st[2]) })).sort((a, b) => a.d - b.d)[0];
+        if (!here || here.id === stop.id) return;
+        const origin: StopMatch = { id: here.id, name: here.name, lat: here.lat, lon: here.lon };
+        setFromStop(origin); setFromVal(`Near ${origin.name}`);
+        runJourney(origin, stop, [[destination.lat!, destination.lon!], [position.coords.latitude, position.coords.longitude]]);
+        toast(`Trip planned from near ${origin.name} to ${destination.name}.`);
+      }, () => { /* no location: the rider picks a start */ }, { enableHighAccuracy: false, timeout: 8000, maximumAge: 60000 });
       else toast(`No Ma3 stop is mapped within 30 km of ${destination.name}. Try Fly for longer-distance travel.`);
     } catch { sessionStorage.removeItem("ma3_destination"); }
   }, []);
@@ -371,26 +453,35 @@ export default function Ma3Page() {
     else if (station.id !== railFromId) setRailToId(station.id);
   };
 
+  const runJourney = (from: StopMatch, to: StopMatch, extraPoints: [number, number][] = []) => {
+    const opts = planJourney(from.id, to.id);
+    if (!opts.length) { toast("No route found. Try nearby stops."); return; }
+    setJourneyOpts(opts);
+    setMapCenter([from.lat, from.lon]);
+    const map = mapInst.current;
+    if (!map) return;
+    clearStatic();
+    const allPoints: [number, number][] = [[from.lat, from.lon], [to.lat, to.lon], ...extraPoints];
+    const journeyStops: LabelledStop[] = [];
+    opts[0]?.legs.forEach((leg, i) => {
+      if (!leg.routeId) return;
+      const segment = shapeBetweenStops(leg.routeId, leg.fromStop, leg.toStop);
+      if (segment.length > 1) { setRouteLine(map, `journey-leg-${i}`, segment, leg.routeColor ?? "#d97706", 5, 0.95); allPoints.push(...segment); }
+      const candidates = (ROUTE_STOPS[leg.routeId] ?? []).flatMap(id => { const stop = STOPS_RAW[id]; return stop ? [{ id, name: stop[0], lat: stop[1], lon: stop[2] }] : []; });
+      const named = stopsAlongRoute(segment, candidates, leg.fromStop, leg.toStop);
+      named.forEach((stop, index) => journeyStops.push({ id: `${leg.routeId}-${stop.id}`, name: stop.name, lat: stop.lat, lon: stop.lon, color: leg.routeColor ?? "#d97706", terminal: index === 0 || index === named.length - 1 }));
+    });
+    if (journeyStops.length) setLabelledStops(map, "journey-stops", journeyStops);
+    setPointLayer(map, "planner-pts", [
+      { id: "from", lat: from.lat, lon: from.lon, color: "#16a34a", radius: 10 },
+      { id: "to",   lat: to.lat,   lon: to.lon,   color: "#dc2626", radius: 10 },
+    ], 10);
+    frameMap(allPoints);
+  };
+
   const findJourney = () => {
     if (!fromStop || !toStop) { toast("Pick both From and To stops"); return; }
-    const opts = planJourney(fromStop.id, toStop.id);
-    if (!opts.length) { toast("No route found — try nearby stops"); return; }
-    setJourneyOpts(opts);
-    setMapCenter([fromStop.lat, fromStop.lon]);
-    const map = mapInst.current;
-    if (map) {
-      clearStatic();
-      opts[0]?.legs.forEach((leg, i) => {
-        if (leg.routeId) {
-          const segment = shapeBetweenStops(leg.routeId, leg.fromStop, leg.toStop);
-          if (segment.length > 1) setLineLayer(map, `journey-leg-${i}`, segment, leg.routeColor ?? "#d97706", 5, 0.95);
-        }
-      });
-      setPointLayer(map, "planner-pts", [
-        { id: "from", lat: fromStop.lat, lon: fromStop.lon, color: "#16a34a", radius: 10 },
-        { id: "to",   lat: toStop.lat,   lon: toStop.lon,   color: "#dc2626", radius: 10 },
-      ], 10);
-    }
+    runJourney(fromStop, toStop);
   };
 
   const useCurrentLocation = () => {
@@ -462,7 +553,7 @@ export default function Ma3Page() {
         enabled={liveDriversEnabled} phoneVerified={Boolean(user?.phone_confirmed_at)} onStatus={setLiveDriversStatus} />
 
       <div style={{ position: "absolute", top: 10, left: 10, right: 10, zIndex: 50 }}>
-        <PageTabs label="Ma3 sections" active={panel === "parcel" || panel === "train" ? panel : "search"} tabs={MA3_TABS}
+        <PageTabs label="Ma3 sections" tone={tabTone} active={panel === "parcel" || panel === "train" ? panel : "search"} tabs={MA3_TABS}
           onChange={value => { setPanelMinimized(true); setPanel(value as "search" | "parcel" | "train"); }} />
       </div>
 
@@ -677,7 +768,7 @@ export default function Ma3Page() {
                                 <button className="btn btn-go" style={{ flex: 1, padding: 8, fontSize: ".7rem", justifyContent: "center" }} onClick={() => { const firstMatatu = opt.legs.find(leg => leg.type === "matatu"); if (firstMatatu) void lockIn(firstMatatu); }} disabled={!opt.legs.some(leg => leg.type === "matatu")}>
                                   <Lock size={11} /> Share pickup
                                 </button>
-                                <button className="btn btn-ghost" style={{ flex: 1, padding: 8, fontSize: ".7rem", justifyContent: "center" }} onClick={() => { const firstMatatu = opt.legs.find(leg => leg.type === "matatu"); if (!firstMatatu) return; arrivalAlerted.current = false; setTrackedPosition(null); setTrackedLeg(firstMatatu); setTrackingActive(true); setPanelMinimized(true); toast("Allow location access to follow your phone along the mapped route."); }} disabled={!opt.legs.some(leg => leg.type === "matatu")}>
+                                <button className="btn btn-ghost" style={{ flex: 1, padding: 8, fontSize: ".7rem", justifyContent: "center" }} onClick={() => { const firstMatatu = opt.legs.find(leg => leg.type === "matatu"); if (!firstMatatu) return; arrivalAlerted.current = false; alertStage.current = 0; setBoarded(false); setTrackedPosition(null); setTrackedLeg(firstMatatu); setTrackingActive(true); setPanelMinimized(true); toast("Allow location access to follow your phone along the mapped route."); }} disabled={!opt.legs.some(leg => leg.type === "matatu")}>
                                   <Navigation size={11} /> Track ride
                                 </button>
                                 <button className="btn btn-ghost" style={{ padding: "8px 10px" }} onClick={() => setSaveForm(true)}>
@@ -736,7 +827,24 @@ export default function Ma3Page() {
                       </motion.div>
                     )}
                   </AnimatePresence>
-                  {trackedLeg && <div className="ios-glass" style={{ marginBottom: 8, padding: 10 }}><div style={{ display: "flex", alignItems: "center", gap: 7 }}><Navigation size={13} style={{ color: trackingActive ? "var(--go)" : "var(--ready)" }} /><b style={{ flex: 1, fontSize: ".68rem" }}>{trackingStatus || `Ride to ${trackedLeg.toStop.name}`}</b><button className="icon-btn" aria-label="Stop following ride" onClick={() => { setTrackingActive(false); setTrackedLeg(null); setTrackedPosition(null); }}><X size={13} /></button></div><p style={{ marginTop: 5, fontSize: ".56rem", lineHeight: 1.45, color: "var(--muted2)" }}>Uses your phone's location to show progress on the archived route shape. It does not show the driver's live location or guarantee current service.</p></div>}
+                  {trackedLeg && <div className="ios-glass" style={{ marginBottom: 8, padding: 10 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
+                      <span aria-hidden style={{ width: 10, height: 10, borderRadius: "50%", flexShrink: 0, background: trackingActive ? (moveState === "moving" ? "var(--go)" : moveState === "stopped" ? "var(--stop)" : "var(--ready)") : "var(--muted2)", boxShadow: trackingActive ? "0 0 8px currentColor" : "none" }} />
+                      <b style={{ flex: 1, fontSize: ".68rem" }}>{trackingActive ? `${MOTION_LABEL[moveState]}${trackedSpeed !== null && moveState !== "unknown" ? ` · ${Math.round(trackedSpeed * 3.6)} km/h` : ""}` : "Trip paused"}</b>
+                      <button className="icon-btn" aria-label="Stop following ride" onClick={() => { setTrackingActive(false); setTrackedLeg(null); setTrackedPosition(null); setBoarded(false); }}><X size={13} /></button>
+                    </div>
+                    <p style={{ margin: "7px 0 2px", fontSize: ".8rem", fontWeight: 800 }}>Get off at {trackedLeg.toStop.name}</p>
+                    {progress && <p style={{ margin: 0, fontSize: ".66rem", color: "var(--muted2)" }}>
+                      {boarded || !trackedPosition ? `${progress.stopsLeft} stop${progress.stopsLeft === 1 ? "" : "s"} to go · ${progress.remainingKm.toFixed(1)} km left · about ${Math.max(1, Math.round(progress.remainingKm / AVG_MATATU_SPEED_KMH * 60))} min` : `${Math.round(haversineKm(trackedPosition[0], trackedPosition[1], trackedLeg.fromStop.lat, trackedLeg.fromStop.lon) * 1000)} m to ${trackedLeg.fromStop.name}, where you board`}
+                    </p>}
+                    {progress && boarded && progress.upcoming.length > 0 && <p style={{ margin: "6px 0 0", fontSize: ".62rem" }}><span style={{ color: "var(--muted2)" }}>Coming up: </span>{progress.upcoming.map((stop, index) => <span key={stop.id}>{index ? " › " : ""}<b>{stop.name}</b></span>)}</p>}
+                    <p style={{ margin: "6px 0 0", fontSize: ".6rem", color: "var(--muted2)" }}>{trackingStatus}</p>
+                    <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
+                      {!boarded && <button className="btn btn-go" style={{ flex: 1, padding: 7, fontSize: ".62rem", justifyContent: "center" }} onClick={() => { setBoarded(true); toast("On board. I will tell you when to get off."); }}>I am on board</button>}
+                      <button className="btn btn-ready" style={{ flex: 1, padding: 7, fontSize: ".62rem", justifyContent: "center" }} onClick={() => { if (followMe) { setFollowMe(false); frameMap(trackedRoute); } else { setFollowMe(true); if (progress) mapRef.current?.flyTo(progress.snapped[1], progress.snapped[0], 15); } }}>{followMe ? "Show whole trip" : "Follow me"}</button>
+                    </div>
+                    <p style={{ marginTop: 6, fontSize: ".54rem", lineHeight: 1.45, color: "var(--muted2)" }}>Uses your phone's location against the archived route shape. It does not show the driver's live location or guarantee current service. Times are estimates.</p>
+                  </div>}
                 </>
               ) : (
                 <div>

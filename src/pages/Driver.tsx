@@ -8,6 +8,7 @@ import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 import DriverLiveAvailability from "@/components/DriverLiveAvailability";
 import DriverParcelInbox from "@/components/DriverParcelInbox";
 import DriverTrafficReports from "@/components/DriverTrafficReports";
+import DriverStopAlerts from "@/components/DriverStopAlerts";
 
 const DRIVER_TABS = [
   { id: "broadcast", label: "Broadcast", Icon: Bus },
@@ -24,6 +25,7 @@ export default function DriverPage() {
   const [routeId, setRouteId] = useState(MATATU_ROUTES[0]?.id ?? "");
   const [seats, setSeats] = useState(driverType === "matatu-driver" ? 14 : 3);
   const [activeSection, setActiveSection] = useState("broadcast");
+  const [driverOnline, setDriverOnline] = useState(false);
   const [checks, setChecks] = useState({ licence: false, insurance: false, roadworthy: false, consent: false });
   const [waitingCounts, setWaitingCounts] = useState<Record<string, { waiting: number; walking: number }>>({});
   const [demandStatus, setDemandStatus] = useState("Waiting for stop-demand data");
@@ -86,8 +88,10 @@ export default function DriverPage() {
   return <div className="inner" style={{ paddingTop: 12 }}>
     <PageTabs label="Driver sections" active={activeSection} tabs={DRIVER_TABS} onChange={jumpToSection} />
     <div id="driver-broadcast" style={{ scrollMarginTop: 16 }}>
-      <DriverLiveAvailability routeId={routeId} onRouteChange={setRouteId} seats={seats} onSeatsChange={setSeats} />
+      <DriverLiveAvailability routeId={routeId} onRouteChange={setRouteId} seats={seats} onSeatsChange={setSeats} onOnlineChange={setDriverOnline} />
     </div>
+
+    {driverType === "matatu-driver" && <DriverStopAlerts routeId={routeId} online={driverOnline} />}
 
     {driverType === "matatu-driver" && <DriverTrafficReports routeId={routeId} routeName={selectedRoute?.sn ?? routeId} />}
 

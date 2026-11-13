@@ -2,11 +2,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import maplibregl from "maplibre-gl";
-import { MapPin, X, Box, Navigation, Search, Utensils, BedDouble, Landmark, Clock, Bus, ChevronDown, ChevronUp } from "lucide-react";
+import { MapPin, X, Box, Navigation, Search, Utensils, BedDouble, Landmark, Clock, Bus, ChevronDown, ChevronUp, Car } from "lucide-react";
 import { toast } from "sonner";
 import MapLibreView, { MapLibreHandle } from "@/components/MapLibreView";
-import PageTabs from "@/components/PageTabs";
+import PageTabs, { TabTone } from "@/components/PageTabs";
 import { useSheet } from "@/lib/useSheet";
+import { fitAboveSheet } from "@/lib/mapLayers";
 import { BusinessPin, PinCategory, PIN_CATEGORY_META } from "@/data/ma3_core";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 
@@ -14,7 +15,7 @@ const NAIROBI: [number, number] = [-1.2864, 36.8172];
 type ExploreTab = "food" | "stay_shop" | "places";
 type FeedStatus = "loading" | "ready" | "disconnected" | "error" | "zoom";
 type ExploreCategory = "food" | "stay_shop" | "places";
-const TABS = [{ id: "food", label: "Food & drink", Icon: Utensils }, { id: "stay_shop", label: "Stays & shopping", Icon: BedDouble }, { id: "places", label: "Kenya attractions", Icon: Landmark }] as const;
+const TABS = [{ id: "food", label: "Food & drink", Icon: Utensils }, { id: "stay_shop", label: "Stays & shopping", Icon: BedDouble }, { id: "places", label: "Sights & essentials", Icon: Landmark }] as const;
 const EXPLORE_CATEGORIES: { id: ExploreCategory; label: string }[] = [
   { id: "food", label: "Food & drink" }, { id: "stay_shop", label: "Stays & shopping" }, { id: "places", label: "Sights & essentials" },
 ];
@@ -53,6 +54,9 @@ export default function ExplorePage() {
   const [activeHotspotCategory, setActiveHotspotCategory] = useState<ExploreCategory>("food");
   const [hotspotQuery, setHotspotQuery] = useState("");
   const [selectedPin, setSelectedPin] = useState<BusinessPin | null>(null);
+  const [subtype, setSubtype] = useState<string | null>(null);
+  const groupColumn = useRef(true);
+  const activeGroup = useRef<ExploreCategory>("food");
   const sheet = useSheet("peek");
   const [is3D, setIs3D] = useState(false);
   const [mapCenter, setMapCenter] = useState<[number, number]>(NAIROBI);
@@ -71,11 +75,16 @@ export default function ExplorePage() {
     const rows: any[] = [];
     const pageSize = 500;
     for (let offset = 0; offset < 2500; offset += pageSize) {
-      const { data, error } = await supabase.from("explore_pois")
-        .select("osm_id,name,category,subtype,latitude,longitude,county,locality,opening_hours,source_snapshot")
-        .gte("latitude", bounds.getSouth()).lte("latitude", bounds.getNorth())
-        .gte("longitude", bounds.getWest()).lte("longitude", bounds.getEast())
-        .order("name").range(offset, offset + pageSize - 1);
+      const build = (withGroup: boolean) => {
+        let request = supabase!.from("explore_pois")
+          .select("osm_id,name,category,subtype,latitude,longitude,county,locality,opening_hours,source_snapshot")
+          .gte("latitude", bounds.getSouth()).lte("latitude", bounds.getNorth())
+          .gte("longitude", bounds.getWest()).lte("longitude", bounds.getEast());
+        if (withGroup) request = request.eq("explore_group", activeGroup.current);
+        return request.order("name").range(offset, offset + pageSize - 1);
+      };
+      let { data, error } = await build(groupColumn.current);
+      if (error && groupColumn.current && /explore_group/i.test(error.message)) { groupColumn.current = false; ({ data, error } = await build(false)); }
       if (current !== requestId.current) return;
       if (error) { console.error("Explore POI query failed", error.message); setFeedStatus("error"); setPois([]); setDataSnapshot(null); return; }
       rows.push(...(data ?? []));
@@ -96,8 +105,17 @@ export default function ExplorePage() {
   }, []);
 
   const visiblePins = useMemo(() => {
-    return pois.filter(pin => filters.has(exploreCategory(pin)));
-  }, [pois, filters]);
+    return pois.filter(pin => filters.has(exploreCategory(pin)) && (!subtype || (pin.subType ?? "other") === subtype));
+  }, [pois, filters, subtype]);
+  const subtypeChips = useMemo(() => {
+    const counts = new Map<string, number>();
+    pois.filter(pin => exploreCategory(pin) === activeHotspotCategory).forEach(pin => { const key = pin.subType ?? "other"; counts.set(key, (counts.get(key) ?? 0) + 1); });
+    return [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 10);
+  }, [pois, activeHotspotCategory]);
+  const nearbyList = useMemo(() => {
+    const [lat, lon] = mapCenter;
+    return visiblePins.map(pin => ({ pin, km: Math.hypot((pin.lat - lat) * 111, (pin.lon - lon) * 111 * Math.cos(lat * Math.PI / 180)) })).sort((a, b) => a.km - b.km).slice(0, 8);
+  }, [visiblePins, mapCenter]);
   const categoryResults = useMemo(() => {
     const query = hotspotQuery.trim().toLowerCase();
     if (!query) return [];
@@ -106,12 +124,12 @@ export default function ExplorePage() {
   }, [pois, activeHotspotCategory, hotspotQuery]);
 
   useEffect(() => {
-    if (mapInst.current) drawPinMarkers(mapInst.current, visiblePins, filters, pinMarkers, setSelectedPin);
-  }, [visiblePins, filters]);
+    if (mapInst.current) drawPinMarkers(mapInst.current, visiblePins, filters, pinMarkers, selectPlace);
+  }, [visiblePins, filters]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleMapLoad = (map: maplibregl.Map) => {
     mapInst.current = map;
-    const load = () => void loadViewport(map);
+    const load = () => { const c = map.getCenter(); setMapCenter([c.lat, c.lng]); void loadViewport(map); };
     moveListener.current = load;
     map.on("moveend", load);
     load();
@@ -122,7 +140,7 @@ export default function ExplorePage() {
     pinMarkers.current.forEach(marker => marker.remove());
   }, []);
   const startMatatuDirections = async (pin: BusinessPin) => {
-    setMapCenter([pin.lat, pin.lon]); setSelectedPin(null);
+    setSelectedPin(null);
     mapRef.current?.flyTo(pin.lon, pin.lat, 16);
     if (pin.addedBy === "OpenStreetMap" && supabase) {
       void (async () => {
@@ -138,21 +156,32 @@ export default function ExplorePage() {
       })();
     }
   };
+  const selectPlace = (pin: BusinessPin) => {
+    setSelectedPin(pin);
+    if (mapInst.current) fitAboveSheet(mapInst.current, [[pin.lon, pin.lat]], Math.round(window.innerHeight * 0.3), 16);
+  };
   const activeTab = tab;
   const setSection = (value: string) => {
     const next = value as ExploreTab;
     setTab(next);
     setActiveHotspotCategory(next);
     setFilters(new Set([next]));
+    activeGroup.current = next;
+    setSubtype(null);
+    setPois([]);
     setHotspotQuery(""); setSelectedPin(null);
+    sheet.setSnap("half");
+    if (mapInst.current) void loadViewport(mapInst.current);
   };
+  // The three buttons glow by what the app is doing: loading = amber, ready = green, problem = red.
+  const tabTone: TabTone = feedStatus === "ready" ? "go" : feedStatus === "loading" || feedStatus === "zoom" ? "ready" : "stop";
   const statusLabel = feedStatus === "loading" ? "Loading mapped places…" : feedStatus === "disconnected" ? "Places are not available right now" : feedStatus === "error" ? "Could not load places" : feedStatus === "zoom" ? "Zoom in for nearby places" : `Mapped places${dataSnapshot ? ` · ${dataSnapshot}` : ""}`;
   useEffect(() => { sheet.setSnap(selectedPin ? "half" : "peek"); }, [selectedPin?.id]);
 
   return <div style={{ position: "relative", height: "calc(100vh - var(--top-h) - var(--nav-h))", marginTop: "-12px", overflow: "hidden" }}>
     <MapLibreView ref={mapRef} center={mapCenter} zoom={13} pitch={is3D ? 48 : 0} bearing={is3D ? -14 : 0} height="100%" borderRadius={0} onLoad={handleMapLoad} />
     <div style={{ position: "absolute", top: 10, left: 10, right: 10, zIndex: 50 }}>
-      <PageTabs label="Explore sections" active={activeTab} tabs={TABS} onChange={setSection} />
+      <PageTabs label="Explore sections" tone={tabTone} active={activeTab} tabs={TABS} onChange={setSection} />
       <div style={{ display: "inline-flex", padding: "5px 9px", borderRadius: 8, background: "rgba(8,8,16,.82)", border: "1px solid var(--border)", color: "var(--muted2)", fontSize: ".55rem" }}>{statusLabel}</div>
     </div>
     <button aria-label={is3D ? "Switch to 2D map" : "Switch to 3D map"} onClick={() => setIs3D(value => !value)} style={{ position: "absolute", right: 12, top: 112, zIndex: 60, width: 40, height: 40, borderRadius: 12, border: "1px solid var(--border2)", background: "rgba(8,8,16,.82)", color: "var(--ready)", display: "grid", placeItems: "center" }}><Box size={17} /></button>
@@ -168,10 +197,19 @@ export default function ExplorePage() {
       {selectedPin.openingHours && <p style={{ display: "flex", gap: 6, alignItems: "center", fontSize: ".65rem", color: "var(--muted2)", marginBottom: 7 }}><Clock size={12} />{selectedPin.openingHours}</p>}
       {(selectedPin.floor || selectedPin.unit) && <p style={{ fontSize: ".65rem", color: "var(--muted2)", marginBottom: 7 }}>{[selectedPin.floor, selectedPin.unit].filter(Boolean).join(" · ")}</p>}
       {selectedPin.notes && <p style={{ fontSize: ".7rem", color: "var(--muted2)", marginBottom: 9 }}>{selectedPin.notes}</p>}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 7 }}><button className="btn btn-go" style={{ width: "100%" }} onClick={() => { sessionStorage.setItem("ma3_destination", JSON.stringify({ name: selectedPin.name, lat: selectedPin.lat, lon: selectedPin.lon })); void startMatatuDirections(selectedPin); setLocation("/ma3"); }}><Bus size={13} /> Plan by Ma3</button><button className="btn btn-ready" style={{ width: "100%" }} onClick={() => { sessionStorage.setItem("ma3_fly_destination", JSON.stringify({ name: selectedPin.name, lat: selectedPin.lat, lon: selectedPin.lon })); setLocation("/fly"); }}><Navigation size={13} /> Travel options</button></div>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 7 }}><button className="btn btn-go" style={{ width: "100%" }} onClick={() => { sessionStorage.setItem("ma3_destination", JSON.stringify({ name: selectedPin.name, lat: selectedPin.lat, lon: selectedPin.lon })); void startMatatuDirections(selectedPin); setLocation("/ma3"); }}><Bus size={13} /> Plan by Ma3</button><button className="btn btn-ready" style={{ width: "100%" }} onClick={() => { sessionStorage.setItem("ma3_fly_destination", JSON.stringify({ name: selectedPin.name, lat: selectedPin.lat, lon: selectedPin.lon })); setLocation("/fly"); }}><Navigation size={13} /> Travel options</button></div><button className="btn btn-ready" style={{ width: "100%", marginTop: 7 }} onClick={() => { sessionStorage.setItem("ndai_destination", JSON.stringify({ tab: "ride", name: selectedPin.name, lat: selectedPin.lat, lon: selectedPin.lon })); setLocation("/ndai"); }}><Car size={13} /> Plan by Ndai (ride)</button>
       </> : <>
-          {activeHotspotCategory && hotspotQuery.trim() && <div className="ios-glass" style={{ marginBottom: 7, padding: 5 }}>{categoryResults.map(pin => <button key={pin.id} onClick={() => { setMapCenter([pin.lat, pin.lon]); mapRef.current?.flyTo(pin.lon, pin.lat, 16); setSelectedPin(pin); }} style={{ width: "100%", padding: "8px 9px", display: "flex", textAlign: "left", border: 0, borderBottom: "1px solid var(--border)", background: "transparent", color: "var(--white)", cursor: "pointer" }}><MapPin size={13} style={{ color: "var(--ready)", marginRight: 8, flexShrink: 0 }} /><span><b style={{ display: "block", fontSize: ".68rem" }}>{pin.name}</b><small style={{ color: "var(--muted2)" }}>{pin.locality || pin.subType || "Mapped place"}</small></span></button>)}{categoryResults.length === 0 && <p style={{ padding: 10, color: "var(--muted2)", fontSize: ".63rem" }}>No matches in this map area. Pan or zoom to search nearby.</p>}</div>}
-          {!hotspotQuery.trim() && <p style={{ color: "var(--muted2)", fontSize: ".63rem", lineHeight: 1.5 }}>Type a name or area above, or tap a pin on the map. Drag the bar up to see more, or down to see the map.</p>}
+          {activeHotspotCategory && hotspotQuery.trim() && <div className="ios-glass" style={{ marginBottom: 7, padding: 5 }}>{categoryResults.map(pin => <button key={pin.id} onClick={() => selectPlace(pin)} style={{ width: "100%", padding: "8px 9px", display: "flex", textAlign: "left", border: 0, borderBottom: "1px solid var(--border)", background: "transparent", color: "var(--white)", cursor: "pointer" }}><MapPin size={13} style={{ color: "var(--ready)", marginRight: 8, flexShrink: 0 }} /><span><b style={{ display: "block", fontSize: ".68rem" }}>{pin.name}</b><small style={{ color: "var(--muted2)" }}>{pin.locality || pin.subType || "Mapped place"}</small></span></button>)}{categoryResults.length === 0 && <p style={{ padding: 10, color: "var(--muted2)", fontSize: ".63rem" }}>No matches in this map area. Pan or zoom to search nearby.</p>}</div>}
+          {!hotspotQuery.trim() && <>
+            {subtypeChips.length > 0 && <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 9 }}>
+              <button className={`btn ${subtype === null ? "btn-ready" : "btn-ghost"}`} style={{ padding: "5px 10px", fontSize: ".6rem" }} onClick={() => setSubtype(null)}>All</button>
+              {subtypeChips.map(([name, count]) => <button key={name} className={`btn ${subtype === name ? "btn-ready" : "btn-ghost"}`} style={{ padding: "5px 10px", fontSize: ".6rem" }} onClick={() => setSubtype(subtype === name ? null : name)}>{name.replace(/_/g, " ")} · {count}</button>)}
+            </div>}
+            {nearbyList.length > 0 ? <div className="ios-glass" style={{ padding: 5 }}>
+              <p className="sec-label" style={{ padding: "5px 8px 2px" }}>Closest to the middle of the map</p>
+              {nearbyList.map(({ pin, km }) => <button key={pin.id} onClick={() => selectPlace(pin)} style={{ width: "100%", padding: "8px 9px", display: "flex", textAlign: "left", border: 0, borderBottom: "1px solid var(--border)", background: "transparent", color: "var(--white)", cursor: "pointer" }}><MapPin size={13} style={{ color: "var(--ready)", marginRight: 8, flexShrink: 0, marginTop: 2 }} /><span style={{ flex: 1, minWidth: 0 }}><b style={{ display: "block", fontSize: ".68rem" }}>{pin.name}</b><small style={{ color: "var(--muted2)" }}>{pin.subType?.replace(/_/g, " ") || "Mapped place"}{pin.locality ? ` · ${pin.locality}` : ""}</small></span><small style={{ color: "var(--muted2)", whiteSpace: "nowrap" }}>{km < 1 ? `${Math.round(km * 1000)} m` : `${km.toFixed(1)} km`}</small></button>)}
+            </div> : <p style={{ color: "var(--muted2)", fontSize: ".63rem", lineHeight: 1.5 }}>{feedStatus === "zoom" ? "Zoom in on the map to see places here." : "Type a name or area above, or tap a pin on the map. Drag the bar up to see more, or down to see the map."}</p>}
+          </>}
         </>}
       </div>
     </div>

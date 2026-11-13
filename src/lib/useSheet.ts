@@ -91,6 +91,8 @@ export function useSheet(initial: SheetSnap = "peek", options: { aboveNav?: bool
 
   return {
     snap,
+    /** current sheet height in pixels, for framing the map above it */
+    height,
     setSnap,
     cycle,
     minimized: snap === "peek",

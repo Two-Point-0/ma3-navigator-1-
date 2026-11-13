@@ -194,14 +194,16 @@ label { font-size:.56rem; font-weight:700; letter-spacing:.18em; text-transform:
   .bpanel, .led-edge { animation: none; --led: #d97706; }
 }
 
-/* Top 3 tabs: left red · middle amber · right green */
-.page-tab { --tone: var(--ready); border-color: color-mix(in srgb, var(--tone) 45%, transparent); }
-.page-tab[data-tone="stop"]  { --tone: var(--stop); }
-.page-tab[data-tone="ready"] { --tone: var(--ready); }
-.page-tab[data-tone="go"]    { --tone: var(--go); }
-.page-tab svg { color: var(--tone); }
-.page-tab.active { color: #fff; background: color-mix(in srgb, var(--tone) 30%, rgba(8,8,16,.8)); border-color: var(--tone);
-  box-shadow: 0 0 14px color-mix(in srgb, var(--tone) 65%, transparent), inset 0 0 8px color-mix(in srgb, var(--tone) 25%, transparent); }
+/* Top 3 tabs: all identical. The page sets one state colour on the nav (data-tone). */
+.page-tabs { --tone: #94a3b8; }
+.page-tabs[data-tone="go"]    { --tone: var(--go); }
+.page-tabs[data-tone="ready"] { --tone: var(--ready); }
+.page-tabs[data-tone="stop"]  { --tone: var(--stop); }
+.page-tab { border-color: var(--border2); }
+.page-tab svg { color: var(--muted2); }
+.page-tab.active { color: #fff; background: color-mix(in srgb, var(--tone) 28%, rgba(8,8,16,.8)); border-color: var(--tone);
+  box-shadow: 0 0 14px color-mix(in srgb, var(--tone) 55%, transparent), inset 0 0 8px color-mix(in srgb, var(--tone) 22%, transparent); transition: background .3s, border-color .3s, box-shadow .3s; }
+.page-tab.active svg { color: var(--tone); }
 .page-tab.active::after { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--tone); box-shadow: 0 0 8px var(--tone); flex-shrink: 0; }
 
 /* ───────── Matatu-front wallet ───────── */
