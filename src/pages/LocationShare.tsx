@@ -201,7 +201,7 @@ export default function LocationSharePage() {
       </p>
     </header>
 
-    {!isSupabaseConfigured && <div className="card" style={{ padding: 14, marginBottom: 12, borderLeft: "3px solid var(--ready)" }}><b>Backend setup needed</b><p style={{ margin: "6px 0 0", color: "var(--muted2)", fontSize: ".72rem", lineHeight: 1.5 }}>This feature uses Supabase Auth, Realtime and the migration <code>20261107_private_location_sharing.sql</code>. It does not fall back to demo or local-storage coordinates.</p></div>}
+    {!isSupabaseConfigured && <div className="card" style={{ padding: 14, marginBottom: 12, borderLeft: "3px solid var(--ready)" }}><b>Backend setup needed</b><p style={{ margin: "6px 0 0", color: "var(--muted2)", fontSize: ".72rem", lineHeight: 1.5 }}>This feature uses Supabase Auth, Realtime and the migration <code>20261107000000_private_location_sharing.sql</code>. It does not fall back to demo or local-storage coordinates.</p></div>}
 
     {!user && <div className="card" style={{ padding: 16, marginBottom: 12 }}>
       <p style={{ margin: "0 0 10px", color: "var(--muted2)", fontSize: ".76rem", lineHeight: 1.55 }}>Sign in on both phones with separate Supabase accounts before pairing. For a quick sandbox check you can use guest accounts; verify OTP later if testing the phone-number sign-in flow.</p>

@@ -10,7 +10,7 @@ The current `ParcelPanel` remains a local prototype and needs that separate parc
 
 ## M-Pesa integration prepared in this branch
 
-`20261101_wallet_mpesa.sql` creates server-authoritative wallet balances, a top-up request table, a transaction ledger, owner-only read policies, and an idempotent settlement RPC. `functions/mpesa-stk-push` accepts only an authenticated user and creates a pending payment; it never credits a balance. `functions/mpesa-callback` is reachable without a Supabase JWT because Safaricom cannot send one, but it treats the callback as untrusted and checks the CheckoutRequestID using Daraja STK Query before it asks Postgres to settle. The SQL RPC compares the amount and phone and credits the ledger once. The browser polls only its own pending request and refreshes the server balance after settlement.
+`20261101000100_wallet_mpesa.sql` creates server-authoritative wallet balances, a top-up request table, a transaction ledger, owner-only read policies, and an idempotent settlement RPC. `functions/mpesa-stk-push` accepts only an authenticated user and creates a pending payment; it never credits a balance. `functions/mpesa-callback` is reachable without a Supabase JWT because Safaricom cannot send one, but it treats the callback as untrusted and checks the CheckoutRequestID using Daraja STK Query before it asks Postgres to settle. The SQL RPC compares the amount and phone and credits the ledger once. The browser polls only its own pending request and refreshes the server balance after settlement.
 
 The default app flag `APP_MODE.realPayments` must remain `false` until the project, merchant and tested callback are ready. Use the Daraja sandbox first. Do not add live secrets to Vite variables, the repository, a source file or a chat message.
 
@@ -29,7 +29,7 @@ Supabase injects the project URL and server secret key into hosted functions. Th
 
 ### Deploy sequence
 
-1. In the correct Supabase project, apply `supabase/migrations/20261101_wallet_mpesa.sql` only after confirming it is the intended project and reviewing the SQL. Ensure Auth and Row Level Security are enabled.
+1. In the correct Supabase project, apply `supabase/migrations/20261101000100_wallet_mpesa.sql` only after confirming it is the intended project and reviewing the SQL. Ensure Auth and Row Level Security are enabled.
 2. Create a Daraja **sandbox** app and enter the test credentials as Edge Function secrets. Configure the Daraja callback URL to the deployed `mpesa-callback` function URL and ensure it is publicly reachable over HTTPS.
 3. Install/use the Supabase CLI, authenticate, link this repository to the correct project ref, set the secrets, then deploy only `mpesa-stk-push` and `mpesa-callback`. `supabase/config.toml` keeps JWT verification on for the user-facing initiation function and off only for the Safaricom callback, which verifies through a server-side Daraja query.
 4. Test success, user cancellation, wrong phone/amount, duplicate callback, timeout and unauthorized calls with sandbox numbers. Confirm one and only one server-side wallet credit per accepted receipt.

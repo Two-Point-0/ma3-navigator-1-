@@ -123,7 +123,7 @@ if (pricesPath) {
     const { data, error } = await supabase.from("retailer_branches")
       .upsert(batch.map(({ key, ...branch }) => branch), { onConflict: "retailer_id,branch_slug" })
       .select("id,retailer_id,branch_slug");
-    if (error) throw new Error(`Retailer branch upsert failed: ${error.message}. Apply 20261012_market_branches.sql first.`);
+    if (error) throw new Error(`Retailer branch upsert failed: ${error.message}. Apply 20261012000100_market_branches.sql first.`);
     for (const branch of data ?? []) branchIdByKey.set(`${branch.retailer_id}:${branch.branch_slug}`, branch.id);
   }
   const observations = rows.map(({ __line, ...row }) => {
