@@ -22,6 +22,12 @@ When the passenger begins walking toward that stage, they can explicitly tap **I
 
 An approved, phone-verified driver may call `get_ma3_waiting_counts` for the driver’s approved route. The protected function returns a stage name and two aggregate fields—waiting count and walking count—without passenger IDs, phone numbers or exact positions. The Driver screen refreshes these counts every 15 seconds. This is near-live polling, not a push notification. Counts are self-reported demand signals, not bookings, guaranteed passengers or a promise that the driver should stop unsafely. Rows stop counting at expiry; a separate physical expired-row cleanup schedule must be configured and tested before public launch.
 
+### Driver-reported traffic issues
+
+The Matatu Driver workspace includes a small map of the selected route. A route-approved driver can tap **Report issue (+)**, then tap the highlighted route line to set a location, choose a category (pothole, collision, police/traffic checkpoint, roadworks, flooding, obstruction, congestion or other hazard), add an optional short factual note and submit. Reports are not a navigation instruction or a verified emergency feed; users must stop safely before interacting with the phone. Police/checkpoint reports are short-lived and explicitly must not be used to evade law enforcement.
+
+The `20261113_ma3_traffic_reports.sql` migration requires a phone-verified account and an admin-approved driver route. Reports are readable only to approved drivers for the same route. A server-side point-to-segment check requires a submitted point to fall within 200 metres of that route’s imported `ma3_route_shapes` polyline; the frontend’s map click is not the only validation. The Realtime-published report table does not contain the reporter’s identity; a separate RLS-locked audit table stores that only for rate limiting (maximum 12/hour). Expiry removes reports from route discovery after 30 minutes for checkpoints, 2 hours for collisions/flooding, 24 hours for potholes and 90 minutes for other categories. This is visibility expiry, not a configured physical deletion schedule. Notes are capped at 140 characters; users should not include names, phone numbers, plates or other personal details. Reports remain driver-submitted and unverified.
+
 ### Parcel flow
 
 Boda Basket requests use Supabase-backed records and driver-specific discovery/claim logic. Parcel claims are separate from the stop-demand counts and from the live vehicle point. A parcel claim should not reveal the passenger’s phone location to unrelated drivers. Payment settlement or parcel advertising must not rely on a client-side success state.
@@ -52,6 +58,7 @@ Drivers should not use the app while moving the vehicle. Demand counts can guide
 6. Try a distant location, poor accuracy, an unapproved driver and an unrelated route; each protected operation should be rejected.
 7. Cancel the passenger request, go offline on the driver phone, and confirm the counts and fresh marker disappear as expected.
 8. Test location denial and a closed/backgrounded PWA. Search and route information should remain usable without passenger GPS, and the app should not claim continuous driver tracking after the page closes.
+9. With an approved route driver, open **Driver road reports**, tap **Report issue (+)**, tap the route line, submit a test pothole and confirm the marker/list appears on another approved driver account for that same route. Confirm an unapproved account, a passenger and a different-route driver cannot read it; verify that the report disappears from discovery at expiry.
 
 ## Remaining work before production
 

@@ -7,6 +7,7 @@ import { MA3_GTFS } from "@/data/ma3_gtfs";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 import DriverLiveAvailability from "@/components/DriverLiveAvailability";
 import DriverParcelInbox from "@/components/DriverParcelInbox";
+import DriverTrafficReports from "@/components/DriverTrafficReports";
 
 const DRIVER_TABS = [
   { id: "broadcast", label: "Broadcast", Icon: Bus },
@@ -87,6 +88,8 @@ export default function DriverPage() {
     <div id="driver-broadcast" style={{ scrollMarginTop: 16 }}>
       <DriverLiveAvailability routeId={routeId} onRouteChange={setRouteId} seats={seats} onSeatsChange={setSeats} />
     </div>
+
+    {driverType === "matatu-driver" && <DriverTrafficReports routeId={routeId} routeName={selectedRoute?.sn ?? routeId} />}
 
     <section className="ios-glass" style={{ padding: 18, marginTop: 12 }}>
       <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 10 }}>
