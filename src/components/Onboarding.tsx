@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { ChevronRight, Bus, ShoppingCart, Gamepad2, Car, UserRound, Check } from "lucide-react";
 
 export const ROLE_STORAGE_KEY = "ma3_user_role";
-export type Ma3Role = "passenger" | "matatu-driver" | "carpool-driver";
+export type Ma3Role = "passenger" | "matatu-driver" | "carpool-driver" | "tour-driver";
 
 const SLIDES = [
   { theme: "var(--stop)", icon: Bus, keyword: "MOVE", title: "Find a clearer way across town", bullets: ["Search matatu routes and stops", "Compare route and walking options", "Mapped train tracks are not live service times"] },
@@ -12,9 +12,10 @@ const SLIDES = [
 ];
 
 const ROLES: Array<{ id: Ma3Role; label: string; description: string; Icon: typeof UserRound }> = [
-  { id: "passenger", label: "Passenger", description: "Plan trips, compare markets and explore Kenya.", Icon: UserRound },
-  { id: "matatu-driver", label: "Matatu driver", description: "Broadcast consented location and view stop demand.", Icon: Bus },
-  { id: "carpool-driver", label: "Carpool driver", description: "Share a planned trip and manage available seats.", Icon: Car },
+  { id: "passenger", label: "Abiria · Passenger", description: "Plan trips, compare markets and explore Kenya.", Icon: UserRound },
+  { id: "matatu-driver", label: "Dereva wa Ma3 · Matatu driver", description: "Broadcast consented location and view stop demand.", Icon: Bus },
+  { id: "tour-driver", label: "Dereva wa Ziara · Tour van driver", description: "List your tour van and show it live to travellers.", Icon: Car },
+  { id: "carpool-driver", label: "Dereva wa Carpool · Carpool driver", description: "Share a planned trip and manage available seats.", Icon: Car },
 ];
 
 interface OnboardingProps { onDone: () => void; }

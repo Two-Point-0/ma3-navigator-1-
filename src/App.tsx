@@ -1,8 +1,10 @@
+import TripsPage from "@/pages/Trips";
+import LegalPage from "@/pages/Legal";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { Switch, Route, Router as WouterRouter, Link, useLocation } from "wouter";
-import { Toaster, toast } from "sonner";
+import { Toaster } from "sonner";
 import { motion } from "framer-motion";
-import { Bus, Car, Plane, Home, Store, MapPin, Gamepad2, Bell, Wallet as WalletIcon, HelpCircle, Navigation } from "lucide-react";
+import { Bus, Car, Plane, Home, Store, MapPin, Gamepad2, HelpCircle, Navigation } from "lucide-react";
 import { Suspense, lazy, useState, useEffect } from "react";
 import { WalletProvider } from "@/lib/wallet";
 import { ShoppingBasketProvider } from "@/lib/shoppingBasket";
@@ -41,6 +43,17 @@ function TopBar() {
   const [location] = useLocation();
   const { setOpen: setHelpOpen, setCurrentPath } = useHelp();
 
+  // Keep the logo clear of the phone's notch / dynamic island.
+  useEffect(() => {
+    const probe = document.createElement("div");
+    probe.style.cssText = "position:fixed;top:0;height:env(safe-area-inset-top);visibility:hidden";
+    document.body.appendChild(probe);
+    const apply = () => document.documentElement.style.setProperty("--top-h", `${44 + probe.getBoundingClientRect().height}px`);
+    apply();
+    window.addEventListener("resize", apply);
+    return () => { window.removeEventListener("resize", apply); probe.remove(); };
+  }, []);
+
   useEffect(() => {
     setSpin(true);
     const t = setTimeout(() => setSpin(false), 800);
@@ -50,15 +63,8 @@ function TopBar() {
 
   return (
     <div className="topbar">
-      <div style={{ position: "absolute", left: "1.1rem" }}>
-        <Link href="/wallet">
-          <div className="token-pill" style={{ cursor: "pointer" }}>
-            <WalletIcon size={12} /><span>Wallet</span>
-          </div>
-        </Link>
-      </div>
-      <div style={{ textAlign: "center" }}>
-        <div className="app-logo">
+      <div className="logo-float" style={{ textAlign: "center" }}>
+        <div className="app-logo" style={{ justifyContent: "center" }}>
           <span style={{ color: "var(--white)" }}>Ma</span>
           <motion.span
             className="logo-3"
@@ -68,16 +74,11 @@ function TopBar() {
             3
           </motion.span>
         </div>
-        <span className="logo-sub">Move · Market · Mirth</span>
       </div>
-      <div style={{ position: "absolute", right: "1.1rem", display: "flex", alignItems: "center", gap: 8 }}>
-        <div className="icon-btn" onClick={() => setHelpOpen(true)} title="Help">
-          <HelpCircle size={16} />
-        </div>
-        <div className="icon-btn" onClick={() => toast("Notifications coming soon!")}>
-          <Bell size={16} />
-        </div>
-      </div>
+      <button className="icon-btn" aria-label="What does this page do?" title="Help" onClick={() => setHelpOpen(true)}
+        style={{ position: "absolute", right: "0.9rem", bottom: 4, background: "rgba(14,14,24,.72)" }}>
+        <HelpCircle size={16} />
+      </button>
     </div>
   );
 }
@@ -85,7 +86,7 @@ function TopBar() {
 function BottomNav() {
   const [location] = useLocation();
   const role = localStorage.getItem("ma3_user_role");
-  const visibleItems = NAV_ITEMS.filter(item => item.href !== "/driver" || role === "matatu-driver" || role === "carpool-driver");
+  const visibleItems = NAV_ITEMS.filter(item => item.href !== "/driver" || role === "matatu-driver" || role === "carpool-driver" || role === "tour-driver");
   const isActive = (href: string) =>
     href === "/" ? location === "/" || location === "" : location.startsWith(href);
 
@@ -96,7 +97,7 @@ function BottomNav() {
         return (
           <Link key={href} href={href} aria-label={label} title={label}>
             <div className={`bn ${active ? "on" : ""}`}>
-              <div className="bn-ic"><Icon size={19} strokeWidth={active ? 2.4 : 1.8} /></div>
+              <div className="bn-ic"><Icon size={20} strokeWidth={active ? 2.4 : 2} /></div>
               <span className="bn-lbl">{label}</span>
             </div>
           </Link>
@@ -192,6 +193,8 @@ function AppShell() {
           <Route path="/location-share" component={LocationSharePage} />
           <Route path="/driver" component={DriverPage} />
           <Route path="/wallet" component={WalletPage} />
+          <Route path="/trips" component={TripsPage} />
+          <Route path="/legal" component={LegalPage} />
           <Route component={NotFound} />
         </Switch>
         </Suspense>

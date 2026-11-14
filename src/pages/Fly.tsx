@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { AlertTriangle, Database, LoaderCircle, MapPin, Navigation, Plane, Search, TrainFront, ChevronUp, ChevronDown, Clock, X } from "lucide-react";
 import maplibregl from "maplibre-gl";
 import MapLibreView, { MapLibreHandle } from "@/components/MapLibreView";
+import FlyLivePrices from "@/components/FlyLivePrices";
 import PageTabs from "@/components/PageTabs";
 import { useSheet } from "@/lib/useSheet";
 import { removeLineLayer, removePointLayer, setLineLayer, setPointLayer } from "@/lib/mapLayers";
@@ -184,7 +185,7 @@ export default function FlyPage() {
     <MapLibreView ref={mapRef} center={NAIROBI} zoom={5} height="100%" borderRadius={0} onLoad={setMap} />
     <div style={{ position: "absolute", top: 8, left: 10, right: 10, zIndex: 20, maxWidth: 640, margin: "0 auto" }}>
       <header style={{ padding: "8px 10px", borderRadius: 14, background: "rgba(8,8,16,.78)", backdropFilter: "blur(12px)" }}><div style={{ display: "flex", alignItems: "center", gap: 7 }}><Plane size={17} style={{ color: "var(--ready)" }} /><h2 style={{ fontFamily: "var(--font-display)", fontSize: "1rem" }}>Fly & Rail</h2><span style={{ marginLeft: "auto", color: "var(--muted2)", fontSize: ".56rem" }}>Sourced route map</span></div></header>
-      <div style={{ marginTop: 7 }}><PageTabs label="Travel sections" active={tab} tabs={TABS} onChange={value => { setTab(value as FlyTab); sheet.setSnap("peek"); setSelectedFlight(null); setSheetOpen(true); }} /></div>
+      <div style={{ marginTop: 7 }}><PageTabs label="Travel sections" active={sheetOpen ? tab : ""} tabs={TABS} onChange={value => { setTab(value as FlyTab); sheet.setSnap("peek"); setSelectedFlight(null); setSheetOpen(true); }} /></div>
     </div>
 
     <section {...sheet.panelProps} style={{ ...sheet.panelProps.style, display: sheetOpen ? "flex" : "none", flexDirection: "column" }}>
@@ -200,6 +201,7 @@ export default function FlyPage() {
             <label style={{ gridColumn: "1 / -1" }}>Travel date<input className="finput" type="date" value={travelDate} onChange={event => setTravelDate(event.target.value)} /></label>
           </div>
           <button className="btn btn-ready" style={{ width: "100%", justifyContent: "center", marginTop: 8 }} onClick={() => void searchFlights()} disabled={flightLoading}><Search size={13} />{flightLoading ? "Searching sourced flights…" : "Search flights"}</button>
+          <FlyLivePrices origin={origin} destination={destination} date={travelDate} />
           {flightError && <p role="status" style={{ color: "var(--muted2)", fontSize: ".62rem", lineHeight: 1.45, marginTop: 8 }}>{flightError}</p>}
           {flightLoading && <p style={{ color: "var(--muted2)", fontSize: ".62rem", marginTop: 8 }}><LoaderCircle size={13} /> Loading routes…</p>}
           <div style={{ display: "grid", gap: 7, marginTop: 9 }}>{flightRoutes.map(flight => <button key={flight.id} className="card" onClick={() => { setSelectedFlight(flight); sheet.setSnap("half"); }} style={{ width: "100%", padding: 11, textAlign: "left", color: "var(--white)", cursor: "pointer", borderColor: selectedFlight?.id === flight.id ? "var(--go)" : "var(--border2)" }}><div style={{ display: "flex", gap: 8, alignItems: "center" }}><Plane size={15} style={{ color: "var(--go)" }} /><span style={{ flex: 1 }}><b style={{ display: "block", fontSize: ".72rem" }}>{flight.airline} · {flight.flight_number}</b><small style={{ color: "var(--muted2)" }}>{flight.origin_name} ({flight.origin_code}) → {flight.destination_name} ({flight.destination_code})</small></span>{flight.fare_kes !== null && <b style={{ color: "var(--ready)", fontSize: ".68rem" }}>KES {Number(flight.fare_kes).toLocaleString()}</b>}</div><small style={{ display: "flex", gap: 5, alignItems: "center", color: "var(--muted2)", marginTop: 6 }}><Clock size={10} />{new Date(flight.departure_at).toLocaleString()} · path supplied by source</small></button>)}</div>

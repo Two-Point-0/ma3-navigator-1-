@@ -14,7 +14,7 @@ import LiveDriverMapLayer from "@/components/LiveDriverMapLayer";
 import { useAuthContext } from "@/context/AuthContext";
 import ParcelPanel from "@/components/ParcelPanel";
 import { useSheet } from "@/lib/useSheet";
-import { setLineLayer, setPointLayer, removeLineLayer, removePointLayer, setRouteLine, setLabelledStops, fitAboveSheet, LabelledStop } from "@/lib/mapLayers";
+import { setLineLayer, setPointLayer, removeLineLayer, removePointLayer, setRouteLine, setLabelledStops, setStationIcons, fitAboveSheet, LabelledStop } from "@/lib/mapLayers";
 import { classifyMotion, computeTripProgress, MOTION_LABEL, MOTION_TONE, stopsAlongRoute, MotionState } from "@/lib/tripProgress";
 import { MA3_GTFS } from "@/data/ma3_gtfs";
 import {
@@ -32,9 +32,9 @@ const SHAPES = MA3_GTFS.shapes as unknown as Record<string, [number, number][]>;
 const STOPS_RAW = MA3_GTFS.stops as unknown as Record<string, [string, number, number]>;
 const ROUTE_STOPS = MA3_GTFS.routeStops as Record<string, string[]>;
 const MA3_TABS = [
-  { id: "search", label: "Matatu routes", Icon: Search },
-  { id: "parcel", label: "Parcel delivery", Icon: Package },
-  { id: "train", label: "Train stations", Icon: TrainFront },
+  { id: "search", label: "Matatu", Icon: BusFront },
+  { id: "parcel", label: "Parcel", Icon: Package },
+  { id: "train", label: "Rail", Icon: TrainFront },
 ] as const;
 
 type SearchResult =
@@ -210,15 +210,24 @@ export default function Ma3Page() {
   const searchResults: SearchResult[] = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return [];
+    // Every word typed must appear somewhere (so "ngong rd cbd" works), and better matches float to the top:
+    // exact route number first, then names that start with the text, then names that contain it.
+    const words = q.split(/\s+/).filter(Boolean);
+    const score = (text: string, exact: string) => {
+      const hay = text.toLowerCase();
+      if (!words.every(word => hay.includes(word))) return -1;
+      if (hay === q || exact.toLowerCase() === q) return 3;
+      return hay.startsWith(q) || exact.toLowerCase().startsWith(q) ? 2 : 1;
+    };
     const routeMatches: SearchResult[] = ROUTES
-      .filter(r => r.sn.toLowerCase().includes(q) || r.ln.toLowerCase().includes(q) || r.hs.toLowerCase().includes(q))
-      .slice(0, 12)
-      .map(route => ({ kind: "route" as const, route }));
+      .map(route => ({ route, rank: score(`${route.sn} ${route.ln} ${route.hs}`, route.sn) }))
+      .filter(item => item.rank > 0).sort((a, b) => b.rank - a.rank).slice(0, 12)
+      .map(item => ({ kind: "route" as const, route: item.route }));
     const stopMatches: SearchResult[] = searchStops(query, 12).map(stop => ({ kind: "stop" as const, stop }));
     const railMatches: SearchResult[] = OSM_STATIONS
-      .filter(station => station.name.toLowerCase().includes(q))
-      .slice(0, 8)
-      .map(station => ({ kind: "rail" as const, station }));
+      .map(station => ({ station, rank: score(station.name, station.name) }))
+      .filter(item => item.rank > 0).sort((a, b) => b.rank - a.rank).slice(0, 8)
+      .map(item => ({ kind: "rail" as const, station: item.station }));
     return [...routeMatches, ...stopMatches, ...railMatches];
   }, [query]);
 
@@ -236,6 +245,7 @@ export default function Ma3Page() {
     if (map.getSource("osm-railways")) map.removeSource("osm-railways");
     removeLineLayer(map, "selected-rail-segment");
     removePointLayer(map, "selected-rail-stations");
+    removePointLayer(map, "rail-stations-all");
     removePointLayer(map, "route-stops");
     removePointLayer(map, "planner-pts");
     removePointLayer(map, "journey-stops");
@@ -262,11 +272,14 @@ export default function Ma3Page() {
 
   const drawRail = useCallback((map: maplibregl.Map, from?: OSMStation, to?: OSMStation) => {
     clearStatic();
-    if (!from || !to) return;
+    if (!from || !to) {
+      setStationIcons(map, "rail-stations-all", OSM_STATIONS.map(station => ({ id: station.id, lat: station.lat, lon: station.lon, name: station.name, color: "#d97706" })));
+      return;
+    }
     const path = findRailPath(from, to);
     if (path.length > 1) {
       setLineLayer(map, "selected-rail-segment", path, "#d97706", 4, .96);
-      setPointLayer(map, "selected-rail-stations", [from, to].map((station, index) => ({ id: station.id, lat: station.lat, lon: station.lon, color: index ? "#dc2626" : "#16a34a", radius: 7 })), 7);
+      setStationIcons(map, "selected-rail-stations", [from, to].map((station, index) => ({ id: station.id, lat: station.lat, lon: station.lon, name: station.name, color: index ? "#dc2626" : "#16a34a" })));
       const latitudes = path.map(point => point[0]), longitudes = path.map(point => point[1]);
       map.fitBounds([[Math.min(...longitudes), Math.min(...latitudes)], [Math.max(...longitudes), Math.max(...latitudes)]], { padding: 64, maxZoom: 14 });
     }
@@ -453,6 +466,32 @@ export default function Ma3Page() {
     else if (station.id !== railFromId) setRailToId(station.id);
   };
 
+  // Drop a pin anywhere on the map: I find the nearest stop to it and to you, and plan the matatu trip.
+  const [pickMode, setPickMode] = useState(false);
+  const pickModeRef = useRef(false);
+  pickModeRef.current = pickMode;
+  const nearestStopTo = (lat: number, lon: number): (StopMatch & { km: number }) | null => {
+    const best = Object.entries(STOPS_RAW).map(([id, st]) => ({ id, name: st[0], lat: st[1], lon: st[2], km: haversineKm(lat, lon, st[1], st[2]) })).sort((a, b) => a.km - b.km)[0];
+    return best ?? null;
+  };
+  const handleMapTap = (lng: number, lat: number) => {
+    if (!pickModeRef.current) return;
+    setPickMode(false);
+    const map = mapInst.current;
+    if (map) setPointLayer(map, "pin-destination", [{ id: "pin", lat, lon: lng, color: "#dc2626", radius: 10 }], 10);
+    const destinationStop = nearestStopTo(lat, lng);
+    if (!destinationStop || destinationStop.km > 3) { toast("No archived Ma3 stop within 3 km of that pin. Try a pin closer to a main road."); return; }
+    setToStop(destinationStop); setToVal(`Pin · near ${destinationStop.name}`);
+    if (!navigator.geolocation) { toast("Pin saved. Choose your From stop to plan the trip."); return; }
+    navigator.geolocation.getCurrentPosition(position => {
+      const origin = nearestStopTo(position.coords.latitude, position.coords.longitude);
+      if (!origin || origin.id === destinationStop.id) { toast("You are already by that stop."); return; }
+      setFromStop(origin); setFromVal(`Near ${origin.name}`);
+      runJourney(origin, destinationStop, [[lat, lng], [position.coords.latitude, position.coords.longitude]]);
+      toast(`Best matatu trip planned: ${origin.name} to ${destinationStop.name}.`);
+    }, () => toast("Pin saved. Allow location, or choose your From stop, to plan the trip."), { enableHighAccuracy: false, timeout: 8000, maximumAge: 60000 });
+  };
+
   const runJourney = (from: StopMatch, to: StopMatch, extraPoints: [number, number][] = []) => {
     const opts = planJourney(from.id, to.id);
     if (!opts.length) { toast("No route found. Try nearby stops."); return; }
@@ -548,12 +587,12 @@ export default function Ma3Page() {
   return (
     <div style={{ position: "relative", height: "calc(100vh - var(--top-h) - var(--nav-h))", marginTop: "-12px" }}>
       <MapLibreView ref={mapRef} center={mapCenter} zoom={12} pitch={pitch} bearing={bearing}
-        height="100%" borderRadius={0} onLoad={handleMapLoad} />
+        height="100%" borderRadius={0} onLoad={handleMapLoad} onClick={handleMapTap} />
       <LiveDriverMapLayer map={mapReady ? mapInst.current : null} routeId={selRoute?.id ?? null}
         enabled={liveDriversEnabled} phoneVerified={Boolean(user?.phone_confirmed_at)} onStatus={setLiveDriversStatus} />
 
       <div style={{ position: "absolute", top: 10, left: 10, right: 10, zIndex: 50 }}>
-        <PageTabs label="Ma3 sections" tone={tabTone} active={panel === "parcel" || panel === "train" ? panel : "search"} tabs={MA3_TABS}
+        <PageTabs label="Ma3 sections" tone={tabTone} active={panel === "parcel" || panel === "train" ? panel : panel ? "search" : ""} tabs={MA3_TABS}
           onChange={value => { setPanelMinimized(true); setPanel(value as "search" | "parcel" | "train"); }} />
       </div>
 
@@ -581,6 +620,10 @@ export default function Ma3Page() {
                 <button onClick={() => setPanel(null)} style={{ background: "none", border: "none", color: "var(--muted)", cursor: "pointer" }}><X size={18} /></button>
               </div>
 
+              <button className={`btn ${pickMode ? "btn-go" : "btn-ready"}`} style={{ marginTop: 8, padding: "8px 12px", fontSize: ".64rem" }}
+                onClick={() => { setPickMode(value => !value); if (!pickMode) { toast("Tap the map where you want to go."); sheet.setSnap("peek"); } }}>
+                <MapPin size={13} /> {pickMode ? "Tap the map now…" : "Drop a pin to where you are going"}
+              </button>
               {selRoute && (
                 <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
                   style={{ marginTop: 8, padding: "8px 10px", borderRadius: 10, background: `${selRoute.c}12`, border: `1px solid ${selRoute.c}35` }}>

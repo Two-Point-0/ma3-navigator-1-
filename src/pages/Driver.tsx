@@ -9,6 +9,7 @@ import DriverLiveAvailability from "@/components/DriverLiveAvailability";
 import DriverParcelInbox from "@/components/DriverParcelInbox";
 import DriverTrafficReports from "@/components/DriverTrafficReports";
 import DriverStopAlerts from "@/components/DriverStopAlerts";
+import { TourVanLive } from "@/components/TourVans";
 
 const DRIVER_TABS = [
   { id: "broadcast", label: "Broadcast", Icon: Bus },
@@ -75,6 +76,8 @@ export default function DriverPage() {
     setActiveSection(id);
     document.getElementById(`driver-${id}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
+
+  if (role === "tour-driver") return <div className="inner" style={{ paddingTop: 12 }}><TourVanLive /><Link href="/trips"><button className="btn btn-ready" style={{ width: "100%", marginTop: 12 }}>My earnings</button></Link></div>;
 
   if (role !== "matatu-driver" && role !== "carpool-driver") return <div className="inner" style={{ paddingTop: 28 }}>
     <div className="card" style={{ padding: 20, borderLeft: "3px solid var(--stop)" }}>

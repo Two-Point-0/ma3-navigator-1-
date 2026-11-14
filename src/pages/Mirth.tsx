@@ -1,15 +1,17 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Gamepad2, Search, Heart, ThumbsUp, Users, X, Swords, MessageSquareQuote, Crown, Dices, Brain, Grid3x3, BusFront, LoaderCircle, Trophy, Star, MapPin, Sparkles, Shield, Volume2, Route, PlusCircle } from "lucide-react";
+import { Gamepad2, Search, Heart, ThumbsUp, Users, X, Swords, MessageSquareQuote, Crown, Dices, Brain, Grid3x3, BusFront, LoaderCircle, Trophy, Star, MapPin, Sparkles, Shield, Volume2, Route, PlusCircle, ShoppingBag } from "lucide-react";
 import { toast } from "sonner";
 import PageTabs from "@/components/PageTabs";
+import NganyaShop from "@/components/NganyaShop";
+import RouteKing, { submitKingScore, beginKingGame } from "@/components/RouteKing";
 import { useSheet } from "@/lib/useSheet";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 import MapLibreView, { MapLibreHandle } from "@/components/MapLibreView";
 import maplibregl from "maplibre-gl";
 import { removeLineLayer, setLineLayer } from "@/lib/mapLayers";
 
-type Section = "games" | "nganya" | "challenges";
+type Section = "games" | "nganya" | "shop";
 type GameDef = { id: string; name: string; Icon: React.ElementType; desc: string; players: string };
 type Nganya = { id: string; display_name: string; sacco: string | null; route_code: string; route_label: string | null; image_url: string | null };
 type Season = { id: string; title: string; season_year: number; status: "open" | "finalists"; opens_on: string; closes_on: string; finalist_limit: number };
@@ -31,17 +33,20 @@ function geoLines(value: any): [number, number][][] {
 
 const GAMES: GameDef[] = [
   { id: "mchongwano", name: "Mchongwano", Icon: MessageSquareQuote, desc: "Roast battle in Sheng — crowd judges, clean but merciless.", players: "2 players" },
-  { id: "chess", name: "Chess", Icon: Crown, desc: "Classic strategy — outwit your opponent.", players: "2 players" },
-  { id: "ludo", name: "Ludo", Icon: Dices, desc: "Race your tokens home — roll and move.", players: "2–4 players" },
+  { id: "chess", name: "Chess", Icon: Crown, desc: "Classic strategy: you play white against the computer.", players: "You vs computer" },
+  { id: "ludo", name: "Ludo", Icon: Dices, desc: "Race four tokens home against the computer.", players: "You vs computer" },
   { id: "trivia", name: "Trivia", Icon: Brain, desc: "General knowledge head-to-head.", players: "2 players" },
   { id: "monopoly", name: "Nairobi Board Game", Icon: Grid3x3, desc: "A neighbourhood property-trading game concept.", players: "2–4 players" },
 ];
 const LazyTrivia = lazy(() => import("@/components/TriviaGame"));
+const LazyChess = lazy(() => import("@/components/ChessGame"));
+const LazyLudo = lazy(() => import("@/components/LudoGame"));
+const sendKing = (game: string, points: number, bump: () => void) => { void submitKingScore(game, points).then(result => { toast(result.message); if (result.ok) bump(); }); };
 const FAVOURITES_KEY = "ma3_nganya_favourites_v1";
 const TAB_OPTIONS = [
   { id: "games", label: "Games", Icon: Swords },
-  { id: "nganya", label: "Nganya battle", Icon: BusFront },
-  { id: "challenges", label: "Challenges", Icon: Trophy },
+  { id: "nganya", label: "Nganya", Icon: BusFront },
+  { id: "shop", label: "Shop", Icon: ShoppingBag },
 ] as const;
 const RATING_FIELDS = [
   { key: "artwork", label: "Armour & exterior art" }, { key: "sound", label: "Music system" },
@@ -51,6 +56,7 @@ const RATING_FIELDS = [
 function kenyaDate() { return new Intl.DateTimeFormat("en-CA", { timeZone: "Africa/Nairobi", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date()); }
 
 export default function MirthPage() {
+  const [kingTick, setKingTick] = useState(0);
   const [section, setSection] = useState<Section>("games");
   const [sheetOpen, setSheetOpen] = useState(false);
   const sheet = useSheet("peek");
@@ -304,18 +310,19 @@ export default function MirthPage() {
   return <div className="page-wrap" style={{ position: "relative", minHeight: "calc(100dvh - var(--top-h))", paddingTop: "calc(var(--top-h) + 8px)" }}>
     <div style={{ position: "fixed", top: "var(--top-h)", left: 0, right: 0, bottom: "var(--nav-h)", zIndex: 0 }}><MapLibreView ref={mirthMapRef} center={NAIROBI} zoom={10} height="100%" borderRadius={0} onLoad={setMirthMap} /></div>
     <div className="inner" style={{ position: "absolute", top: 10, left: 0, right: 0, zIndex: 20 }}>
-    <header style={{ padding: "0 0 .5rem" }}><div style={{ display: "flex", alignItems: "center", gap: 7 }}><Gamepad2 size={18} style={{ color: "var(--ready)" }} /><h2 style={{ fontFamily: "var(--font-display)", fontSize: "1.1rem" }}>Mirth</h2><span style={{ marginLeft: "auto", fontSize: ".55rem", color: "var(--muted2)" }}>Games · Nganya · Challenges</span></div></header>
+    <header style={{ padding: "0 0 .5rem" }}><div style={{ display: "flex", alignItems: "center", gap: 7 }}><Gamepad2 size={18} style={{ color: "var(--ready)" }} /><h2 style={{ fontFamily: "var(--font-display)", fontSize: "1.1rem" }}>Mirth</h2><span style={{ marginLeft: "auto", fontSize: ".55rem", color: "var(--muted2)" }}>Games · Nganya · Shop</span></div></header>
     <PageTabs label="Mirth sections" active={section} tabs={TAB_OPTIONS} onChange={id => { setSection(id as Section); sheet.setSnap("peek"); setSheetOpen(true); }} />
     </div>
 
     <AnimatePresence>{sheetOpen && <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} transition={{ type: "spring", damping: 28, stiffness: 320 }} {...sheet.panelProps}>
       <div className="bpanel-head">
         <button {...sheet.gripProps} />
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}><b style={{ flex: 1, fontSize: ".75rem" }}>{section === "games" ? "Find a game" : section === "nganya" ? "Nganya route battle" : "Daily challenges"}</b><button className="icon-btn" aria-label="Close panel" onClick={() => setSheetOpen(false)}><X size={14} /></button></div>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}><b style={{ flex: 1, fontSize: ".75rem" }}>{section === "games" ? "Games & daily challenges" : section === "nganya" ? "Nganya route battle" : "Nganya shop"}</b><button className="icon-btn" aria-label="Close panel" onClick={() => setSheetOpen(false)}><X size={14} /></button></div>
       </div>
       <div className="bpanel-scroll" style={{ padding: "0 14px 20px" }}><div className="inner" style={{ padding: "0 0 18px" }}>
 
-    {section === "challenges" && <div className="ios-glass" style={{ padding: 11, marginBottom: 12 }}>
+    {section === "games" && <RouteKing refreshKey={kingTick} />}
+    {section === "games" && <div className="ios-glass" style={{ padding: 11, marginBottom: 12 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 8 }}><Sparkles size={14} style={{ color: "var(--ready)" }} /><b style={{ fontSize: ".75rem", flex: 1 }}>Daily challenges · {pointsToday} community points</b><small style={{ color: "var(--muted2)" }}>Kenya day</small></div>
       <div style={{ display: "grid", gap: 6 }}>
         <div style={{ display: "flex", gap: 8, alignItems: "center", fontSize: ".62rem" }}><ThumbsUp size={12} style={{ color: voteRoutesDone ? "var(--go)" : "var(--ready)" }} /><span style={{ flex: 1 }}>Vote for Nganya on up to 3 different routes</span><b>{Math.min(voteRoutesDone, 3)}/3 · +10 each</b></div>
@@ -364,7 +371,7 @@ export default function MirthPage() {
       <p style={{ color: "var(--muted)", fontSize: ".58rem", lineHeight: 1.45, marginTop: 10 }}>Community favourites are not safety ratings. Votes use Supabase accounts and can be abused; use rate limits and moderation before awards. Vote totals are saved by calendar year and are never wiped when a new contest year starts.</p>
     </section>}
 
-    {section === "challenges" && <section>
+    {section === "nganya" && <section>
       <div className="ios-glass" style={{ padding: 12, marginBottom: 10, borderLeft: "3px solid var(--ready)" }}><b style={{ display: "flex", alignItems: "center", gap: 7, fontSize: ".76rem" }}><Trophy size={15} style={{ color: "var(--ready)" }} />Nganya battle league · yearly votes</b><p style={{ color: "var(--muted2)", fontSize: ".63rem", lineHeight: 1.5, marginTop: 6 }}>Every approved Nganya stays in the archive. The annual board ranks the top through the rest by real recorded votes; the next year starts a new tally without deleting earlier years. Free predictions are optional and non-cash.</p></div>
       <div style={{ position: "relative", marginBottom: 9 }}><Search size={13} style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "var(--ready)" }} /><input data-page-search className="finput" style={{ paddingLeft: 34 }} placeholder="Search yearly results by Nganya, SACCO or route…" value={leaderboardQuery} onChange={event => setLeaderboardQuery(event.target.value)} /></div>
       <div className="ios-glass" style={{ padding: 12, marginBottom: 12 }}>
@@ -380,11 +387,13 @@ export default function MirthPage() {
       <div className="ios-glass" style={{ padding: 11, marginTop: 10 }}><b style={{ fontSize: ".7rem" }}>Real-money betting links are not enabled</b><p style={{ fontSize: ".61rem", color: "var(--muted2)", lineHeight: 1.5, margin: "6px 0 9px" }}>Before listing any operator or affiliate link, verify its current licence and ask the Gambling Regulatory Authority whether this app needs a licence or advert approval for referrals. No odds, stakes or bet placement are handled here.</p><a href="https://gra.go.ke/" target="_blank" rel="noopener noreferrer" style={{ color: "var(--ready)", fontSize: ".63rem", fontWeight: 700 }}>GRA licensing, advertising rules and contacts ↗</a></div>
     </section>}
 
+    {section === "shop" && <NganyaShop />}
+
     <p style={{ color: "var(--muted)", fontSize: ".56rem", lineHeight: 1.45, marginTop: 13 }}>Points are not money, prizes or transferable value. Trivia plays as a single-player round; multiplayer game listings are concepts.</p>
       </div></div></motion.div>}</AnimatePresence>
 
     <AnimatePresence>{selectedNganya && <><motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setSelectedNganya(null)} style={{ position: "fixed", inset: 0, zIndex: 1100, background: "rgba(0,0,0,.56)", backdropFilter: "blur(7px)" }} /><motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} className="ios-glass" style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 1101, maxWidth: 640, margin: "0 auto", padding: "1.1rem 1rem 1.8rem", borderRadius: "22px 22px 0 0", maxHeight: "86vh", overflowY: "auto" }}><div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}><b style={{ display: "flex", alignItems: "center", gap: 7 }}><BusFront size={17} style={{ color: "var(--ready)" }} />{selectedNganya.display_name}</b><button className="icon-btn" onClick={() => setSelectedNganya(null)}><X size={15} /></button></div><p style={{ color: "var(--muted2)", fontSize: ".63rem", margin: "4px 0 12px" }}>{selectedNganya.route_label || selectedNganya.route_code}{selectedNganya.sacco ? ` · ${selectedNganya.sacco}` : ""}</p><p className="sec-label">Community style stats · 1–5</p>{RATING_FIELDS.map(field => { const value = styleAverage?.[field.key] ?? 0; return <div key={field.key} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}><span style={{ width: 58, fontSize: ".61rem", color: "var(--muted2)" }}>{field.label}</span><div style={{ flex: 1, height: 6, borderRadius: 99, background: "var(--glass2)" }}><div style={{ width: `${Math.min(100, value * 20)}%`, height: "100%", borderRadius: 99, background: "var(--ready)" }} /></div><span style={{ width: 32, textAlign: "right", color: "var(--muted2)", fontSize: ".59rem" }}>{value ? value.toFixed(1) : "—"}</span></div>; })}<p style={{ color: "var(--muted)", fontSize: ".55rem", margin: "3px 0 12px" }}>{styleAverage?.rating_count ? `${styleAverage.rating_count} community rating${styleAverage.rating_count === 1 ? "" : "s"} · subjective style, not safety data` : "No ratings yet. Scores appear only after community members submit them."}</p><div className="ios-glass" style={{ padding: 10 }}><p className="sec-label">Rate the style</p><div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>{RATING_FIELDS.map(field => <label key={field.key}>{field.label}<select className="finput" value={ratingForm[field.key]} onChange={event => setRatingForm(current => ({ ...current, [field.key]: event.target.value }))}><option value="">Choose 1–5</option>{[1,2,3,4,5].map(value => <option key={value} value={value}>{value}</option>)}</select></label>)}</div><button className="btn btn-ready" style={{ width: "100%", marginTop: 10 }} onClick={() => void submitRating()}><Star size={13} /> Save my style rating</button></div></motion.div></>}</AnimatePresence>
 
-    <AnimatePresence>{selectedGame && <><motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setSelectedGame(null)} style={{ position: "fixed", inset: 0, zIndex: 1100, background: "rgba(0,0,0,.55)", backdropFilter: "blur(6px)" }} /><motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} className="ios-glass" style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 1101, maxWidth: 640, margin: "0 auto", padding: "1.2rem 1.2rem 2rem", borderRadius: "22px 22px 0 0", maxHeight: "85vh", overflowY: "auto" }}><div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}><b style={{ display: "flex", alignItems: "center", gap: 8 }}><selectedGame.Icon size={18} style={{ color: "var(--ready)" }} />{selectedGame.name}</b><button className="icon-btn" onClick={() => setSelectedGame(null)}><X size={15} /></button></div><p style={{ color: "var(--muted2)", fontSize: ".72rem", margin: "10px 0" }}>{selectedGame.desc}</p>{selectedGame.id === "trivia" ? <Suspense fallback={<p style={{ padding: 14, textAlign: "center", color: "var(--muted2)", fontSize: ".66rem" }}><LoaderCircle size={14} /> Loading game…</p>}><LazyTrivia /></Suspense> : <div className="ios-glass" style={{ padding: 11, fontSize: ".63rem", color: "var(--muted2)", lineHeight: 1.5 }}>This entry is a game concept, not yet a playable match. A small game module can be loaded only when opened; online multiplayer would need a separate game server.</div>}</motion.div></>}</AnimatePresence>
+    <AnimatePresence>{selectedGame && <><motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setSelectedGame(null)} style={{ position: "fixed", inset: 0, zIndex: 1100, background: "rgba(0,0,0,.55)", backdropFilter: "blur(6px)" }} /><motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} className="ios-glass" style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 1101, maxWidth: 640, margin: "0 auto", padding: "1.2rem 1.2rem 2rem", borderRadius: "22px 22px 0 0", maxHeight: "85vh", overflowY: "auto" }}><div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}><b style={{ display: "flex", alignItems: "center", gap: 8 }}><selectedGame.Icon size={18} style={{ color: "var(--ready)" }} />{selectedGame.name}</b><button className="icon-btn" onClick={() => setSelectedGame(null)}><X size={15} /></button></div><p style={{ color: "var(--muted2)", fontSize: ".72rem", margin: "10px 0" }}>{selectedGame.desc}</p>{selectedGame.id === "chess" ? <Suspense fallback={<p style={{ padding: 14, textAlign: "center", color: "var(--muted2)", fontSize: ".66rem" }}>Loading game…</p>}><LazyChess onStart={() => void beginKingGame("chess")} onFinish={points => sendKing("chess", points, () => setKingTick(tick => tick + 1))} /></Suspense> : selectedGame.id === "ludo" ? <Suspense fallback={<p style={{ padding: 14, textAlign: "center", color: "var(--muted2)", fontSize: ".66rem" }}>Loading game…</p>}><LazyLudo onStart={() => void beginKingGame("ludo")} onFinish={points => sendKing("ludo", points, () => setKingTick(tick => tick + 1))} /></Suspense> : selectedGame.id === "trivia" ? <Suspense fallback={<p style={{ padding: 14, textAlign: "center", color: "var(--muted2)", fontSize: ".66rem" }}><LoaderCircle size={14} /> Loading game…</p>}><LazyTrivia onStart={() => void beginKingGame("trivia")} onFinish={(score, total) => sendKing("trivia", Math.round((score / Math.max(1, total)) * 100), () => setKingTick(tick => tick + 1))} /></Suspense> : <div className="ios-glass" style={{ padding: 11, fontSize: ".63rem", color: "var(--muted2)", lineHeight: 1.5 }}>This entry is a game concept, not yet a playable match. A small game module can be loaded only when opened; online multiplayer would need a separate game server.</div>}</motion.div></>}</AnimatePresence>
   </div>;
 }

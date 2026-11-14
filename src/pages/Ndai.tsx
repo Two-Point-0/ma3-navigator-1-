@@ -4,12 +4,14 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   MapPin, Navigation, Clock, Wallet, Star, X,
   CheckCircle, Phone, MessageCircle,
-  Bike, Car, Crown, Users, Share2, Info, Plus, UserRound, ShoppingCart, Search,
+  Bike, Car, Crown, Users, Share2, Info, Plus, UserRound, ShoppingCart, Search, Compass,
 } from "lucide-react";
 import { toast } from "sonner";
 import maplibregl from "maplibre-gl";
 import MapLibreView, { MapLibreHandle } from "@/components/MapLibreView";
 import PageTabs from "@/components/PageTabs";
+import LocalPanel from "@/components/LocalPanel";
+import { TourVanLayer } from "@/components/TourVans";
 import { useSheet } from "@/lib/useSheet";
 import { useWallet } from "@/lib/wallet";
 import { useShoppingBasket } from "@/lib/shoppingBasket";
@@ -18,19 +20,19 @@ import { APP_MODE, PROTOTYPE_NOTICE } from "@/lib/appMode";
 
 const NAIROBI: [number, number] = [-1.2864, 36.8172];
 
-type Tab = "ride" | "carpool" | "delivery";
+type Tab = "ride" | "carpool" | "delivery" | "tours";
 const NDAI_TABS = [
   { id: "ride", label: "Ride", Icon: Car },
   { id: "carpool", label: "Carpool", Icon: Share2 },
-  { id: "delivery", label: "Boda Basket", Icon: Bike },
+  { id: "tours", label: "Tours", Icon: Compass },
 ] as const;
 
 const RIDE_TYPES = [
   { id: "bike",    label: "Bike",    Icon: Bike,  desc: "Boda · 1 seat",      eta: 4,  base: 150 },
   { id: "share",   label: "Share",   Icon: Users, desc: "Pooled · save 30%", eta: 8,  base: 220 },
   { id: "comfort", label: "Comfort", Icon: Car,   desc: "Saloon · 4 seats",   eta: 7,  base: 320 },
-  { id: "lux",     label: "Lux",     Icon: Crown, desc: "Premium · 4 seats", eta: 6,  base: 650 },
   { id: "van",     label: "Van",     Icon: Users, desc: "Group · 8 seats",   eta: 12, base: 500 },
+  { id: "lux",     label: "Lux",     Icon: Crown, desc: "Premium · 4 seats", eta: 6,  base: 650 },
 ];
 
 const POPULAR = [
@@ -105,6 +107,9 @@ type RideStage = "idle" | "searching" | "drivers" | "booked";
 
 export default function NdaiPage() {
   const [tab, setTab]         = useState<Tab>("ride");
+  const [mapReady, setMapReady] = useState<import("maplibre-gl").Map | null>(null);
+  const [here, setHere] = useState<{ latitude: number; longitude: number } | null>(null);
+  const findMe = () => navigator.geolocation?.getCurrentPosition(pos => setHere({ latitude: pos.coords.latitude, longitude: pos.coords.longitude }), () => toast("Allow location to sort by distance"), { enableHighAccuracy: true, timeout: 10000 });
   const [sheetOpen, setSheetOpen] = useState(false);
   const sheet = useSheet("peek");
   const [stage, setStage]     = useState<RideStage>("idle");
@@ -136,7 +141,7 @@ export default function NdaiPage() {
   const [delStage, setDelStage] = useState<"idle" | "drafted">("idle");
 
   const selected = RIDE_TYPES.find(r => r.id === rideId)!;
-  const fare = selected.base + Math.floor(Math.random() * 80);
+  const fare = selected.base; // list is ordered cheapest to dearest; estimates only until real drivers are connected
   const estimatedOfferFuel = estimateFuelCost(offerDistance);
   const estimatedOfferShare = passengerFuelShare(offerDistance, offerSeats);
   const { items: shopItems, selectedBranch: shopBranch } = useShoppingBasket();
@@ -210,10 +215,11 @@ export default function NdaiPage() {
   return (
     <div style={{ position: "relative", height: "calc(100vh - var(--top-h) - var(--nav-h))", marginTop: "-12px" }}>
       <MapLibreView ref={mapRef} center={NAIROBI} zoom={13} height="100%" borderRadius={0}
-        onLoad={m => { mapInst.current = m; }} />
+        onLoad={m => { mapInst.current = m; setMapReady(m); }} />
 
+      <TourVanLayer map={mapReady} active={tab === "tours"} />
       <div style={{ position: "absolute", top: 10, left: 10, right: 10, zIndex: 50 }}>
-        <PageTabs label="Ndai sections" active={tab} tabs={NDAI_TABS} onChange={value => { setTab(value as Tab); sheet.setSnap("peek"); setSheetOpen(true); }} />
+        <PageTabs label="Ndai sections" active={sheetOpen ? (tab === "delivery" ? "ride" : tab) : ""} tabs={NDAI_TABS} onChange={value => { setTab(value as Tab); sheet.setSnap("peek"); setSheetOpen(true); }} />
       </div>
 
       {/* ══════ RIDE TAB (amber/yellow-taxi theme) ══════ */}
@@ -225,6 +231,7 @@ export default function NdaiPage() {
             <div className="bpanel-head">
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}><button {...sheet.gripProps} /><button className="icon-btn" aria-label="Close panel" onClick={() => setSheetOpen(false)}><X size={14} /></button></div>
             </div>
+            <div style={{ padding: "0 14px 6px" }}><button className="btn btn-ghost" style={{ width: "100%", justifyContent: "center", padding: 8, fontSize: ".66rem" }} onClick={() => setTab("delivery")}><Bike size={13} /> Boda Basket: send my shopping basket by bike</button></div>
             <div style={{ display: "flex", gap: 6, padding: "6px 14px 10px", overflowX: "auto", scrollbarWidth: "none" }}>
               {RIDE_TYPES.map(rt => {
                 const active = rideId === rt.id;
@@ -234,6 +241,7 @@ export default function NdaiPage() {
                     <rt.Icon size={18} style={{ color: active ? "var(--ready)" : "var(--muted2)" }} />
                     <span style={{ fontSize: ".68rem", fontWeight: 700, color: active ? "var(--ready)" : "var(--muted2)" }}>{rt.label}</span>
                     <span style={{ fontSize: ".55rem", color: "var(--muted)" }}>{rt.desc}</span>
+                    <span style={{ fontSize: ".62rem", fontWeight: 800, fontFamily: "var(--font-mono)", color: active ? "var(--ready)" : "var(--white)" }}>KES {rt.base}</span><span style={{ fontSize: ".5rem", color: "var(--muted)" }}>{rt.eta} min</span>
                   </button>
                 );
               })}
@@ -502,6 +510,14 @@ export default function NdaiPage() {
 
   {/* ══════ BODA BASKET MOTORBIKE SHOPPING DELIVERY ══════ */}
   <AnimatePresence>
+    {sheetOpen && tab === "tours" && (
+      <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} transition={{ type: "spring", damping: 28, stiffness: 300 }}
+        {...sheet.panelProps} style={{ ...sheet.panelProps.style, padding: "0 1rem 1.4rem" }}>
+        <button {...sheet.gripProps} style={{ ...sheet.gripProps.style, width: "100%", border: 0, background: "transparent", padding: "10px 0" }} />
+        <b style={{ display: "block", fontSize: ".78rem", marginBottom: 8 }}>Tours &amp; tour vans</b>
+        <LocalPanel map={mapReady} userLocation={here} requestLocation={findMe} fixedCategory="tours" />
+      </motion.div>
+    )}
     {sheetOpen && tab === "delivery" && delStage === "idle" && (
       <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }}
         transition={{ type: "spring", damping: 28, stiffness: 300 }}

@@ -40,7 +40,7 @@ function startFlow(map: maplibregl.Map, id: string) {
   let step = 0, last = 0;
   const frame = (time: number) => {
     if (!map.getLayer(`${id}-flow`)) { flows.delete(id); return; }
-    if (time - last > 90) {
+    if (time - last > 55) {
       last = time; step = (step + 1) % steps.length;
       try { map.setPaintProperty(`${id}-flow`, "line-dasharray", steps[step]); } catch { /* layer was removed */ }
     }
@@ -91,6 +91,7 @@ export function setPointLayer(map: maplibregl.Map, id: string, points: PointFeat
 }
 
 export function removePointLayer(map: maplibregl.Map, id: string) {
+  try { if (map.getLayer(`${id}-icons`)) map.removeLayer(`${id}-icons`); } catch {}
   try { if (map.getLayer(`${id}-labels`)) map.removeLayer(`${id}-labels`); } catch {}
   try { if (map.getLayer(id)) map.removeLayer(id); } catch {}
   try { if (map.getSource(`src-${id}`)) map.removeSource(`src-${id}`); } catch {}
@@ -118,7 +119,7 @@ export function setRouteLine(map: maplibregl.Map, id: string, coords: [number, n
     map.addLayer({ id: `${id}-glow`, type: "line", source: src, layout: round, paint: { "line-color": color, "line-width": weight + 10, "line-blur": 8, "line-opacity": 0.32 * opacity } }, id);
     map.addLayer({ id: `${id}-casing`, type: "line", source: src, layout: round, paint: { "line-color": "#080810", "line-width": weight + 3.5, "line-opacity": 0.6 } }, id);
     // moving dashes and chevrons sit on top
-    map.addLayer({ id: `${id}-flow`, type: "line", source: src, layout: { "line-cap": "butt", "line-join": "round" }, paint: { "line-color": "#ffffff", "line-width": Math.max(1.5, weight - 3), "line-opacity": 0.55, "line-dasharray": [0, 4, 3] } });
+    map.addLayer({ id: `${id}-flow`, type: "line", source: src, layout: { "line-cap": "butt", "line-join": "round" }, paint: { "line-color": "#ffffff", "line-width": Math.max(2.5, weight - 1.5), "line-opacity": 0.92, "line-dasharray": [0, 4, 3] } });
     map.addLayer({ id: `${id}-arrows`, type: "symbol", source: src,
       layout: { "symbol-placement": "line", "symbol-spacing": 80, "text-field": "›", "text-font": ["Noto Sans Bold"], "text-size": 18, "text-keep-upright": false, "text-rotation-alignment": "map", "text-allow-overlap": true },
       paint: { "text-color": "#ffffff", "text-opacity": 0.8, "text-halo-color": color, "text-halo-width": 1 } });
@@ -129,12 +130,56 @@ export function setRouteLine(map: maplibregl.Map, id: string, coords: [number, n
 export interface LabelledStop { id: string; lat: number; lon: number; name: string; color: string; terminal?: boolean; passed?: boolean }
 
 /** Stop dots with their names written beside them. The map hides names that would overlap, so zooming in reveals more. */
+
+/** Draws a small bus-stop or train-station badge into the map once, so symbol layers can use it as an icon. */
+export function ensureGlyph(map: maplibregl.Map, kind: "bus" | "train", color: string): string {
+  const name = `ma3-${kind}-${color.replace(/[^a-z0-9]/gi, "")}`;
+  if (map.hasImage(name)) return name;
+  const px = 2, size = 36 * px;
+  const canvas = document.createElement("canvas"); canvas.width = size; canvas.height = size;
+  const c = canvas.getContext("2d"); if (!c) return name;
+  c.scale(px, px);
+  c.beginPath(); c.arc(18, 18, 16, 0, Math.PI * 2); c.fillStyle = color; c.fill(); c.lineWidth = 2.5; c.strokeStyle = "#ffffff"; c.stroke();
+  c.fillStyle = "#ffffff";
+  const round = (x: number, y: number, w: number, h: number, r: number) => { c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r); c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath(); c.fill(); };
+  if (kind === "bus") {
+    round(9, 9, 18, 15, 3);
+    c.fillStyle = color; c.fillRect(11, 11.5, 6, 5); c.fillRect(19, 11.5, 6, 5); c.fillRect(11, 19, 14, 1.6);
+    c.fillStyle = "#ffffff"; c.beginPath(); c.arc(13, 25.5, 2, 0, 7); c.arc(23, 25.5, 2, 0, 7); c.fill();
+  } else {
+    round(10, 8, 16, 17, 4);
+    c.fillStyle = color; c.fillRect(12, 11, 12, 6); c.beginPath(); c.arc(14, 21, 1.6, 0, 7); c.arc(22, 21, 1.6, 0, 7); c.fill();
+    c.strokeStyle = "#ffffff"; c.lineWidth = 2; c.beginPath(); c.moveTo(11, 29); c.lineTo(15, 25); c.moveTo(25, 29); c.lineTo(21, 25); c.stroke();
+  }
+  map.addImage(name, c.getImageData(0, 0, size, size), { pixelRatio: px });
+  return name;
+}
+
+function addIconLayer(map: maplibregl.Map, id: string, src: string, big: number, small: number) {
+  if (map.getLayer(`${id}-icons`)) return;
+  try {
+    map.addLayer({ id: `${id}-icons`, type: "symbol", source: src,
+      layout: { "icon-image": ["get", "icon"], "icon-size": ["case", ["get", "terminal"], big, small], "icon-allow-overlap": true, "icon-ignore-placement": true } });
+    if (map.getLayer(id)) { map.setPaintProperty(id, "circle-opacity", 0); map.setPaintProperty(id, "circle-stroke-opacity", 0); }
+  } catch { /* if icons fail the dots still show */ }
+}
+
+/** Train stations drawn with a train badge. */
+export function setStationIcons(map: maplibregl.Map, id: string, stations: { id: string; lat: number; lon: number; name: string; color: string }[]) {
+  setPointLayer(map, id, stations.map(station => ({ id: station.id, lat: station.lat, lon: station.lon, color: station.color, props: { name: station.name, terminal: true, passed: false, icon: ensureGlyph(map, "train", station.color) } })), 7);
+  addIconLayer(map, id, `src-${id}`, 0.9, 0.9);
+  if (!map.getLayer(`${id}-labels`)) {
+    try { map.addLayer({ id: `${id}-labels`, type: "symbol", source: `src-${id}`, minzoom: 11, layout: { "text-field": ["get", "name"], "text-font": ["Noto Sans Regular"], "text-size": 11, "text-anchor": "top", "text-offset": [0, 1.1], "text-optional": true, "text-max-width": 8 }, paint: { "text-color": "#ffffff", "text-halo-color": "#080810", "text-halo-width": 1.6 } }); } catch { /* ignore */ }
+  }
+}
+
 export function setLabelledStops(map: maplibregl.Map, id: string, stops: LabelledStop[]) {
   const labelled = Boolean(map.getLayer(`${id}-labels`));
   setPointLayer(map, id, stops.map(stop => ({
     id: stop.id, lat: stop.lat, lon: stop.lon, color: stop.passed ? "#64748b" : stop.color, radius: stop.terminal ? 7 : 4.5,
-    props: { name: stop.name, terminal: Boolean(stop.terminal), passed: Boolean(stop.passed) },
+    props: { name: stop.name, terminal: Boolean(stop.terminal), passed: Boolean(stop.passed), icon: ensureGlyph(map, "bus", stop.passed ? "#64748b" : stop.color) },
   })), 4.5);
+  addIconLayer(map, id, `src-${id}`, 0.62, 0.46);
   if (labelled) return;
   try {
     map.addLayer({ id: `${id}-labels`, type: "symbol", source: `src-${id}`,

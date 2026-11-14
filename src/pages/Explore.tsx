@@ -10,6 +10,8 @@ import { useSheet } from "@/lib/useSheet";
 import { fitAboveSheet } from "@/lib/mapLayers";
 import { BusinessPin, PinCategory, PIN_CATEGORY_META } from "@/data/ma3_core";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
+import { iconMarker, placeIconFor } from "@/lib/placeIcons";
+import PlacePhoto from "@/components/PlacePhoto";
 
 const NAIROBI: [number, number] = [-1.2864, 36.8172];
 type ExploreTab = "food" | "stay_shop" | "places";
@@ -34,28 +36,23 @@ function drawPinMarkers(map: maplibregl.Map, pins: BusinessPin[], filters: Set<E
   pins.filter(pin => filters.has(exploreCategory(pin))).forEach(pin => {
     if (markers.current.has(pin.id)) return;
     const meta = PIN_CATEGORY_META[pin.category] ?? PIN_CATEGORY_META.other;
-    const element = document.createElement("button");
-    element.type = "button";
-    element.setAttribute("aria-label", `${pin.name}, ${meta.label}`);
-    element.title = `${pin.name} · ${meta.label}`;
-    element.style.cssText = `width:28px;height:28px;border:2px solid white;border-radius:50% 50% 50% 3px;transform:rotate(-45deg);background:${meta.color};box-shadow:0 2px 9px rgba(0,0,0,.45);cursor:pointer`;
-    element.addEventListener("click", event => { event.stopPropagation(); onTap(pin); });
-    markers.current.set(pin.id, new maplibregl.Marker({ element, anchor: "bottom" }).setLngLat([pin.lon, pin.lat]).addTo(map));
+    markers.current.set(pin.id, iconMarker(map, pin.lat, pin.lon, placeIconFor(pin.category, pin.subType), meta.color, `${pin.name} · ${meta.label}`, () => onTap(pin), { size: 28 }));
   });
 }
 
 export default function ExplorePage() {
   const [, setLocation] = useLocation();
-  const [tab, setTab] = useState<ExploreTab>("food");
+  const [tab, setTab] = useState<ExploreTab | null>(null);
   const [pois, setPois] = useState<BusinessPin[]>([]);
   const [dataSnapshot, setDataSnapshot] = useState<string | null>(null);
-  const [feedStatus, setFeedStatus] = useState<FeedStatus>(isSupabaseConfigured ? "loading" : "disconnected");
-  const [filters, setFilters] = useState<Set<ExploreCategory>>(new Set(["food"]));
+  const [feedStatus, setFeedStatus] = useState<FeedStatus>(isSupabaseConfigured ? "ready" : "disconnected");
+  const [filters, setFilters] = useState<Set<ExploreCategory>>(new Set());
   const [activeHotspotCategory, setActiveHotspotCategory] = useState<ExploreCategory>("food");
   const [hotspotQuery, setHotspotQuery] = useState("");
   const [selectedPin, setSelectedPin] = useState<BusinessPin | null>(null);
   const [subtype, setSubtype] = useState<string | null>(null);
   const groupColumn = useRef(true);
+  const chosenGroup = useRef(false);
   const activeGroup = useRef<ExploreCategory>("food");
   const sheet = useSheet("peek");
   const [is3D, setIs3D] = useState(false);
@@ -68,6 +65,7 @@ export default function ExplorePage() {
 
   const loadViewport = useCallback(async (map: maplibregl.Map) => {
     const current = ++requestId.current;
+    if (!chosenGroup.current) { setPois([]); return; } // nothing is shown until a button is tapped
     if (!isSupabaseConfigured || !supabase) { setFeedStatus("disconnected"); setPois([]); setDataSnapshot(null); return; }
     if (map.getZoom() < 8) { setFeedStatus("zoom"); setPois([]); setDataSnapshot(null); return; }
     setFeedStatus("loading");
@@ -107,10 +105,15 @@ export default function ExplorePage() {
   const visiblePins = useMemo(() => {
     return pois.filter(pin => filters.has(exploreCategory(pin)) && (!subtype || (pin.subType ?? "other") === subtype));
   }, [pois, filters, subtype]);
+  const cappedPins = useMemo(() => {
+    if (visiblePins.length <= 400) return visiblePins;
+    const [lat, lon] = mapCenter;
+    return [...visiblePins].sort((a, b) => Math.hypot(a.lat - lat, a.lon - lon) - Math.hypot(b.lat - lat, b.lon - lon)).slice(0, 400);
+  }, [visiblePins, mapCenter]);
   const subtypeChips = useMemo(() => {
     const counts = new Map<string, number>();
     pois.filter(pin => exploreCategory(pin) === activeHotspotCategory).forEach(pin => { const key = pin.subType ?? "other"; counts.set(key, (counts.get(key) ?? 0) + 1); });
-    return [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 10);
+    return [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 60);
   }, [pois, activeHotspotCategory]);
   const nearbyList = useMemo(() => {
     const [lat, lon] = mapCenter;
@@ -124,8 +127,9 @@ export default function ExplorePage() {
   }, [pois, activeHotspotCategory, hotspotQuery]);
 
   useEffect(() => {
-    if (mapInst.current) drawPinMarkers(mapInst.current, visiblePins, filters, pinMarkers, selectPlace);
-  }, [visiblePins, filters]); // eslint-disable-line react-hooks/exhaustive-deps
+    // Drawing thousands of icon pins would freeze phones, so only the 400 closest to the middle of the map get a pin. The list and chips still cover everything loaded.
+    if (mapInst.current) drawPinMarkers(mapInst.current, cappedPins, filters, pinMarkers, selectPlace);
+  }, [cappedPins, filters]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleMapLoad = (map: maplibregl.Map) => {
     mapInst.current = map;
@@ -167,6 +171,7 @@ export default function ExplorePage() {
     setActiveHotspotCategory(next);
     setFilters(new Set([next]));
     activeGroup.current = next;
+    chosenGroup.current = true;
     setSubtype(null);
     setPois([]);
     setHotspotQuery(""); setSelectedPin(null);
@@ -174,25 +179,26 @@ export default function ExplorePage() {
     if (mapInst.current) void loadViewport(mapInst.current);
   };
   // The three buttons glow by what the app is doing: loading = amber, ready = green, problem = red.
-  const tabTone: TabTone = feedStatus === "ready" ? "go" : feedStatus === "loading" || feedStatus === "zoom" ? "ready" : "stop";
-  const statusLabel = feedStatus === "loading" ? "Loading mapped places…" : feedStatus === "disconnected" ? "Places are not available right now" : feedStatus === "error" ? "Could not load places" : feedStatus === "zoom" ? "Zoom in for nearby places" : `Mapped places${dataSnapshot ? ` · ${dataSnapshot}` : ""}`;
+  const tabTone: TabTone = !tab ? "idle" : feedStatus === "ready" ? "go" : feedStatus === "loading" || feedStatus === "zoom" ? "ready" : "stop";
+  const statusLabel = !tab ? "Tap Food, Stays or Sights to see places near you" : feedStatus === "loading" ? "Loading mapped places…" : feedStatus === "disconnected" ? "Places are not available right now" : feedStatus === "error" ? "Could not load places" : feedStatus === "zoom" ? "Zoom in for nearby places" : `Mapped places${dataSnapshot ? ` · ${dataSnapshot}` : ""}`;
   useEffect(() => { sheet.setSnap(selectedPin ? "half" : "peek"); }, [selectedPin?.id]);
 
   return <div style={{ position: "relative", height: "calc(100vh - var(--top-h) - var(--nav-h))", marginTop: "-12px", overflow: "hidden" }}>
     <MapLibreView ref={mapRef} center={mapCenter} zoom={13} pitch={is3D ? 48 : 0} bearing={is3D ? -14 : 0} height="100%" borderRadius={0} onLoad={handleMapLoad} />
     <div style={{ position: "absolute", top: 10, left: 10, right: 10, zIndex: 50 }}>
-      <PageTabs label="Explore sections" tone={tabTone} active={activeTab} tabs={TABS} onChange={setSection} />
+      <PageTabs label="Explore sections" tone={tabTone} active={activeTab ?? ""} tabs={TABS} onChange={setSection} />
       <div style={{ display: "inline-flex", padding: "5px 9px", borderRadius: 8, background: "rgba(8,8,16,.82)", border: "1px solid var(--border)", color: "var(--muted2)", fontSize: ".55rem" }}>{statusLabel}</div>
     </div>
     <button aria-label={is3D ? "Switch to 2D map" : "Switch to 3D map"} onClick={() => setIs3D(value => !value)} style={{ position: "absolute", right: 12, top: 112, zIndex: 60, width: 40, height: 40, borderRadius: 12, border: "1px solid var(--border2)", background: "rgba(8,8,16,.82)", color: "var(--ready)", display: "grid", placeItems: "center" }}><Box size={17} /></button>
 
-    <div {...sheet.panelProps}>
+    <div {...sheet.panelProps} style={{ ...sheet.panelProps.style, display: tab || selectedPin ? undefined : "none" }}>
       <div className="bpanel-head" style={{ padding: "2px 14px 8px" }}>
         <button {...sheet.gripProps} />
         {selectedPin ? <div style={{ marginTop: 4 }}><div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}><div><p style={{ fontFamily: "var(--font-display)", fontSize: ".95rem", fontWeight: 900 }}>{selectedPin.name}</p><p style={{ fontSize: ".68rem", color: "var(--ready)" }}>{EXPLORE_CATEGORIES.find(category => category.id === exploreCategory(selectedPin))?.label || "Place"}{selectedPin.subType ? ` · ${selectedPin.subType}` : ""}</p></div><button className="icon-btn" onClick={() => setSelectedPin(null)}><X size={15} /></button></div></div> : <div style={{ position: "relative", marginTop: 2 }}><Search size={13} style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "var(--ready)" }} /><input data-page-search className="finput" style={{ paddingLeft: 34, paddingRight: 34 }} placeholder={`Search ${EXPLORE_CATEGORIES.find(category => category.id === activeHotspotCategory)?.label} by name or area…`} value={hotspotQuery} onChange={event => setHotspotQuery(event.target.value)} /><button aria-label="Clear search" onClick={() => setHotspotQuery("")} style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", border: 0, background: "transparent", color: "var(--muted2)", cursor: "pointer" }}><X size={14} /></button></div>}
       </div>
       <div className="bpanel-scroll" style={{ padding: "0 14px 20px" }}>
         {selectedPin ? <>
+      <PlacePhoto placeRef={selectedPin.id} />
       {(selectedPin.locality || selectedPin.county) && <p style={{ fontSize: ".65rem", color: "var(--muted2)", marginBottom: 7 }}>{[selectedPin.locality, selectedPin.county].filter(Boolean).join(", ")}</p>}
       {selectedPin.openingHours && <p style={{ display: "flex", gap: 6, alignItems: "center", fontSize: ".65rem", color: "var(--muted2)", marginBottom: 7 }}><Clock size={12} />{selectedPin.openingHours}</p>}
       {(selectedPin.floor || selectedPin.unit) && <p style={{ fontSize: ".65rem", color: "var(--muted2)", marginBottom: 7 }}>{[selectedPin.floor, selectedPin.unit].filter(Boolean).join(" · ")}</p>}
@@ -201,9 +207,9 @@ export default function ExplorePage() {
       </> : <>
           {activeHotspotCategory && hotspotQuery.trim() && <div className="ios-glass" style={{ marginBottom: 7, padding: 5 }}>{categoryResults.map(pin => <button key={pin.id} onClick={() => selectPlace(pin)} style={{ width: "100%", padding: "8px 9px", display: "flex", textAlign: "left", border: 0, borderBottom: "1px solid var(--border)", background: "transparent", color: "var(--white)", cursor: "pointer" }}><MapPin size={13} style={{ color: "var(--ready)", marginRight: 8, flexShrink: 0 }} /><span><b style={{ display: "block", fontSize: ".68rem" }}>{pin.name}</b><small style={{ color: "var(--muted2)" }}>{pin.locality || pin.subType || "Mapped place"}</small></span></button>)}{categoryResults.length === 0 && <p style={{ padding: 10, color: "var(--muted2)", fontSize: ".63rem" }}>No matches in this map area. Pan or zoom to search nearby.</p>}</div>}
           {!hotspotQuery.trim() && <>
-            {subtypeChips.length > 0 && <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 9 }}>
-              <button className={`btn ${subtype === null ? "btn-ready" : "btn-ghost"}`} style={{ padding: "5px 10px", fontSize: ".6rem" }} onClick={() => setSubtype(null)}>All</button>
-              {subtypeChips.map(([name, count]) => <button key={name} className={`btn ${subtype === name ? "btn-ready" : "btn-ghost"}`} style={{ padding: "5px 10px", fontSize: ".6rem" }} onClick={() => setSubtype(subtype === name ? null : name)}>{name.replace(/_/g, " ")} · {count}</button>)}
+            {subtypeChips.length > 0 && <div style={{ display: "flex", gap: 6, overflowX: "auto", paddingBottom: 6, marginBottom: 6 }}>
+              <button className={`btn ${subtype === null ? "btn-ready" : "btn-ghost"}`} style={{ padding: "5px 10px", fontSize: ".6rem", flexShrink: 0 }} onClick={() => setSubtype(null)}>All · {pois.filter(pin => exploreCategory(pin) === activeHotspotCategory).length}</button>
+              {subtypeChips.map(([name, count]) => { const ChipIcon = placeIconFor(null, name); return <button key={name} className={`btn ${subtype === name ? "btn-ready" : "btn-ghost"}`} style={{ padding: "5px 10px", fontSize: ".6rem", flexShrink: 0, whiteSpace: "nowrap", display: "inline-flex", gap: 5, alignItems: "center" }} onClick={() => setSubtype(subtype === name ? null : name)}><ChipIcon size={11} />{name.replace(/_/g, " ")} · {count}</button>; })}
             </div>}
             {nearbyList.length > 0 ? <div className="ios-glass" style={{ padding: 5 }}>
               <p className="sec-label" style={{ padding: "5px 8px 2px" }}>Closest to the middle of the map</p>

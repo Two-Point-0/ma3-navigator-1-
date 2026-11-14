@@ -82,7 +82,7 @@ export function useSheet(initial: SheetSnap = "peek", options: { aboveNav?: bool
   const panelStyle: CSSProperties = {
     position: "fixed",
     left: 0, right: 0, margin: "0 auto",
-    width: "min(100vw, 720px)",
+    width: "min(calc(100vw - 16px), 704px)",
     bottom, height, maxHeight: "none",
     zIndex: 880,
     overflowY: "auto",
