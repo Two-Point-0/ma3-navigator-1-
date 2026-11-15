@@ -219,7 +219,7 @@ export default function NdaiPage() {
 
       <TourVanLayer map={mapReady} active={tab === "tours"} />
       <div style={{ position: "absolute", top: 10, left: 10, right: 10, zIndex: 50 }}>
-        <PageTabs label="Ndai sections" active={sheetOpen ? (tab === "delivery" ? "ride" : tab) : ""} tabs={NDAI_TABS} onChange={value => { setTab(value as Tab); sheet.setSnap("peek"); setSheetOpen(true); }} />
+        <PageTabs label="Ndai sections" active={sheetOpen ? (tab === "delivery" ? "ride" : tab) : ""} tabs={NDAI_TABS} onChange={value => { setTab(value as Tab); sheet.setSnap("full"); setSheetOpen(true); }} />
       </div>
 
       {/* ══════ RIDE TAB (amber/yellow-taxi theme) ══════ */}

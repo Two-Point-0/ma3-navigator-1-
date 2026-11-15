@@ -13,7 +13,7 @@ import PageTabs from "@/components/PageTabs";
 import LiveDriverMapLayer from "@/components/LiveDriverMapLayer";
 import { useAuthContext } from "@/context/AuthContext";
 import ParcelPanel from "@/components/ParcelPanel";
-import { useSheet } from "@/lib/useSheet";
+import { hideSheets, showSheets, useSheet } from "@/lib/useSheet";
 import { setLineLayer, setPointLayer, removeLineLayer, removePointLayer, setRouteLine, setLabelledStops, setStationIcons, fitAboveSheet, LabelledStop } from "@/lib/mapLayers";
 import { classifyMotion, computeTripProgress, MOTION_LABEL, MOTION_TONE, stopsAlongRoute, MotionState } from "@/lib/tripProgress";
 import { MA3_GTFS } from "@/data/ma3_gtfs";
@@ -191,7 +191,7 @@ export default function Ma3Page() {
   useEffect(() => { if (lastFrame.current && !followMe) frameMap(lastFrame.current); }, [sheet.snap, panel]);
   const setPanelMinimized = (value: boolean | ((current: boolean) => boolean)) => {
     const next = typeof value === "function" ? value(sheet.minimized) : value;
-    sheet.setSnap(next ? "peek" : "half");
+    sheet.setSnap(next ? "peek" : "full");
   };
   const [railStationQuery, setRailStationQuery] = useState("");
   const [railFromId, setRailFromId] = useState("");
@@ -408,7 +408,7 @@ export default function Ma3Page() {
   }, [mapReady, exploreDestination]);
 
   const selectRoute = (route: typeof ROUTES[0]) => {
-    setSelRoute(route);
+    setSelRoute(route); setPanelMinimized(true);
     setQuery(`${route.sn} — ${route.ln}`);
     const map = mapInst.current;
     if (map) drawRoute(map, route);
@@ -476,7 +476,7 @@ export default function Ma3Page() {
   };
   const handleMapTap = (lng: number, lat: number) => {
     if (!pickModeRef.current) return;
-    setPickMode(false);
+    setPickMode(false); showSheets();
     const map = mapInst.current;
     if (map) setPointLayer(map, "pin-destination", [{ id: "pin", lat, lon: lng, color: "#dc2626", radius: 10 }], 10);
     const destinationStop = nearestStopTo(lat, lng);
@@ -495,7 +495,7 @@ export default function Ma3Page() {
   const runJourney = (from: StopMatch, to: StopMatch, extraPoints: [number, number][] = []) => {
     const opts = planJourney(from.id, to.id);
     if (!opts.length) { toast("No route found. Try nearby stops."); return; }
-    setJourneyOpts(opts);
+    setJourneyOpts(opts); setPanelMinimized(true);
     setMapCenter([from.lat, from.lon]);
     const map = mapInst.current;
     if (!map) return;
@@ -580,7 +580,7 @@ export default function Ma3Page() {
     setLockedStop(null); toast("Pickup request removed.");
   };
 
-  const openPanel = (p: Panel) => { setPanelMinimized(true); setPanel(prev => prev === p ? null : p); };
+  const openPanel = (p: Panel) => { setPanelMinimized(false); setPanel(prev => prev === p ? null : p); };
   const pitch = is3D ? 52 : 0;
   const bearing = is3D ? -14 : 0;
 
@@ -593,7 +593,7 @@ export default function Ma3Page() {
 
       <div style={{ position: "absolute", top: 10, left: 10, right: 10, zIndex: 50 }}>
         <PageTabs label="Ma3 sections" tone={tabTone} active={panel === "parcel" || panel === "train" ? panel : panel ? "search" : ""} tabs={MA3_TABS}
-          onChange={value => { setPanelMinimized(true); setPanel(value as "search" | "parcel" | "train"); }} />
+          onChange={value => { setPanelMinimized(false); setPanel(value as "search" | "parcel" | "train"); }} />
       </div>
 
       {/* ══════ UNIFIED SEARCH PANEL ══════ */}
@@ -621,7 +621,7 @@ export default function Ma3Page() {
               </div>
 
               <button className={`btn ${pickMode ? "btn-go" : "btn-ready"}`} style={{ marginTop: 8, padding: "8px 12px", fontSize: ".64rem" }}
-                onClick={() => { setPickMode(value => !value); if (!pickMode) { toast("Tap the map where you want to go."); sheet.setSnap("peek"); } }}>
+                onClick={() => { setPickMode(value => !value); if (!pickMode) { toast("Tap the map where you want to go."); hideSheets(); } else showSheets(); }}>
                 <MapPin size={13} /> {pickMode ? "Tap the map now…" : "Drop a pin to where you are going"}
               </button>
               {selRoute && (

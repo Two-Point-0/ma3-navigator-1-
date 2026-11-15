@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { ClipboardCheck } from "lucide-react";
 import { Bus, Copy, MapPin, Power, ShieldCheck, Wifi, WifiOff } from "lucide-react";
 import { Link } from "wouter";
 import { toast } from "sonner";
@@ -136,9 +137,9 @@ export default function DriverLiveAvailability({ routeId, onRouteChange, seats, 
     {approvalLoading && <p style={{ marginTop: 10, color: "var(--muted2)", fontSize: ".68rem" }}>Checking route approval…</p>}
     {user && !approvalLoading && <div className="ios-glass" style={{ padding: 11, marginTop: 12 }}>
       {!approval
-        ? <p style={{ margin: 0, color: "var(--ready)", fontSize: ".7rem", lineHeight: 1.5 }}>Driver account is pending admin approval. Riders cannot see this account until an authorised reviewer approves it.</p>
+        ? <DriverApplyForm onDone={() => setApproval({ status: "pending", route_ids: [] })} />
         : approval.status !== "approved"
-          ? <p style={{ margin: 0, color: "var(--ready)", fontSize: ".7rem", lineHeight: 1.5 }}>Driver status: {approval.status}. Public live location is available only after verification and approval.</p>
+          ? <p style={{ margin: 0, color: "var(--ready)", fontSize: ".7rem", lineHeight: 1.5 }}>{approval.status === "pending" ? "Your application is waiting for approval. We will check your plate and routes, then you can go online." : "Your driver account is suspended. Contact the Ma3 team."}</p>
           : approvedRoutes.length === 0
             ? <p style={{ margin: 0, color: "var(--ready)", fontSize: ".7rem", lineHeight: 1.5 }}>No Ma3 routes have been approved for this driver account yet.</p>
             : <>
@@ -165,6 +166,26 @@ export default function DriverLiveAvailability({ routeId, onRouteChange, seats, 
     </div>}
 
     {user && <div style={{ marginTop: 10, display: "flex", gap: 7, alignItems: "flex-start", color: "var(--muted2)", fontSize: ".63rem", lineHeight: 1.5 }}><ShieldCheck size={14} style={{ color: "var(--ready)", flexShrink: 0 }} /><span>Tracking is active only after you choose Go Online and allow GPS. This PWA must remain open; screen-off/background tracking is not guaranteed. Rider maps hide a vehicle if its GPS update is older than 45 seconds. For reliable all-shift background tracking, use a native Android foreground-location service.</span></div>}
-    {user && approval?.status !== "approved" && <details style={{ marginTop: 9, color: "var(--muted2)", fontSize: ".62rem" }}><summary>Copy account ID for the project administrator</summary><div style={{ display: "flex", gap: 7, alignItems: "center", marginTop: 6 }}><code style={{ overflowWrap: "anywhere" }}>{user.id}</code><button className="btn btn-ghost" type="button" onClick={() => void copyAccountId()}><Copy size={12} />Copy</button></div></details>}
   </section>;
+}
+
+
+function DriverApplyForm({ onDone }: { onDone: () => void }) {
+  const [name, setName] = useState(""); const [plate, setPlate] = useState(""); const [find, setFind] = useState(""); const [picked, setPicked] = useState<string[]>([]); const [busy, setBusy] = useState(false);
+  const matches = useMemo(() => { const text = find.trim().toLowerCase(); return text ? ROUTES.filter(route => `${route.sn} ${route.ln}`.toLowerCase().includes(text) && !picked.includes(route.id)).slice(0, 6) : []; }, [find, picked]);
+  const submit = async () => {
+    if (!supabase) return; setBusy(true);
+    const { error } = await supabase.rpc("apply_matatu_driver", { p_name: name, p_plate: plate, p_routes: picked });
+    setBusy(false); if (error) toast.error(error.message); else { toast.success("Application sent"); onDone(); }
+  };
+  return <div>
+    <b style={{ fontSize: ".78rem" }}><ClipboardCheck size={14} style={{ verticalAlign: -2, color: "var(--ready)" }} /> Apply to be a Ma3 driver</b>
+    <p style={{ fontSize: ".62rem", color: "var(--muted2)", lineHeight: 1.5, margin: "4px 0 8px" }}>Tell us who you are and which routes you drive. We check this before riders can see you.</p>
+    <input className="finput" placeholder="Full name" value={name} onChange={event => setName(event.target.value)} maxLength={60} />
+    <input className="finput" style={{ marginTop: 6 }} placeholder="Number plate e.g. KDA 123A" value={plate} onChange={event => setPlate(event.target.value.toUpperCase())} maxLength={12} />
+    <input className="finput" style={{ marginTop: 6 }} placeholder="Find your route: number or name (up to 5)" value={find} onChange={event => setFind(event.target.value)} />
+    {matches.map(route => <button key={route.id} type="button" className="card" style={{ display: "block", width: "100%", textAlign: "left", padding: 8, marginTop: 4, color: "var(--white)", cursor: "pointer" }} onClick={() => { if (picked.length < 5) setPicked([...picked, route.id]); setFind(""); }}>{route.sn} · {route.ln}</button>)}
+    {!!picked.length && <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginTop: 8 }}>{picked.map(id => <button key={id} type="button" className="pill on" onClick={() => setPicked(picked.filter(item => item !== id))}>{ROUTES.find(route => route.id === id)?.sn} ✕</button>)}</div>}
+    <button className="btn btn-ready" style={{ width: "100%", justifyContent: "center", marginTop: 10 }} disabled={busy || name.trim().length < 2 || plate.trim().length < 5 || !picked.length} onClick={() => void submit()}>Send application</button>
+  </div>;
 }

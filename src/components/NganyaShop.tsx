@@ -67,8 +67,9 @@ export default function NganyaShop() {
 
   const shown = useMemo(() => {
     const text = query.trim().toLowerCase();
-    return products.filter(p => (!category || p.category === category) && (!text || `${p.name} ${p.description}`.toLowerCase().includes(text)));
+    return products.filter(p => (!category || p.category === category) && (!text || `${p.name} ${p.description} ${p.sku} ${NGANYA_CATEGORIES[p.category] ?? p.category}`.toLowerCase().includes(text)));
   }, [products, category, query]);
+  const categoryList = useMemo(() => { const out: Record<string, string> = { ...NGANYA_CATEGORIES }; for (const p of products) if (!out[p.category]) out[p.category] = p.category.replace(/[-_]+/g, " ").replace(/\b\w/g, c => c.toUpperCase()); return Object.entries(out).filter(([id]) => products.some(p => p.category === id)); }, [products]);
   const counts = useMemo(() => { const out: Record<string, number> = {}; for (const p of products) out[p.category] = (out[p.category] ?? 0) + 1; return out; }, [products]);
   const lines = products.filter(p => p.id && cart[p.id] && onSale(p));
   const total = lines.reduce((sum, p) => sum + (p.price ?? 0) * cart[p.id!], 0);
@@ -114,7 +115,7 @@ export default function NganyaShop() {
       <button className="pill" onClick={() => setOpen(null)} style={{ marginBottom: 9 }}><ArrowLeft size={11} /> All products</button>
       <Picture p={open} size={210} />
       <b style={{ display: "block", fontSize: ".9rem", margin: "10px 0 3px" }}>{open.name}</b>
-      <small style={{ color: "var(--muted2)" }}>{NGANYA_CATEGORIES[open.category] ?? open.category} · {open.sku}</small>
+      <small style={{ color: "var(--muted2)" }}>{categoryList.find(([id]) => id === open.category)?.[1] ?? open.category} · {open.sku}</small>
       <p style={{ fontSize: ".7rem", lineHeight: 1.55, margin: "9px 0" }}>{open.description}</p>
       <div className="ios-glass" style={{ padding: 10, marginBottom: 9, fontSize: ".64rem", lineHeight: 1.5 }}>
         {sale ? <b style={{ color: "var(--go)" }}>KES {open.price!.toLocaleString()} · {open.stock} in stock</b> : <b style={{ color: "var(--ready)" }}>Coming soon. This is a concept, not on sale yet.</b>}
@@ -156,7 +157,7 @@ export default function NganyaShop() {
     </div>
     <div style={{ display: "flex", gap: 6, overflowX: "auto", paddingBottom: 6, marginBottom: 6 }}>
       <button className={`pill ${category === "" ? "on" : ""}`} onClick={() => setCategory("")}>All {products.length}</button>
-      {Object.entries(NGANYA_CATEGORIES).map(([id, label]) => <button key={id} className={`pill ${category === id ? "on" : ""}`} onClick={() => setCategory(id)} style={{ whiteSpace: "nowrap" }}>{label} {counts[id] ?? 0}</button>)}
+      {categoryList.map(([id, label]) => <button key={id} className={`pill ${category === id ? "on" : ""}`} onClick={() => setCategory(id)} style={{ whiteSpace: "nowrap" }}>{label} {counts[id] ?? 0}</button>)}
     </div>
     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>{shown.map(p => <button key={p.sku} className="card" onClick={() => setOpen(p)} style={{ padding: 7, textAlign: "left", color: "var(--white)", cursor: "pointer" }}>
       <Picture p={p} size={92} />

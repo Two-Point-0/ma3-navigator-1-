@@ -1,11 +1,11 @@
 import { useState } from "react";
-import { Shield, FileText, ShoppingBag } from "lucide-react";
+import { Shield, FileText, ShoppingBag, Mic2 } from "lucide-react";
 import PageTabs from "@/components/PageTabs";
-import { LEGAL_UPDATED, PRIVACY, SHOP, TERMS, type LegalSection } from "@/data/legalText";
+import { LEGAL_UPDATED, PRIVACY, ROAST, SHOP, TERMS, type LegalSection } from "@/data/legalText";
 
-const TABS = [{ id: "privacy", label: "Privacy", Icon: Shield }, { id: "terms", label: "Terms", Icon: FileText }, { id: "shop", label: "Shop terms", Icon: ShoppingBag }] as const;
+const TABS = [{ id: "privacy", label: "Privacy", Icon: Shield }, { id: "terms", label: "Terms", Icon: FileText }, { id: "shop", label: "Shop", Icon: ShoppingBag }, { id: "roast", label: "Roast", Icon: Mic2 }] as const;
 const SETS: Record<string, { title: string; sections: LegalSection[] }> = {
-  privacy: { title: "Privacy notice", sections: PRIVACY }, terms: { title: "Terms of use", sections: TERMS }, shop: { title: "Shop terms", sections: SHOP },
+  privacy: { title: "Privacy notice", sections: PRIVACY }, terms: { title: "Terms of use", sections: TERMS }, shop: { title: "Shop terms", sections: SHOP }, roast: { title: "Mchongwano roast rules", sections: ROAST },
 };
 
 export default function LegalPage() {

@@ -4,6 +4,8 @@ import { AlertTriangle, CheckCircle, GraduationCap, Minus, Plus, Search, Shoppin
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 import { SelectedMarketBranch, useShoppingBasket } from "@/lib/shoppingBasket";
 import PageTabs from "@/components/PageTabs";
+import MyLists from "@/components/MyLists";
+import ListCompare, { type ListChoice } from "@/components/ListCompare";
 import LocalPanel from "@/components/LocalPanel";
 import { useSheet } from "@/lib/useSheet";
 import MapLibreView, { MapLibreHandle } from "@/components/MapLibreView";
@@ -82,6 +84,7 @@ export default function MarketPage() {
   const [, setLocation] = useLocation();
   const [sheetOpen, setSheetOpen] = useState(false);
   const [tab, setTab] = useState<MarketTab>("basket");
+  const [listResults, setListResults] = useState<ListChoice[]>([]);
   const [template, setTemplate] = useState<TemplateId>("solo");
   const [schoolLevel, setSchoolLevel] = useState("primary");
   const [familyMembers, setFamilyMembers] = useState(4);
@@ -263,10 +266,14 @@ export default function MarketPage() {
         added.push(addBadgeMarker(map, option.latitude, option.longitude, `${option.store} · KES ${Math.round(option.totalKes).toLocaleString()}`, colour));
       });
     }
-    if (userLocation && (tab === "basket" || nearMe)) added.push(addBadgeMarker(map, userLocation.latitude, userLocation.longitude, "You", "#2563eb"));
+    if (tab === "search") listResults.forEach((option, index) => {
+      if (option.latitude === null || option.longitude === null) return;
+      added.push(addBadgeMarker(map, option.latitude, option.longitude, `#${index + 1} ${option.store} · KES ${Math.round(option.totalKes).toLocaleString()}`, index === 0 ? "#16a34a" : "#475569"));
+    });
+    if (userLocation && (tab === "basket" || tab === "search" || nearMe)) added.push(addBadgeMarker(map, userLocation.latitude, userLocation.longitude, "You", "#2563eb"));
     return () => { added.forEach(marker => marker.remove()); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [map, tab, pinKey, selectedBranch?.key, userLocation, nearMe]);
+  }, [map, tab, pinKey, selectedBranch?.key, userLocation, nearMe, listResults]);
 
   // Zoom the map so you and the compared stores are all in view.
   useEffect(() => {
@@ -345,11 +352,11 @@ export default function MarketPage() {
   const status = loading ? "Loading the shared catalogue…" : loadError ? "Product prices are temporarily unavailable." : products.length ? "Prices show their observation date, branch and pack size." : "No product listings are available right now.";
 
 
-  return <div className="page-wrap market-page" style={{ position: "relative", minHeight: "calc(100dvh - var(--top-h))", paddingTop: "calc(var(--top-h) + 8px)", paddingBottom: "var(--nav-h)" }}>
+  return <div className="page-wrap market-page" style={{ position: "relative", minHeight: "calc(100dvh - var(--top-h))", paddingTop: 10, paddingBottom: "var(--nav-h)" }}>
     <div style={{ position: "fixed", top: "var(--top-h)", left: 0, right: 0, bottom: "var(--nav-h)", zIndex: 0 }}><MapLibreView ref={mapRef} center={[-1.2864, 36.8172]} zoom={11} height="100%" borderRadius={0} onLoad={setMap} /></div>
     <div className="inner" style={{ position: "relative", zIndex: 1, paddingBottom: "60vh" }}>
     <header style={{ padding: "0 0 .7rem" }}><div style={{ display: "flex", alignItems: "center", gap: 7 }}><ShoppingCart size={18} style={{ color: "var(--ready)" }} /><h2 style={{ fontFamily: "var(--font-display)", fontSize: "1.1rem" }}>Market</h2><span style={{ marginLeft: "auto", color: "var(--muted2)", fontSize: ".54rem" }}>Store map</span></div></header>
-    <PageTabs label="Market sections" active={sheetOpen ? (tab === "planner" ? "search" : tab) : ""} tabs={tabList(sharedItems.length)} onChange={value => { setTab(value as MarketTab); sheet.setSnap("peek"); setSheetOpen(true); }} />
+    <PageTabs label="Market sections" active={sheetOpen ? (tab === "planner" ? "search" : tab) : ""} tabs={tabList(sharedItems.length)} onChange={value => { setTab(value as MarketTab); sheet.setSnap("full"); setSheetOpen(true); }} />
     {tab === "planner" && <section className="ios-glass led-edge" style={sheetStyle}>{sheetGrip}<p style={{ color: "var(--muted2)", fontSize: ".61rem", lineHeight: 1.45, margin: "0 0 9px" }}>Plan a smart basket from the catalogue for home, school, or a trip. Product and branch prices are observations, not live stock or checkout quotes.</p><p role="status" style={{ color: "var(--muted2)", fontSize: ".55rem", lineHeight: 1.4, margin: "0 0 8px" }}>{status}</p><p className="sec-label">Smart shopping templates</p><p style={{ color: "var(--muted2)", fontSize: ".61rem", lineHeight: 1.45 }}>Pick a household or trip style to build a shared basket from available product listings. Missing products are skipped rather than invented.</p><div style={{ position: "relative", margin: "9px 0" }}><Search size={13} style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "var(--ready)" }} /><input className="finput" style={{ paddingLeft: 34 }} placeholder="Search items to add to your plan…" value={plannerQuery} onChange={event => setPlannerQuery(event.target.value)} /></div>{plannerQuery.trim() && <div style={{ display: "grid", gap: 5, marginBottom: 10 }}>{plannerMatches.map(product => <button key={product.id} onClick={() => add(product)} className="card" style={{ padding: 9, textAlign: "left", display: "flex", justifyContent: "space-between", gap: 8, color: "var(--white)", cursor: "pointer" }}><span><b style={{ display: "block", fontSize: ".68rem" }}>{product.name}</b><small style={{ color: "var(--muted2)" }}>{product.category} · {product.unit}</small></span><Plus size={14} style={{ color: "var(--ready)" }} /></button>)}{plannerMatches.length === 0 && <small style={{ color: "var(--muted2)" }}>No catalogue items match that search.</small>}</div>}<select className="finput" value={template} onChange={event => setTemplate(event.target.value as TemplateId)}>{(Object.keys(PROFILE_LABELS) as TemplateId[]).map(id => <option key={id} value={id}>{PROFILE_LABELS[id].name} — {PROFILE_LABELS[id].note}</option>)}</select>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 10 }}><div><label>Spend style</label><select className="finput" value={budgetMode} onChange={event => setBudgetMode(event.target.value as typeof budgetMode)}><option value="saver">Budget friendly</option><option value="balanced">Balanced</option><option value="premium">More variety</option></select></div><div><label>Target spend, KES</label><input className="finput" type="number" min={0} value={budget} onChange={event => setBudget(event.target.value)} placeholder="Enter a budget" /></div></div>
       {template === "family" && <div style={{ marginTop: 12 }}><label>Household members</label><input className="finput" type="number" min={1} max={15} value={familyMembers} onChange={event => setFamilyMembers(Math.max(1, Number(event.target.value)))} /></div>}
@@ -358,16 +365,13 @@ export default function MarketPage() {
       {!products.length && !loading && <p style={{ fontSize: ".61rem", color: "var(--muted2)", marginTop: 9 }}>{status}</p>}
     </section>}
 
-    {tab === "search" && <section className="led-edge" style={sheetStyle}>{sheetGrip}<p style={{ color: "var(--muted2)", fontSize: ".61rem", lineHeight: 1.45, margin: "0 0 8px" }}>Search items, tap + to add them, then open Basket to compare supermarkets. Prices are observations, not live stock or checkout quotes; amber map pins mark geocoded branches.</p><p role="status" style={{ color: "var(--muted2)", fontSize: ".55rem", lineHeight: 1.4, margin: "0 0 8px" }}>{status}</p><div style={{ position: "relative", marginBottom: 10 }}><Search size={14} style={{ position: "absolute", left: 13, top: "50%", transform: "translateY(-50%)", color: "var(--ready)" }} /><input className="finput" style={{ paddingLeft: 36 }} placeholder="Search item, brand, SKU or category…" value={query} onChange={event => setQuery(event.target.value)} autoFocus /></div>
-      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 9 }}><button className={`btn ${nearMe && userLocation ? "btn-go" : "btn-ready"}`} style={{ padding: "7px 10px", fontSize: ".61rem" }} onClick={toggleNearMe} disabled={locating}><LocateFixed size={12} />{locating ? "Finding you…" : nearMe && userLocation ? "Nearest shops first: on" : "Show nearest shops first"}</button>{nearMe && userLocation && <small style={{ color: "var(--muted2)", fontSize: ".56rem" }}>Sorted by the closest branch that has a price.</small>}</div>
-      {locationMessage && <p style={{ color: "var(--muted2)", fontSize: ".57rem", margin: "0 0 8px" }}>{locationMessage}</p>}
-      {!query && <div className="ios-glass" style={{ padding: 16, textAlign: "center", color: "var(--muted2)", fontSize: ".7rem" }}>Search an item, add it to your basket, then open Basket to compare the 3 nearest supermarkets.<button className="btn btn-ready" style={{ display: "flex", margin: "10px auto 0" }} onClick={() => setTab("planner")}><GraduationCap size={13} /> Plan a whole basket instead</button></div>}
-      {loading && <p style={{ padding: 15, textAlign: "center", color: "var(--muted2)" }}><LoaderCircle size={15} /> Loading products…</p>}
-      {!!query && <div style={{ display: "grid", gap: 8 }}>{filtered.map(product => { const cheapest = product.prices.length ? Math.min(...product.prices.map(price => price.amount)) : null; const nearest = nearMe && userLocation ? nearestPrice(product, userLocation) : null; const inBasket = sharedItems.find(item => item.productId === product.id); return <div key={product.id} style={{ display: "flex", gap: 6, alignItems: "stretch" }}><motion.button whileTap={{ scale: .98 }} onClick={() => setDetail(product)} className="card" style={{ flex: 1, minWidth: 0, padding: 12, textAlign: "left", color: "var(--white)", cursor: "pointer" }}><div style={{ display: "flex", alignItems: "center", gap: 10 }}><ProductImage product={product} /><span style={{ flex: 1, minWidth: 0 }}><b style={{ display: "block", fontSize: ".76rem" }}>{product.name}</b><small style={{ color: "var(--muted2)" }}>{product.unit || "Pack size not set"} · {product.category}</small>{nearest && <small style={{ display: "block", color: "var(--ready)", marginTop: 2 }}>Nearest: {nearest.price.store} {nearest.price.branch || ""} · {nearest.distanceKm.toFixed(1)} km · KES {nearest.price.amount.toLocaleString()}</small>}</span><span style={{ textAlign: "right" }}>{cheapest !== null ? <><small style={{ display: "block", color: "var(--muted2)" }}>lowest seen</small><b style={{ color: "var(--go)", fontFamily: "var(--font-mono)", fontSize: ".76rem" }}>KES {cheapest.toLocaleString()}</b></> : <small style={{ color: "var(--muted2)" }}>No price yet</small>}</span></div></motion.button><button className="icon-btn" style={{ alignSelf: "center", width: 38, height: 38 }} aria-label={`Add ${product.name} to basket`} onClick={() => addToBasket(product)}>{inBasket ? <Check size={15} style={{ color: "var(--go)" }} /> : <Plus size={15} style={{ color: "var(--ready)" }} />}</button></div>; })}{query && filtered.length === 0 && <p style={{ textAlign: "center", color: "var(--muted2)", padding: 18 }}>No products match that search.</p>}</div>}
+    {tab === "search" && <section className="led-edge" style={sheetStyle}>{sheetGrip}<ListCompare userLocation={userLocation} requestLocation={requestLocation} locating={locating} onResults={setListResults} onChoose={(lines, branch) => { replaceItems(lines); setSelectedBranch(branch); toast.success(`Your list is in the Basket, priced at ${branch.store} ${branch.branchName}`); setTab("basket"); }} />
+      <button className="btn btn-ghost" style={{ display: "flex", margin: "12px auto 0" }} onClick={() => setTab("planner")}><GraduationCap size={13} /> Or plan a whole basket from a template</button>
     </section>}
 
     {tab === "local" && <section className="led-edge" style={sheetStyle}>{sheetGrip}<LocalPanel map={map} userLocation={userLocation} requestLocation={requestLocation} /></section>}
     {tab === "basket" && <section className="led-edge" style={sheetStyle}>{sheetGrip}<p style={{ color: "var(--muted2)", fontSize: ".61rem", lineHeight: 1.45, margin: "0 0 8px" }}>Compare item totals by supermarket branch and use amber map pins to find geocoded stores. Prices are observations, not live stock or checkout quotes.</p><p role="status" style={{ color: "var(--muted2)", fontSize: ".55rem", lineHeight: 1.4, margin: "0 0 8px" }}>{status}</p>
+      <MyLists />
       <p className="sec-label">Compare your selected commodities across supermarket branches</p>
       <p style={{ color: "var(--muted2)", fontSize: ".6rem", lineHeight: 1.45, marginBottom: 8 }}>Search and add three or more items if you like. We total a branch only when it has a current observation for every selected basket item, across the five retailers.</p>
       <div style={{ position: "relative", marginBottom: 8 }}><Search size={13} style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "var(--ready)" }} /><input data-page-search className="finput" style={{ paddingLeft: 34 }} placeholder="Search commodities to add to compare…" value={compareQuery} onChange={event => setCompareQuery(event.target.value)} /></div>

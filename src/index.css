@@ -35,7 +35,7 @@
   --sky:   #3b82f6;    /* utility blue – used sparingly */
   --lilac: #8b5cf6;    /* utility purple – Explore only */
 
-  --nav-h: 66px;
+  --nav-h: 76px;
   --top-h: 52px;
   --r: 16px;
   --font: 'Syne', sans-serif;
@@ -50,10 +50,10 @@ html, body { margin:0; padding:0; background:var(--ink); color:var(--white);
 ::-webkit-scrollbar { width:0; height:0; }
 
 /* topbar */
-.topbar { position:fixed; top:0; left:0; right:0; z-index:900; height:var(--top-h); background:transparent; border:0;
-  display:flex; align-items:flex-end; justify-content:center; padding:0 1rem 2px; pointer-events:none; }
-.topbar > * { pointer-events:auto; }
-.logo-float { text-shadow:0 2px 14px rgba(0,0,0,.85), 0 0 2px rgba(0,0,0,.9); }
+.topbar { position:fixed; top:0; left:0; right:0; z-index:900; height:var(--top-h);
+  background:rgba(8,8,16,.66); backdrop-filter:blur(26px) saturate(145%); -webkit-backdrop-filter:blur(26px) saturate(145%);
+  border-bottom:1px solid var(--border2);
+  display:flex; align-items:center; justify-content:center; padding:0 1rem; }
 .app-logo { font-family:var(--font-display); font-size:1.4rem; font-weight:900; letter-spacing:-.02em;
   display:flex; align-items:center; gap:1px; }
 .logo-3 { color:var(--ready); display:inline-block; transform-origin:center 60%; }
@@ -68,22 +68,23 @@ html, body { margin:0; padding:0; background:var(--ink); color:var(--white);
   cursor:pointer; color:var(--muted2); transition:.15s; }
 .icon-btn:hover { color:var(--white); }
 
-/* bottom nav: a small floating capsule that leaves the map visible */
-.bottom-nav { position:fixed; bottom:calc(8px + env(safe-area-inset-bottom)); left:50%; transform:translateX(-50%); z-index:900;
-  height:46px; width:max-content; max-width:calc(100vw - 16px); padding:0 6px; gap:2px; border-radius:99px;
-  background:rgba(14,14,24,.72); backdrop-filter:blur(18px) saturate(150%); -webkit-backdrop-filter:blur(18px) saturate(150%);
-  border:1px solid var(--border2); box-shadow:0 6px 22px rgba(0,0,0,.45);
-  display:flex; align-items:center; justify-content:center; }
-.bn { cursor:pointer; display:flex; align-items:center; justify-content:center; gap:5px; height:38px; min-width:38px; padding:0 8px;
-  border-radius:99px; color:rgba(240,237,232,.78); background:transparent; font-family:var(--font); text-decoration:none; transition:background .2s,color .2s; }
-.bn-ic { display:flex; align-items:center; justify-content:center; color:var(--ready); transition:color .2s; }
-.bn.on { background:color-mix(in srgb, var(--ready) 22%, transparent); color:#fff; }
-.bn.on .bn-ic { color:#fff; }
-.bn-lbl { display:none; font:700 .6rem/1 var(--font); white-space:nowrap; }
-.bn.on .bn-lbl { display:block; }
+/* bottom nav */
+.bottom-nav { position:fixed; bottom:6px; left:4px; right:4px; z-index:900; height:58px;
+  background:transparent; backdrop-filter:none; -webkit-backdrop-filter:none;
+  display:grid; grid-template-columns:repeat(auto-fit,minmax(0,1fr)); align-items:center; pointer-events:none; }
+.bottom-nav > * { pointer-events:auto; }
+.bn { cursor:pointer; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1px;
+  min-width:38px; height:56px; margin:auto; padding:0; color:rgba(240,237,232,.78); border:none;
+  background:transparent; font-family:var(--font); text-decoration:none; }
+.bn.on { color:var(--ready); }
+.bn-ic { width:36px; height:36px; border-radius:50%; display:flex; align-items:center;
+  justify-content:center; transition:color .2s,filter .2s,background-color .2s; border:0; background:transparent; }
+.bn.on .bn-ic { background:transparent; filter:drop-shadow(0 0 8px rgba(217,119,6,.55)); }
+.bn:hover .bn-ic { background:rgba(255,255,255,.09); }
+.bn-lbl { display:block; color:inherit; font:600 .48rem/1 var(--font); letter-spacing:.01em; white-space:nowrap; }
 
 /* page wrap */
-.page-wrap { min-height:100vh; padding-top:calc(var(--top-h) + 12px); padding-bottom:calc(var(--nav-h) + 20px + env(safe-area-inset-bottom)); }
+.page-wrap { min-height:100vh; padding-top:calc(var(--top-h) + 12px); padding-bottom:calc(var(--nav-h) + 20px); }
 .inner { max-width:640px; margin:0 auto; padding:0 1rem; }
 
 /* cards & atoms */
@@ -193,28 +194,17 @@ label { font-size:.56rem; font-weight:700; letter-spacing:.18em; text-transform:
   .bpanel, .led-edge { animation: none; --led: #d97706; }
 }
 
-/* Top 3 tabs: all identical. Nothing is chosen until the person taps one.
-   The chosen tab's edge cycles red, amber, green; a page can lock it to one state colour (data-tone). */
-@property --tab-angle { syntax: "<angle>"; initial-value: 0deg; inherits: false; }
-@keyframes tab-spin { to { --tab-angle: 360deg; } }
-.page-tabs { --tone: var(--ready); }
+/* Top 3 tabs: all identical. The page sets one state colour on the nav (data-tone). */
+.page-tabs { --tone: #94a3b8; }
 .page-tabs[data-tone="go"]    { --tone: var(--go); }
 .page-tabs[data-tone="ready"] { --tone: var(--ready); }
 .page-tabs[data-tone="stop"]  { --tone: var(--stop); }
-.page-tab { position:relative; color:rgba(255,255,255,.92); background:rgba(20,20,34,.72); border:1px solid rgba(255,255,255,.28); }
-.page-tab svg { color:#fbbf24; }
-.page-tab.active { color:#fff; background:rgba(14,14,24,.9); border:1px solid transparent;
-  background-image:linear-gradient(rgba(14,14,24,.92),rgba(14,14,24,.92)), conic-gradient(from var(--tab-angle), var(--stop), var(--ready), var(--go), var(--ready), var(--stop));
-  background-origin:border-box; background-clip:padding-box, border-box; animation:tab-spin 3.2s linear infinite;
-  box-shadow:0 0 16px color-mix(in srgb, var(--tone) 45%, transparent); }
-.page-tabs[data-tone="go"] .page-tab.active, .page-tabs[data-tone="ready"] .page-tab.active, .page-tabs[data-tone="stop"] .page-tab.active { animation:none;
-  background-image:linear-gradient(rgba(14,14,24,.92),rgba(14,14,24,.92)), linear-gradient(var(--tone),var(--tone)); }
-.page-tab.active svg { color:#fff; }
-.page-tab.active::after { content:""; width:6px; height:6px; border-radius:50%; background:var(--tone); box-shadow:0 0 8px var(--tone); flex-shrink:0; }
-@media (prefers-reduced-motion: reduce) { .page-tab.active { animation:none; } }
-
-/* bottom sheets float above the menu with rounded corners, so nothing is hidden behind it */
-.bpanel.open, [data-sheet] { border-radius:22px !important; margin-bottom:8px !important; width:min(calc(100vw - 16px), 704px) !important; }
+.page-tab { border-color: var(--border2); }
+.page-tab svg { color: var(--muted2); }
+.page-tab.active { color: #fff; background: color-mix(in srgb, var(--tone) 28%, rgba(8,8,16,.8)); border-color: var(--tone);
+  box-shadow: 0 0 14px color-mix(in srgb, var(--tone) 55%, transparent), inset 0 0 8px color-mix(in srgb, var(--tone) 22%, transparent); transition: background .3s, border-color .3s, box-shadow .3s; }
+.page-tab.active svg { color: var(--tone); }
+.page-tab.active::after { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--tone); box-shadow: 0 0 8px var(--tone); flex-shrink: 0; }
 
 /* ───────── Matatu-front wallet ───────── */
 .mw-screen { position: fixed; inset: 0; z-index: 1500; background: #0b0b14; display: grid; place-items: center; overflow: hidden; }
@@ -254,3 +244,9 @@ label { font-size:.56rem; font-weight:700; letter-spacing:.18em; text-transform:
 .handle.sheet-grip::after { content: ""; position: absolute; left: 50%; top: 50%; width: 44px; height: 5px; border-radius: 99px; background: rgba(255,255,255,.5); transform: translate(-50%, -50%); }
 .bpanel-head, .bpanel { -webkit-user-select: none; user-select: none; }
 .bpanel input, .bpanel textarea, .bpanel select, .bpanel-scroll { -webkit-user-select: text; user-select: text; }
+
+/* ── Compact, uniform top buttons on every page (Market is the reference) ── */
+.page-tabs { gap: 5px; margin: 0 0 8px; }
+.page-tab { padding: 6px 6px; border-radius: 10px; font-size: .64rem; gap: 5px; min-height: 32px; }
+.page-tab svg { width: 13px; height: 13px; }
+.page-tab.active::after { width: 5px; height: 5px; }

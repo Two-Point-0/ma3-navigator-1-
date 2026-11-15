@@ -9,3 +9,7 @@ dist/
 /vite.config.d.ts
 project-overview.txt
 supabase/.temp/
+*.zip
+Nganya_Products_Import.*
+nganya-import/
+stitch images/

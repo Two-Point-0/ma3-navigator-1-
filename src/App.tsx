@@ -1,11 +1,10 @@
-import TripsPage from "@/pages/Trips";
-import LegalPage from "@/pages/Legal";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { Switch, Route, Router as WouterRouter, Link, useLocation } from "wouter";
-import { Toaster } from "sonner";
+import { Toaster, toast } from "sonner";
 import { motion } from "framer-motion";
-import { Bus, Car, Plane, Home, Store, MapPin, Gamepad2, HelpCircle, Navigation } from "lucide-react";
+import { Bus, Car, Plane, Home, Store, MapPin, Gamepad2, Bell, Wallet as WalletIcon, HelpCircle, Navigation } from "lucide-react";
 import { Suspense, lazy, useState, useEffect } from "react";
+import SeoAndConsent from "@/components/SeoAndConsent";
 import { WalletProvider } from "@/lib/wallet";
 import { ShoppingBasketProvider } from "@/lib/shoppingBasket";
 import { AuthProvider, useAuthContext } from "@/context/AuthContext";
@@ -25,6 +24,9 @@ const ProfilePage = lazy(() => import("@/pages/Profile"));
 const LocationSharePage = lazy(() => import("@/pages/LocationShare"));
 const DriverPage = lazy(() => import("@/pages/Driver"));
 const WalletPage = lazy(() => import("@/pages/Wallet"));
+const TripsPage = lazy(() => import("@/pages/Trips"));
+const LegalPage = lazy(() => import("@/pages/Legal"));
+const AdminPage = lazy(() => import("@/pages/Admin"));
 const NotFound = lazy(() => import("@/pages/NotFound"));
 
 const NAV_ITEMS = [
@@ -43,17 +45,6 @@ function TopBar() {
   const [location] = useLocation();
   const { setOpen: setHelpOpen, setCurrentPath } = useHelp();
 
-  // Keep the logo clear of the phone's notch / dynamic island.
-  useEffect(() => {
-    const probe = document.createElement("div");
-    probe.style.cssText = "position:fixed;top:0;height:env(safe-area-inset-top);visibility:hidden";
-    document.body.appendChild(probe);
-    const apply = () => document.documentElement.style.setProperty("--top-h", `${44 + probe.getBoundingClientRect().height}px`);
-    apply();
-    window.addEventListener("resize", apply);
-    return () => { window.removeEventListener("resize", apply); probe.remove(); };
-  }, []);
-
   useEffect(() => {
     setSpin(true);
     const t = setTimeout(() => setSpin(false), 800);
@@ -63,8 +54,15 @@ function TopBar() {
 
   return (
     <div className="topbar">
-      <div className="logo-float" style={{ textAlign: "center" }}>
-        <div className="app-logo" style={{ justifyContent: "center" }}>
+      <div style={{ position: "absolute", left: "1.1rem" }}>
+        <Link href="/wallet">
+          <div className="token-pill" style={{ cursor: "pointer" }}>
+            <WalletIcon size={12} /><span>Wallet</span>
+          </div>
+        </Link>
+      </div>
+      <div style={{ textAlign: "center" }}>
+        <div className="app-logo">
           <span style={{ color: "var(--white)" }}>Ma</span>
           <motion.span
             className="logo-3"
@@ -74,11 +72,16 @@ function TopBar() {
             3
           </motion.span>
         </div>
+        <span className="logo-sub">Move · Market · Mirth</span>
       </div>
-      <button className="icon-btn" aria-label="What does this page do?" title="Help" onClick={() => setHelpOpen(true)}
-        style={{ position: "absolute", right: "0.9rem", bottom: 4, background: "rgba(14,14,24,.72)" }}>
-        <HelpCircle size={16} />
-      </button>
+      <div style={{ position: "absolute", right: "1.1rem", display: "flex", alignItems: "center", gap: 8 }}>
+        <div className="icon-btn" onClick={() => setHelpOpen(true)} title="Help">
+          <HelpCircle size={16} />
+        </div>
+        <div className="icon-btn" onClick={() => toast("Notifications coming soon!")}>
+          <Bell size={16} />
+        </div>
+      </div>
     </div>
   );
 }
@@ -97,7 +100,7 @@ function BottomNav() {
         return (
           <Link key={href} href={href} aria-label={label} title={label}>
             <div className={`bn ${active ? "on" : ""}`}>
-              <div className="bn-ic"><Icon size={20} strokeWidth={active ? 2.4 : 2} /></div>
+              <div className="bn-ic"><Icon size={19} strokeWidth={active ? 2.4 : 1.8} /></div>
               <span className="bn-lbl">{label}</span>
             </div>
           </Link>
@@ -177,6 +180,7 @@ function AppShell() {
     {showOnboarding && <Onboarding onDone={finishOnboarding} />}
     <div style={{ minHeight: "100vh", background: "var(--ink)" }}>
       <TopBar />
+      <SeoAndConsent />
       <GlobalHelpSheet />
       <div className="page-wrap">
         <Suspense fallback={<div className="inner" style={{ paddingTop: 24, color: "var(--muted2)", fontSize: ".75rem" }}>Loading page…</div>}>
@@ -195,6 +199,7 @@ function AppShell() {
           <Route path="/wallet" component={WalletPage} />
           <Route path="/trips" component={TripsPage} />
           <Route path="/legal" component={LegalPage} />
+          <Route path="/admin" component={AdminPage} />
           <Route component={NotFound} />
         </Switch>
         </Suspense>

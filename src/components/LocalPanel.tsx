@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { hideSheets, showSheets } from "@/lib/useSheet";
 import { Link, useLocation } from "wouter";
 import maplibregl from "maplibre-gl";
 import { toast } from "sonner";
@@ -104,9 +105,9 @@ export default function LocalPanel({ map, userLocation, requestLocation, fixedCa
 
   const pickOnMap = () => {
     if (!map) return;
-    setPicking(true); toast("Tap the exact spot of your business on the map.");
+    setPicking(true); hideSheets(); toast("Tap the exact spot of your business on the map.");
     map.getCanvas().style.cursor = "crosshair";
-    map.once("click", event => { setSpot({ latitude: event.lngLat.lat, longitude: event.lngLat.lng }); setPicking(false); map.getCanvas().style.cursor = ""; });
+    map.once("click", event => { setSpot({ latitude: event.lngLat.lat, longitude: event.lngLat.lng }); setPicking(false); showSheets(); map.getCanvas().style.cursor = ""; });
   };
   const useMyLocation = () => {
     if (userLocation) { setSpot(userLocation); map?.easeTo({ center: [userLocation.longitude, userLocation.latitude], zoom: 16 }); return; }

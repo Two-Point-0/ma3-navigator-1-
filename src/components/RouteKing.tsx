@@ -7,7 +7,7 @@ import { useAuthContext } from "@/context/AuthContext";
 export const KING_ROUTE_KEY = "ma3_king_route";
 const KING_MODE_KEY = "ma3_king_mode";
 const MEDAL_COLOR: Record<string, string> = { gold: "#f5b301", silver: "#b8c0cc", bronze: "#cd7f32" };
-const GAME_NAME: Record<string, string> = { trivia: "Trivia", chess: "Chess", ludo: "Ludo", draughts: "Draughts" };
+const GAME_NAME: Record<string, string> = { trivia: "Trivia", chess: "Chess", ludo: "Ludo", draughts: "Draughts", memory: "Matatu Match", g2048: "Join 2048", snake: "Matatu Snake", whack: "Whack-a-Matatu" };
 type Mode = "normal" | "challenge" | "defend";
 type Row = { player: string; total_points: number; games_led: number; medal: string | null; is_you: boolean };
 type Crown = { game_id: string; holder: string; is_you: boolean; shield_left_seconds: number; you_can_rematch: boolean };

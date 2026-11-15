@@ -3,6 +3,8 @@ import type { CSSProperties, PointerEvent as ReactPointerEvent } from "react";
 
 /**
  * One shared behaviour for every bottom popup in the app.
+ *  - opens as a big centred pop-up between the top tabs and the bottom nav, so typing is easy
+ *  - minimise it (peek) to see the map / route line; it hides completely while a pin is being placed
  *  - always sits ABOVE the bottom nav, so inputs are never covered
  *  - drag the grip to three heights: peek / half (map visible) / full
  *  - tap the grip to step through the heights
@@ -10,7 +12,8 @@ import type { CSSProperties, PointerEvent as ReactPointerEvent } from "react";
  */
 export type SheetSnap = "peek" | "half" | "full";
 const ORDER: SheetSnap[] = ["peek", "half", "full"];
-const RATIO: Record<SheetSnap, number> = { peek: 0.3, half: 0.62, full: 1 };
+// peek = minimised (map + route visible) · half = middle · full = the big centred pop-up for typing
+const RATIO: Record<SheetSnap, number> = { peek: 0.27, half: 0.56, full: 1 };
 
 function cssPx(name: string, fallback: number) {
   const value = parseFloat(getComputedStyle(document.documentElement).getPropertyValue(name));
@@ -29,6 +32,13 @@ export function useSheet(initial: SheetSnap = "peek", options: { aboveNav?: bool
   const [snap, setSnap] = useState<SheetSnap>(initial);
   const [dragHeight, setDragHeight] = useState<number | null>(null);
   const [viewport, setViewport] = useState(readViewport);
+  const [hidden, setHidden] = useState(false);
+  // Pages tell the sheet to get out of the way while the user drops or drags a pin on the map.
+  useEffect(() => {
+    const hide = () => setHidden(true), show = () => setHidden(false);
+    window.addEventListener("ma3-sheet-hide", hide); window.addEventListener("ma3-sheet-show", show);
+    return () => { window.removeEventListener("ma3-sheet-hide", hide); window.removeEventListener("ma3-sheet-show", show); };
+  }, []);
   const drag = useRef({ startY: 0, startH: 0, moved: false });
 
   useEffect(() => {
@@ -48,10 +58,10 @@ export function useSheet(initial: SheetSnap = "peek", options: { aboveNav?: bool
   const keyboardOpen = viewport.keyboard > 80;
   const topH = typeof document === "undefined" ? 52 : cssPx("--top-h", 52);
   const navH = !aboveNav ? 0 : typeof document === "undefined" ? 76 : cssPx("--nav-h", 76);
-  const bottom = keyboardOpen ? viewport.keyboard : navH;
+  const bottom = keyboardOpen ? viewport.keyboard : navH + 10;
   // keep the 3 top tabs visible unless the keyboard is up and space is tight
-  const reserve = keyboardOpen ? 8 : aboveNav ? 62 : 16;
-  const maxH = Math.max(160, viewport.height - topH - reserve - (keyboardOpen ? 0 : navH));
+  const reserve = keyboardOpen ? 8 : aboveNav ? 100 : 16;
+  const maxH = Math.max(160, viewport.height - topH - reserve - (keyboardOpen ? 0 : navH + 10));
   const snapPx = (s: SheetSnap) => Math.max(130, Math.round(maxH * RATIO[s]));
   const baseH = dragHeight ?? snapPx(snap);
   const height = keyboardOpen ? Math.min(maxH, Math.max(baseH, 280)) : baseH;
@@ -83,6 +93,8 @@ export function useSheet(initial: SheetSnap = "peek", options: { aboveNav?: bool
     position: "fixed",
     left: 0, right: 0, margin: "0 auto",
     width: "min(calc(100vw - 16px), 704px)",
+    borderRadius: 22,
+    display: hidden ? "none" : undefined,
     bottom, height, maxHeight: "none",
     zIndex: 880,
     overflowY: "auto",
@@ -96,6 +108,7 @@ export function useSheet(initial: SheetSnap = "peek", options: { aboveNav?: bool
     setSnap,
     cycle,
     minimized: snap === "peek",
+    hidden,
     /** spread on the sliding panel: <motion.div {...sheet.panelProps}> */
     panelProps: { className: "bpanel open", style: panelStyle, "data-sheet": snap } as const,
     /** spread on the grip button: <button {...sheet.gripProps} /> */
@@ -111,3 +124,7 @@ export function useSheet(initial: SheetSnap = "peek", options: { aboveNav?: bool
     },
   };
 }
+
+/** Hide every pop-up while the user places a pin on the map, then bring it back. */
+export const hideSheets = () => window.dispatchEvent(new Event("ma3-sheet-hide"));
+export const showSheets = () => window.dispatchEvent(new Event("ma3-sheet-show"));

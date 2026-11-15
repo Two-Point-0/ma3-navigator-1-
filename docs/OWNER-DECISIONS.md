@@ -32,3 +32,10 @@ Amadeus is a travel data company that gives developers free test access to fligh
    `npx.cmd supabase functions deploy flight-offers`
 5. The test key returns sample prices. Real prices need Amadeus to approve production use (free sign-up form, it can take days). Until then the app's button works but shows test data, so keep the "guide only" note.
 Never put the key in the app code or GitHub.
+
+## Added with the live release
+- **Mchongwano video:** beta on a free public room. Decide later whether to pay for a streaming provider (Daily, LiveKit, Agora, Mux). Text + voting is already live.
+- **Roast prizes:** no cash prizes until a lawyer approves written rules (betting/lottery rules can apply to paid entry and prizes).
+- **Roast moderation:** a short blocked-words list (threats) lives in table `roast_blocked_terms`; reports land in `roast_reports`. Someone must read reports daily once public.
+- **Drivers:** approved by you at /admin. Decide the checks you want (plate, PSV licence, route sticker, phone call) before approving strangers.
+- **Phone login for the public:** needs a paid SMS provider (Twilio). Fixed test numbers are for friends only.

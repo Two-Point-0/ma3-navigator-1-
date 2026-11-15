@@ -184,8 +184,8 @@ export default function FlyPage() {
   return <div style={{ position: "relative", height: "calc(100dvh - var(--top-h) - var(--nav-h))", marginTop: "-12px", overflow: "hidden" }}>
     <MapLibreView ref={mapRef} center={NAIROBI} zoom={5} height="100%" borderRadius={0} onLoad={setMap} />
     <div style={{ position: "absolute", top: 8, left: 10, right: 10, zIndex: 20, maxWidth: 640, margin: "0 auto" }}>
-      <header style={{ padding: "8px 10px", borderRadius: 14, background: "rgba(8,8,16,.78)", backdropFilter: "blur(12px)" }}><div style={{ display: "flex", alignItems: "center", gap: 7 }}><Plane size={17} style={{ color: "var(--ready)" }} /><h2 style={{ fontFamily: "var(--font-display)", fontSize: "1rem" }}>Fly & Rail</h2><span style={{ marginLeft: "auto", color: "var(--muted2)", fontSize: ".56rem" }}>Sourced route map</span></div></header>
-      <div style={{ marginTop: 7 }}><PageTabs label="Travel sections" active={sheetOpen ? tab : ""} tabs={TABS} onChange={value => { setTab(value as FlyTab); sheet.setSnap("peek"); setSelectedFlight(null); setSheetOpen(true); }} /></div>
+      <header style={{ padding: "0 0 .5rem" }}><div style={{ display: "flex", alignItems: "center", gap: 7 }}><Plane size={17} style={{ color: "var(--ready)" }} /><h2 style={{ fontFamily: "var(--font-display)", fontSize: "1.1rem" }}>Fly & Rail</h2><span style={{ marginLeft: "auto", color: "var(--muted2)", fontSize: ".56rem" }}>Sourced route map</span></div></header>
+      <div style={{ marginTop: 7 }}><PageTabs label="Travel sections" active={sheetOpen ? tab : ""} tabs={TABS} onChange={value => { setTab(value as FlyTab); sheet.setSnap("full"); setSelectedFlight(null); setSheetOpen(true); }} /></div>
     </div>
 
     <section {...sheet.panelProps} style={{ ...sheet.panelProps.style, display: sheetOpen ? "flex" : "none", flexDirection: "column" }}>

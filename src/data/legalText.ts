@@ -28,6 +28,8 @@ export const PRIVACY: LegalSection[] = [
   { title: "Changes", body: [`We may update this notice. The date at the top of this page shows the latest version (${LEGAL_UPDATED}).`] },
 ];
 
+PRIVACY.push({ title: "Usage statistics (only if you allow)", body: ["If you press Allow on the statistics card, we use Google Analytics to count visits and which screens are used. We ask Google to shorten IP addresses. We do not send your name, phone number or exact location. You can say No thanks and the app works the same. To change your mind, clear this site's data in your browser."] });
+
 export const TERMS: LegalSection[] = [
   { title: "Using Ma3", body: [`These terms are between you and ${OWNER_NAME}. By using the app you agree to them. The app is an early version. Some parts are demonstrations: matatu positions, driver matching and payments may be switched off or simulated, and the app says so where this applies.`] },
   { title: "Information is a guide", body: ["Routes, stops, fares, prices, flights and train times come from public and partner sources and may be out of date. Always check with the operator, shop or airline before you rely on them. Booking flights or trains happens on the operator's own site, not in Ma3."] },
@@ -52,4 +54,30 @@ export const SHOP: LegalSection[] = [
   { title: "Faulty or wrong items", body: ["Goods must be as described and of acceptable quality. If an item is faulty or not as described, contact us and we will repair, replace or refund it as Kenyan consumer law requires."] },
   { title: "Artwork", body: ["Nganya artwork on products is used only with the written permission of the artist and the vehicle owner. Product pages show the artwork rights status."] },
   { title: "Your information", body: ["We use your phone number and delivery note only to handle your order. See the Privacy notice."] },
+];
+
+// Mchongwano roast battles. DRAFT: a Kenyan lawyer must review this before the feature is public.
+// Note for the lawyer: this lets fighters agree to harsh jokes about looks and body, but it deliberately does NOT allow
+// threats, sexual content, hate aimed at tribe, religion, disability or sexual orientation, or sharing private details.
+// A waiver can reduce risk. It cannot remove liability the law does not allow to be waived.
+export const ROAST: LegalSection[] = [
+  { title: "What Mchongwano is", body: ["Mchongwano is a live comedy game where two people trade playful insults (a roast) while other app users watch and vote for the winner. It is entertainment. Nothing said in a battle is a statement of fact."] },
+  { title: "18 and over only", body: ["You must be 18 or older to fight, watch or vote. By ticking the box you confirm you are 18 or older."] },
+  { title: "You choose to take part, and you can stop at any time", body: [
+    "Fighters know that roasts are harsh and may joke about a person's looks, body, clothes, accent, job, bad luck or embarrassing moments. By fighting you agree to receive and give that kind of joke, as part of the game.",
+    "You can press Enough at any moment. The battle ends, your opponent is given the win, and nothing more is said. Nobody may pressure you to continue."] },
+  { title: "Rules that always apply", body: [
+    "No threats of violence or harm, and no encouraging anyone to hurt themselves.",
+    "No sexual content, and nothing sexual about anyone's body.",
+    "No hate aimed at someone's tribe, race, religion, disability or sexual orientation.",
+    "No sharing private information (home address, workplace details, phone numbers, ID, private photos).",
+    "Do not make up serious claims that a real person committed a crime. Keep it a joke, not an accusation.",
+    "Leave out children and anyone who is not in the battle.",
+    "Anyone can report a battle. We may stop a battle, remove lines, suspend people or end their access."] },
+  { title: "Watching and voting", body: ["Viewers can watch battles live and vote for the fighter who did better. Votes decide who wins each round and the battle. Fighters cannot vote in their own battle. Votes are for fun and have no cash value."] },
+  { title: "Your lines and recordings", body: ["The lines you write are shown to everyone watching and may be kept for a short time so that we can handle reports. If you switch on the optional video, your face and voice can be seen and heard by viewers and may be recorded by them. Only switch it on if you are comfortable with that."] },
+  { title: "Risk and responsibility", body: [
+    "You take part at your own risk. To the extent the law allows, you agree not to bring a claim against Ma3, its owner, the other fighter or the viewers for upset, embarrassment or offence caused by jokes made within these rules.",
+    "This does not cover anything the law says cannot be excluded: for example harm caused by deliberate wrongdoing or serious negligence, threats, or breaking the rules above. Nothing here limits your rights under Kenyan law."] },
+  { title: "Prizes", body: ["Winning gives bragging rights and may give Route King points. There is no cash prize unless we clearly announce one with its own written rules."] },
 ];
