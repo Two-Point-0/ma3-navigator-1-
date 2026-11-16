@@ -1,0 +1,5 @@
+id,name,station_names,notes,is_prototype
+kikuyu-limuru-sample,Kikuyu–Limuru sample corridor,"Nairobi Central (prototype)|Dagoretti Market|Kibera|Jamuhuri railways|Satellite|Mutuini|Thogoto|Kikuyu|Gitaru|Muguga|Limuru Train Station","Sample station order and interchange; not a verified timetable or live service.",true
+nairobi-ruiru-sample,Nairobi–Ruiru sample corridor,"Nairobi Central (prototype)|Kariobangi South|Umoja/ Mutindwa|Mwiki|Membley/ Gitambaya|Ruiru","Sample station order and interchange; confirm operating service before travel.",true
+nairobi-mgr-sample,Nairobi–Athi River MGR sample corridor,"Nairobi Central (prototype)|Imara Daima|Athi River (MGR)","Sample station order; service and stop pattern are not verified.",true
+sgr-south-sample,Nairobi Terminus–Lukenya SGR sample corridor,"Nairobi Terminus|Mlolongo|Athi River (SGR)|Lukenya","Sample station order; does not imply that every mapped point is a passenger stop.",true

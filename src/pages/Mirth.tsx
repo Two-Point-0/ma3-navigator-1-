@@ -1,11 +1,13 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Gamepad2, Search, Heart, ThumbsUp, Users, X, Swords, MessageSquareQuote, Crown, Dices, Brain, Grid3x3, BusFront, LoaderCircle, Trophy, Star, MapPin, Sparkles, Shield, Volume2, Route, PlusCircle, ShoppingBag, Puzzle, Grid2x2, Target, Mic2, Hammer } from "lucide-react";
+import { Gamepad2, Search, Heart, ThumbsUp, Users, X, Swords, MessageSquareQuote, Crown, Dices, Brain, Grid3x3, BusFront, LoaderCircle, Trophy, Star, MapPin, Sparkles, Shield, Volume2, Route, PlusCircle, ShoppingBag, Puzzle, Grid2x2, Target, Mic2, Hammer, Landmark } from "lucide-react";
 import CenterModal from "@/components/CenterModal";
 import { toast } from "sonner";
 import PageTabs from "@/components/PageTabs";
 import NganyaShop from "@/components/NganyaShop";
 import RouteKing, { submitKingScore, beginKingGame } from "@/components/RouteKing";
+import MirthSocialPanel from "@/components/MirthSocialPanel";
+import MirthWeeklyLeaderboard from "@/components/MirthWeeklyLeaderboard";
 import { useSheet } from "@/lib/useSheet";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 import MapLibreView, { MapLibreHandle } from "@/components/MapLibreView";
@@ -34,11 +36,11 @@ function geoLines(value: any): [number, number][][] {
 
 const GAMES: GameDef[] = [
   { id: "mchongwano", name: "Mchongwano Live", Icon: Mic2, desc: "Live roast battles and tournaments. The audience votes for the winner.", players: "Live · 2 fighters + crowd" },
+  { id: "tycoon", name: "Nganya Tycoon", Icon: Landmark, desc: "Buy Nairobi stages, build landmarks and collect fares.", players: "Single-player prototype · you vs bot" },
   { id: "ludo", name: "Ludo", Icon: Dices, desc: "Race four tokens home on the board against the computer.", players: "Route King" },
   { id: "chess", name: "Chess", Icon: Crown, desc: "Classic strategy: you play white against the computer.", players: "Route King" },
   { id: "trivia", name: "Trivia", Icon: Brain, desc: "Kenya general knowledge, five questions.", players: "Route King" },
   { id: "memory", name: "Matatu Match", Icon: Puzzle, desc: "Flip cards and find all 8 pairs in the fewest moves.", players: "Route King" },
-  { id: "g2048", name: "Join 2048", Icon: Grid2x2, desc: "Slide and merge tiles. Chase the highest score.", players: "Route King" },
   { id: "snake", name: "Matatu Snake", Icon: Target, desc: "Collect matatus without hitting the walls or yourself.", players: "Route King" },
   { id: "whack", name: "Whack-a-Matatu", Icon: Hammer, desc: "30 seconds. Tap every matatu that pops up.", players: "Route King" },
 ];
@@ -50,6 +52,7 @@ const LazyG2048 = lazy(() => import("@/components/MiniGames").then(m => ({ defau
 const LazySnake = lazy(() => import("@/components/MiniGames").then(m => ({ default: m.SnakeGame })));
 const LazyWhack = lazy(() => import("@/components/MiniGames").then(m => ({ default: m.WhackGame })));
 const LazyMchongwano = lazy(() => import("@/components/Mchongwano"));
+const LazyTycoon = lazy(() => import("@/components/TycoonGame"));
 const sendKing = (game: string, points: number, bump: () => void) => { void submitKingScore(game, points).then(result => { toast(result.message); if (result.ok) bump(); }); };
 const FAVOURITES_KEY = "ma3_nganya_favourites_v1";
 const TAB_OPTIONS = [
@@ -75,6 +78,7 @@ export default function MirthPage() {
   const [gameMatchMode, setGameMatchMode] = useState<"onboard" | "same-route">("onboard");
   const [gameRoute, setGameRoute] = useState("");
   const [triviaStarted, setTriviaStarted] = useState(() => sessionStorage.getItem(`mirth-trivia-start-${kenyaDate()}`) === "1");
+  const [arcadeDone, setArcadeDone] = useState(() => localStorage.getItem(`mirth-arcade-finish-${kenyaDate()}`) === "1");
   const [saccoQuery, setSaccoQuery] = useState("");
   const [nganyaQuery, setNganyaQuery] = useState("");
   const [routeFilter, setRouteFilter] = useState("all");
@@ -104,6 +108,28 @@ export default function MirthPage() {
   });
   const [loading, setLoading] = useState(false);
   const [backendReady, setBackendReady] = useState(false);
+  const [personalBests, setPersonalBests] = useState<Record<string, number>>(() => {
+    try { return JSON.parse(localStorage.getItem("mirth_personal_bests_v1") || "{}"); }
+    catch { return {}; }
+  });
+
+  const submitFinishedScore = (game: string, points: number) => {
+    const score = Math.max(0, Math.min(100, Math.round(points)));
+    setPersonalBests(current => {
+      const next = { ...current, [game]: Math.max(current[game] ?? 0, score) };
+      localStorage.setItem("mirth_personal_bests_v1", JSON.stringify(next));
+      return next;
+    });
+    if (["memory", "snake", "whack"].includes(game)) {
+      localStorage.setItem(`mirth-arcade-finish-${kenyaDate()}`, "1"); setArcadeDone(true);
+    }
+    sendKing(game, score, () => setKingTick(tick => tick + 1));
+  };
+
+  const markTriviaStarted = () => {
+    sessionStorage.setItem(`mirth-trivia-start-${kenyaDate()}`, "1"); setTriviaStarted(true);
+    void beginKingGame("trivia");
+  };
 
   useEffect(() => {
     if (!isSupabaseConfigured || !supabase) return;
@@ -331,23 +357,30 @@ export default function MirthPage() {
       <div className="bpanel-scroll" style={{ padding: "0 14px 20px" }}><div className="inner" style={{ padding: "0 0 18px" }}>
 
     {section === "games" && <RouteKing refreshKey={kingTick} />}
+    {section === "games" && <MirthWeeklyLeaderboard />}
+    {section === "games" && <MirthSocialPanel />}
     {section === "games" && <div className="ios-glass" style={{ padding: 11, marginBottom: 12 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 8 }}><Sparkles size={14} style={{ color: "var(--ready)" }} /><b style={{ fontSize: ".75rem", flex: 1 }}>Daily challenges · {pointsToday} community points</b><small style={{ color: "var(--muted2)" }}>Kenya day</small></div>
       <div style={{ display: "grid", gap: 6 }}>
         <div style={{ display: "flex", gap: 8, alignItems: "center", fontSize: ".62rem" }}><ThumbsUp size={12} style={{ color: voteRoutesDone ? "var(--go)" : "var(--ready)" }} /><span style={{ flex: 1 }}>Vote for Nganya on up to 3 different routes</span><b>{Math.min(voteRoutesDone, 3)}/3 · +10 each</b></div>
         <div style={{ display: "flex", gap: 8, alignItems: "center", fontSize: ".62rem" }}><MapPin size={12} style={{ color: visitedPlacesDone ? "var(--go)" : "var(--ready)" }} /><span style={{ flex: 1 }}>Start Ma3 directions to 3 Explore places</span><b>{Math.min(visitedPlacesDone, 3)}/3 · +5 each</b></div>
         <div style={{ display: "flex", gap: 8, alignItems: "center", fontSize: ".62rem" }}><Gamepad2 size={12} style={{ color: triviaStarted ? "var(--go)" : "var(--ready)" }} /><span style={{ flex: 1 }}>Start a Trivia round</span><b>{triviaStarted ? "1/1 · started" : "0/1"}</b></div>
+        <div style={{ display: "flex", gap: 8, alignItems: "center", fontSize: ".62rem" }}><Target size={12} style={{ color: arcadeDone ? "var(--go)" : "var(--ready)" }} /><span style={{ flex: 1 }}>Finish one arcade round · Matatu Match, Snake or Whack</span><b>{arcadeDone ? "1/1 · done" : "0/1"}</b></div>
       </div>
       <p style={{ color: "var(--muted)", fontSize: ".55rem", lineHeight: 1.4, margin: "8px 0 0" }}>Points are non-cash and have no monetary value. Demo wallet actions never count as paid bookings; points award only from verified backend actions.</p>
     </div>}
 
     {section === "games" && <section>
-      <p className="sec-label">Pick a game</p>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(2,1fr)", gap: 8 }}>{GAMES.map(game => <motion.button key={game.id} whileTap={{ scale: .97 }} onClick={() => { setSelectedGame(game); if (game.id === "trivia") { sessionStorage.setItem(`mirth-trivia-start-${kenyaDate()}`, "1"); setTriviaStarted(true); } }} className="card" style={{ padding: 11, display: "flex", flexDirection: "column", gap: 6, textAlign: "left", color: "var(--white)", cursor: "pointer", gridColumn: game.id === "mchongwano" ? "1 / -1" : undefined, borderColor: game.id === "mchongwano" ? "var(--stop)" : undefined }}>
-        <span style={{ display: "flex", alignItems: "center", gap: 8 }}><span style={{ width: 34, height: 34, borderRadius: 10, background: "rgba(217,119,6,.12)", display: "grid", placeItems: "center", color: game.id === "mchongwano" ? "var(--stop)" : "var(--ready)" }}><game.Icon size={17} /></span><b style={{ fontSize: ".76rem" }}>{game.name}</b></span>
-        <small style={{ color: "var(--muted2)", lineHeight: 1.4, fontSize: ".58rem" }}>{game.desc}</small>
-        <small style={{ color: game.id === "mchongwano" ? "var(--stop)" : "var(--go)", fontSize: ".54rem", fontWeight: 700 }}>{game.players}</small>
-      </motion.button>)}</div>
+      <div style={{ display: "flex", alignItems: "center", gap: 7 }}><p className="sec-label" style={{ flex: 1 }}>Stage games · 7 playable titles</p><span className="chip" style={{ color: "var(--go)", borderColor: "rgba(34,197,94,.3)" }}>OFFLINE READY</span></div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(2,minmax(0,1fr))", gap: 8 }}>{GAMES.map(game => {
+        const tone = ({ mchongwano: "#fb7185", tycoon: "#22d3ee", ludo: "#a78bfa", chess: "#facc15", trivia: "#34d399", memory: "#f472b6", snake: "#4ade80", whack: "#fb923c" } as Record<string, string>)[game.id] ?? "#d97706";
+        return <motion.button key={game.id} whileTap={{ scale: .97 }} onClick={() => setSelectedGame(game)} className="card" style={{ padding: 11, display: "flex", flexDirection: "column", gap: 6, textAlign: "left", color: "var(--white)", cursor: "pointer", gridColumn: game.id === "mchongwano" ? "1 / -1" : undefined, borderColor: `${tone}66`, background: `linear-gradient(145deg,${tone}18,rgba(10,12,22,.82) 62%)`, boxShadow: `0 0 16px ${tone}12` }}>
+          <span style={{ display: "flex", alignItems: "center", gap: 8 }}><span style={{ width: 34, height: 34, borderRadius: 10, background: `${tone}18`, border: `1px solid ${tone}55`, display: "grid", placeItems: "center", color: tone, boxShadow: `0 0 11px ${tone}30` }}><game.Icon size={17} /></span><b style={{ fontSize: ".76rem" }}>{game.name}</b></span>
+          <small style={{ color: "var(--muted2)", lineHeight: 1.4, fontSize: ".58rem" }}>{game.desc}</small>
+          <small style={{ color: tone, fontSize: ".54rem", fontWeight: 700 }}>{game.players}</small>
+          {personalBests[game.id] !== undefined && <small style={{ color: "var(--muted2)", fontSize: ".52rem" }}>Personal best · {personalBests[game.id]}</small>}
+        </motion.button>;
+      })}</div>
     </section>}
 
     {section === "nganya" && <section>
@@ -403,13 +436,13 @@ export default function MirthPage() {
       {selectedGame && <Suspense fallback={<p style={{ padding: 14, textAlign: "center", color: "var(--muted2)", fontSize: ".66rem" }}><LoaderCircle size={14} /> Loading game…</p>}>
         <p style={{ color: "var(--muted2)", fontSize: ".66rem", margin: "0 0 10px" }}>{selectedGame.desc}</p>
         {selectedGame.id === "mchongwano" ? <LazyMchongwano /> :
-         selectedGame.id === "chess" ? <LazyChess onStart={() => void beginKingGame("chess")} onFinish={points => sendKing("chess", points, () => setKingTick(tick => tick + 1))} /> :
-         selectedGame.id === "ludo" ? <LazyLudo onStart={() => void beginKingGame("ludo")} onFinish={points => sendKing("ludo", points, () => setKingTick(tick => tick + 1))} /> :
-         selectedGame.id === "trivia" ? <LazyTrivia onStart={() => void beginKingGame("trivia")} onFinish={(score, total) => sendKing("trivia", Math.round((score / Math.max(1, total)) * 100), () => setKingTick(tick => tick + 1))} /> :
-         selectedGame.id === "memory" ? <LazyMemory onStart={() => void beginKingGame("memory")} onFinish={points => sendKing("memory", points, () => setKingTick(tick => tick + 1))} /> :
-         selectedGame.id === "g2048" ? <LazyG2048 onStart={() => void beginKingGame("g2048")} onFinish={points => sendKing("g2048", points, () => setKingTick(tick => tick + 1))} /> :
-         selectedGame.id === "snake" ? <LazySnake onStart={() => void beginKingGame("snake")} onFinish={points => sendKing("snake", points, () => setKingTick(tick => tick + 1))} /> :
-         selectedGame.id === "whack" ? <LazyWhack onStart={() => void beginKingGame("whack")} onFinish={points => sendKing("whack", points, () => setKingTick(tick => tick + 1))} /> : null}
+         selectedGame.id === "tycoon" ? <LazyTycoon onStart={() => void beginKingGame("tycoon")} onFinish={points => submitFinishedScore("tycoon", points)} /> :
+         selectedGame.id === "chess" ? <LazyChess onStart={() => void beginKingGame("chess")} onFinish={points => submitFinishedScore("chess", points)} /> :
+         selectedGame.id === "ludo" ? <LazyLudo onStart={() => void beginKingGame("ludo")} onFinish={points => submitFinishedScore("ludo", points)} /> :
+         selectedGame.id === "trivia" ? <LazyTrivia onStart={markTriviaStarted} onFinish={(score, total) => submitFinishedScore("trivia", Math.round((score / Math.max(1, total)) * 100))} /> :
+         selectedGame.id === "memory" ? <LazyMemory onStart={() => void beginKingGame("memory")} onFinish={points => submitFinishedScore("memory", points)} /> :
+         selectedGame.id === "snake" ? <LazySnake onStart={() => void beginKingGame("snake")} onFinish={points => submitFinishedScore("snake", points)} /> :
+         selectedGame.id === "whack" ? <LazyWhack onStart={() => void beginKingGame("whack")} onFinish={points => submitFinishedScore("whack", points)} /> : null}
       </Suspense>}
     </CenterModal>
   </div>;

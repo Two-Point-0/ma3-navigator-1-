@@ -162,3 +162,32 @@ The Matatu Driver workspace adds a route issue map linked to the selected approv
 ## 12. Private profile photos
 
 Run `supabase/migrations/20261015_private_profile_photos.sql` after `20261014_nganya_sgr_profile_media.sql`. The follow-up migration makes the `profile-photos` bucket private and grants authenticated users read access only to objects under their own `<auth-user-id>/` folder. The app stores that object path (not a public URL or signed URL) in `profiles.avatar_url` and Auth metadata, then requests a short-lived signed URL for display. Do not make this bucket public or add a public `storage.objects` read policy. Existing public-URL metadata is converted back to an owned object path when it can be safely matched to the current user's folder.
+
+## 13. Prototype rail connections
+
+The Ma3 Rail page now lets someone choose a **Start / boarding station** and a **Destination / alighting station**, then shows a suggested connection path. This uses `rail_prototype_lines`, seeded by `supabase/migrations/20261118000000_mirth_prototype_foundation.sql`, with a local fallback in `src/data/prototype_rail_connections.ts`. The accompanying `supabase/import_templates/rail_prototype_lines.csv` is a review/editing copy; it is not a direct import file because `station_names` is stored as a Postgres array.
+
+Every connection in this data is **sample/unverified**. In particular, “Nairobi Central (prototype)” is a synthetic interchange point, not a verified station record. The listed station order, service stops, transfer assumptions, fares and operating days must be confirmed against an authorised Kenya Railways passenger schedule before launch. Do not present the map track geometry as proof that a passenger train stops there. To replace already-applied sample rows, add a later migration with verified records; do not edit a migration after it has been applied.
+
+## 14. Mirth profiles, weekly scores and friend-room foundation
+
+The same migration creates `mirth_players`, adds a seven-day weekly leaderboard RPC, and awards non-cash XP only when a validated score is inserted by the existing server-checked game flow. Browser clients can change a handle and cosmetic selection but cannot directly update XP. The Games panel can create or join a five-character room and shows the room's member list.
+
+The room tables intentionally do **not** allow browser clients to write game state. Real shared turns, moves, reconnects and conflict handling are **not implemented yet**; adding a server-side move-validation Edge Function is required before advertising the room as live multiplayer. The local Nganya Tycoon game is a playable two-player (you-vs-bot) prototype; trading, live auctions and full jail rules are not yet included. Scores and XP have no cash value.
+
+To apply this migration from the existing Windows checkout, open PowerShell in the repository folder and first check the target:
+
+```powershell
+npx.cmd supabase login
+npx.cmd supabase link --project-ref YOUR_PROJECT_REF
+npx.cmd supabase migration list
+npx.cmd supabase db push --dry-run
+```
+
+Review the dry-run output and confirm the project reference is the intended Supabase project. `db push` applies **all pending migrations**, not just the new one, so inspect the list first. When the pending migrations are expected, apply them with:
+
+```powershell
+npx.cmd supabase db push
+```
+
+Then configure only `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` in the ignored `.env.local`, restart `npm run dev`, sign in, save a player handle, and test create/join with two accounts. Never place the Supabase service-role key in `.env.local`, a `VITE_` variable, the browser, or GitHub. If the migration fails, stop and keep the error output; do not mark it as applied by hand or edit the failed migration after a partial production run.
