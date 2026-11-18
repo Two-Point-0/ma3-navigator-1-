@@ -17,7 +17,7 @@ const NAIROBI: [number, number] = [-1.2864, 36.8172];
 type ExploreTab = "food" | "stay_shop" | "places";
 type FeedStatus = "loading" | "ready" | "disconnected" | "error" | "zoom";
 type ExploreCategory = "food" | "stay_shop" | "places";
-const TABS = [{ id: "food", label: "Food & drink", Icon: Utensils }, { id: "stay_shop", label: "Stays & shopping", Icon: BedDouble }, { id: "places", label: "Sights & essentials", Icon: Landmark }] as const;
+const TABS = [{ id: "food", label: "Food", Icon: Utensils }, { id: "stay_shop", label: "Stay", Icon: BedDouble }, { id: "places", label: "Sights", Icon: Landmark }] as const;
 const EXPLORE_CATEGORIES: { id: ExploreCategory; label: string }[] = [
   { id: "food", label: "Food & drink" }, { id: "stay_shop", label: "Stays & shopping" }, { id: "places", label: "Sights & essentials" },
 ];
@@ -183,11 +183,10 @@ export default function ExplorePage() {
   const statusLabel = !tab ? "Tap Food, Stays or Sights to see places near you" : feedStatus === "loading" ? "Loading mapped places…" : feedStatus === "disconnected" ? "Places are not available right now" : feedStatus === "error" ? "Could not load places" : feedStatus === "zoom" ? "Zoom in for nearby places" : `Mapped places${dataSnapshot ? ` · ${dataSnapshot}` : ""}`;
   useEffect(() => { sheet.setSnap(selectedPin ? "half" : "peek"); }, [selectedPin?.id]);
 
-  return <div style={{ position: "relative", height: "calc(100vh - var(--top-h) - var(--nav-h))", marginTop: "-12px", overflow: "hidden" }}>
+  return <div style={{ position: "relative", height: "calc(100dvh - var(--top-h) - var(--nav-h))", marginTop: "-12px", overflow: "hidden" }}>
     <MapLibreView ref={mapRef} center={mapCenter} zoom={13} pitch={is3D ? 48 : 0} bearing={is3D ? -14 : 0} height="100%" borderRadius={0} onLoad={handleMapLoad} />
     <div style={{ position: "absolute", top: 10, left: 10, right: 10, zIndex: 50 }}>
       <PageTabs label="Explore sections" tone={tabTone} active={activeTab ?? ""} tabs={TABS} onChange={setSection} />
-      <div style={{ display: "inline-flex", padding: "5px 9px", borderRadius: 8, background: "rgba(8,8,16,.82)", border: "1px solid var(--border)", color: "var(--muted2)", fontSize: ".55rem" }}>{statusLabel}</div>
     </div>
     <button aria-label={is3D ? "Switch to 2D map" : "Switch to 3D map"} onClick={() => setIs3D(value => !value)} style={{ position: "absolute", right: 12, top: 112, zIndex: 60, width: 40, height: 40, borderRadius: 12, border: "1px solid var(--border2)", background: "rgba(8,8,16,.82)", color: "var(--ready)", display: "grid", placeItems: "center" }}><Box size={17} /></button>
 
@@ -195,6 +194,7 @@ export default function ExplorePage() {
       <div className="bpanel-head" style={{ padding: "2px 14px 8px" }}>
         <button {...sheet.gripProps} />
         {selectedPin ? <div style={{ marginTop: 4 }}><div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}><div><p style={{ fontFamily: "var(--font-display)", fontSize: ".95rem", fontWeight: 900 }}>{selectedPin.name}</p><p style={{ fontSize: ".68rem", color: "var(--ready)" }}>{EXPLORE_CATEGORIES.find(category => category.id === exploreCategory(selectedPin))?.label || "Place"}{selectedPin.subType ? ` · ${selectedPin.subType}` : ""}</p></div><button className="icon-btn" onClick={() => setSelectedPin(null)}><X size={15} /></button></div></div> : <div style={{ position: "relative", marginTop: 2 }}><Search size={13} style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "var(--ready)" }} /><input data-page-search className="finput" style={{ paddingLeft: 34, paddingRight: 34 }} placeholder={`Search ${EXPLORE_CATEGORIES.find(category => category.id === activeHotspotCategory)?.label} by name or area…`} value={hotspotQuery} onChange={event => setHotspotQuery(event.target.value)} /><button aria-label="Clear search" onClick={() => setHotspotQuery("")} style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", border: 0, background: "transparent", color: "var(--muted2)", cursor: "pointer" }}><X size={14} /></button></div>}
+        {!selectedPin && <p style={{ margin: "6px 2px 0", fontSize: ".56rem", color: "var(--muted2)" }}>{statusLabel}</p>}
       </div>
       <div className="bpanel-scroll" style={{ padding: "0 14px 20px" }}>
         {selectedPin ? <>

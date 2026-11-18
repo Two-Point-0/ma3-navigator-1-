@@ -173,8 +173,17 @@ function Loader() {
   );
 }
 
+/** Pages where the map fills the screen: the page itself must never scroll, or the top buttons slide away. */
+const MAP_PAGES = /^\/(ma3|ndai|fly|market|mirth|explore)(\/|$)/;
+
 function AppShell() {
   const { show: showOnboarding, finish: finishOnboarding } = useOnboarding();
+  const [shellLocation] = useLocation();
+  const mapLocked = MAP_PAGES.test(shellLocation);
+  useEffect(() => {
+    document.documentElement.classList.toggle("map-locked", mapLocked);
+    return () => document.documentElement.classList.remove("map-locked");
+  }, [mapLocked]);
   return (
     <HelpProvider>
     {showOnboarding && <Onboarding onDone={finishOnboarding} />}
@@ -182,7 +191,7 @@ function AppShell() {
       <TopBar />
       <SeoAndConsent />
       <GlobalHelpSheet />
-      <div className="page-wrap">
+      <div className={mapLocked ? "page-wrap page-wrap-locked" : "page-wrap"}>
         <Suspense fallback={<div className="inner" style={{ paddingTop: 24, color: "var(--muted2)", fontSize: ".75rem" }}>Loading page…</div>}>
         <Switch>
           <Route path="/login" component={LoginPage} />

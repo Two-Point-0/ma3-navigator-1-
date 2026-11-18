@@ -1,0 +1,4 @@
+line_id,name,color,speed_kmh,wait_min,base_fare,per_km
+L1,Nairobi - Ruiru (Thika line),#16a34a,38,20,30,2.2
+L2,Nairobi - Limuru (Kikuyu line),#8b5cf6,32,25,30,2.4
+L3,Nairobi - Lukenya (Mombasa Road line),#d97706,40,20,40,2.6

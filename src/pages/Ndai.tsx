@@ -9,6 +9,8 @@ import {
 import { toast } from "sonner";
 import maplibregl from "maplibre-gl";
 import MapLibreView, { MapLibreHandle } from "@/components/MapLibreView";
+import DemoRidersLayer from "@/components/DemoRidersLayer";
+import PlacePicker from "@/components/PlacePicker";
 import PageTabs from "@/components/PageTabs";
 import LocalPanel from "@/components/LocalPanel";
 import { TourVanLayer } from "@/components/TourVans";
@@ -213,11 +215,12 @@ export default function NdaiPage() {
   };
 
   return (
-    <div style={{ position: "relative", height: "calc(100vh - var(--top-h) - var(--nav-h))", marginTop: "-12px" }}>
+    <div style={{ position: "relative", height: "calc(100dvh - var(--top-h) - var(--nav-h))", marginTop: "-12px" }}>
       <MapLibreView ref={mapRef} center={NAIROBI} zoom={13} height="100%" borderRadius={0}
         onLoad={m => { mapInst.current = m; setMapReady(m); }} />
 
       <TourVanLayer map={mapReady} active={tab === "tours"} />
+      <DemoRidersLayer map={mapReady} />
       <div style={{ position: "absolute", top: 10, left: 10, right: 10, zIndex: 50 }}>
         <PageTabs label="Ndai sections" active={sheetOpen ? (tab === "delivery" ? "ride" : tab) : ""} tabs={NDAI_TABS} onChange={value => { setTab(value as Tab); sheet.setSnap("full"); setSheetOpen(true); }} />
       </div>
@@ -248,16 +251,8 @@ export default function NdaiPage() {
             </div>
 
             <div style={{ padding: "0 14px 10px", display: "flex", flexDirection: "column", gap: 7 }}>
-              <div style={{ position: "relative" }}>
-                <div style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", width: 10, height: 10, borderRadius: "50%", background: "var(--go)", border: "2px solid #000", zIndex: 1 }} />
-                <input data-page-search className="finput" style={{ paddingLeft: 32 }} placeholder="Pickup location"
-                  value={pickup} onChange={e => setPickup(e.target.value)} />
-              </div>
-              <div style={{ position: "relative" }}>
-                <MapPin size={12} style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "var(--stop)", zIndex: 1 }} />
-                <input className="finput" style={{ paddingLeft: 32 }} placeholder="Where to?"
-                  value={dest} onChange={e => setDest(e.target.value)} />
-              </div>
+              <PlacePicker text={pickup} onText={setPickup} onPlace={place => setPickup(place.name)} color="var(--go)" placeholder="Start: where should we pick you up?" pageSearch />
+              <PlacePicker text={dest} onText={setDest} onPlace={place => setDest(place.name)} color="var(--stop)" placeholder="Stop: where to?" />
               {!dest && (
                 <div style={{ display: "flex", gap: 5, overflowX: "auto", scrollbarWidth: "none", paddingBottom: 2 }}>
                   {POPULAR.map(p => (

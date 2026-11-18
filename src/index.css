@@ -195,12 +195,13 @@ label { font-size:.56rem; font-weight:700; letter-spacing:.18em; text-transform:
 }
 
 /* Top 3 tabs: all identical. The page sets one state colour on the nav (data-tone). */
-.page-tabs { --tone: #94a3b8; }
+.page-tabs { --tone: var(--stop); }
 .page-tabs[data-tone="go"]    { --tone: var(--go); }
 .page-tabs[data-tone="ready"] { --tone: var(--ready); }
 .page-tabs[data-tone="stop"]  { --tone: var(--stop); }
-.page-tab { border-color: var(--border2); }
-.page-tab svg { color: var(--muted2); }
+.page-tab { color: #fff; border-color: color-mix(in srgb, var(--tone) 60%, transparent); background: color-mix(in srgb, var(--tone) 9%, rgba(8,8,16,.82));
+  box-shadow: 0 0 10px color-mix(in srgb, var(--tone) 28%, transparent), 0 2px 10px rgba(0,0,0,.35); }
+.page-tab svg { color: var(--tone); }
 .page-tab.active { color: #fff; background: color-mix(in srgb, var(--tone) 28%, rgba(8,8,16,.8)); border-color: var(--tone);
   box-shadow: 0 0 14px color-mix(in srgb, var(--tone) 55%, transparent), inset 0 0 8px color-mix(in srgb, var(--tone) 22%, transparent); transition: background .3s, border-color .3s, box-shadow .3s; }
 .page-tab.active svg { color: var(--tone); }
@@ -250,3 +251,16 @@ label { font-size:.56rem; font-weight:700; letter-spacing:.18em; text-transform:
 .page-tab { padding: 6px 6px; border-radius: 10px; font-size: .64rem; gap: 5px; min-height: 32px; }
 .page-tab svg { width: 13px; height: 13px; }
 .page-tab.active::after { width: 5px; height: 5px; }
+
+.spin { animation: ma3spin 1s linear infinite; }
+@keyframes ma3spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .spin { animation: none; } }
+
+/* Map pages: the top bar, the 3 buttons and the bottom menu never move; only the map moves underneath them. */
+html.map-locked, html.map-locked body { overflow: hidden; height: 100%; overscroll-behavior: none; touch-action: manipulation; }
+.page-wrap-locked { position: fixed; top: 0; left: 0; right: 0; bottom: 0; min-height: 0; padding-bottom: 0; overflow: hidden; overscroll-behavior: none; }
+.page-wrap-locked > * { overscroll-behavior: none; }
+
+/* Bottom menu: the page you are on lights up amber. */
+.bn.on .bn-ic { background: rgba(217,119,6,.16); box-shadow: 0 0 14px rgba(217,119,6,.55), inset 0 0 8px rgba(217,119,6,.25); filter: none; }
+.bn.on .bn-lbl { color: var(--ready); text-shadow: 0 0 8px rgba(217,119,6,.6); }

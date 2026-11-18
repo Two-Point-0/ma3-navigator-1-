@@ -1,0 +1,25 @@
+station_id,name,lat,lon,source
+NRB,Nairobi Central Station,-1.2907,36.8283,approx
+MKD,Makadara,-1.2968,36.8588,approx
+KRB,Kariobangi South,-1.2693768,36.8873653,osm
+MWK,Mwiki,-1.2350815,36.9370912,osm
+RUI,Ruiru,-1.150303,36.9605273,osm
+JAM,Jamuhuri,-1.3045149,36.7680792,osm
+KIB,Kibera,-1.3057767,36.7696658,osm
+SAT,Satellite,-1.2985823,36.7453812,osm
+LEN,Lenana Halt,-1.30265,36.7301104,osm
+MUT,Mutuini,-1.2963818,36.7064086,osm
+DAG,Dagoretti Market,-1.28442,36.6828532,osm
+THO,Thogoto,-1.2663887,36.6771667,osm
+GIT,Gitaru,-1.2373738,36.6751103,osm
+KIK,Kikuyu,-1.2461656,36.6609366,osm
+MUG,Muguga,-1.1787125,36.6489392,osm
+LIM,Limuru,-1.1150876,36.6427913,osm
+UMO,Umoja / Mutindwa,-1.2861195,36.8838762,osm
+AVI,Aviation,-1.3197544,36.9060491,osm
+IMD,Imara Daima,-1.3283403,36.8742201,osm
+EMB,Embakasi,-1.3505949,36.8941437,osm
+TRM,Nairobi Terminus (SGR),-1.3553597,36.8980718,osm
+MLO,Mlolongo,-1.3990488,36.9345142,osm
+ATH,Athi River,-1.449094,36.9754339,osm
+LUK,Lukenya,-1.5235111,36.9654496,osm

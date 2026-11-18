@@ -7,7 +7,7 @@ export const PAGE_HELP: Record<string, HelpContent> = {
   "/": {
     title: "Ma3 App — Overview",
     steps: [
-      { icon: "🚌", heading: "Move", body: "Use Ma3 to search routes by number or name, plan journeys (matatu, train, or both), and lock in at your stage so drivers see you." },
+      { icon: "🚌", heading: "Move", body: "Use Ma3 to search routes by number or name, plan journeys (matatu, train, or both), and lock in at your stop so drivers see you." },
       { icon: "🛒", heading: "Market", body: "Compare supermarket prices across Quickmart, Naivas and Carrefour. Build a basket and see which store saves you money." },
       { icon: "🎮", heading: "Mirth", body: "Play head-to-head games like Chess, Ludo, Trivia and Mchongwano, vote daily, or check odds on major sports fixtures." },
       { icon: "📍", heading: "Explore", body: "Find food spots, thrift markets, entertainment and culture events on the map. Drop your own pin." },
@@ -21,7 +21,7 @@ export const PAGE_HELP: Record<string, HelpContent> = {
       { icon: "🚏", heading: "All Stops Shown", body: "Selecting a route shows every real bus stop along its actual road path, not just the first and last." },
       { icon: "📍", heading: "Tube-Style Progress", body: "While a matatu is en route, the stretch of road it has already covered highlights differently from what's ahead — just like the London Underground line indicator." },
       { icon: "🧭", heading: "Plan a Journey", body: "Enter From and To. The planner checks every combination — direct matatu, transfer, or train+matatu — and tags the fastest and cheapest." },
-      { icon: "🔒", heading: "Lock In", body: "After planning, lock in at your stage so the demand board shows drivers exactly who's waiting for where." },
+      { icon: "🔒", heading: "Lock In", body: "After planning, lock in at your stop so the demand board shows drivers exactly who's waiting for where." },
       { icon: "🚂", heading: "Train Transfers", body: "If a train ride gets you meaningfully closer to your destination, the planner includes a walk + train + walk option automatically." },
     ],
   },

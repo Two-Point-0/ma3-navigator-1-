@@ -44,6 +44,10 @@ const GAMES: GameDef[] = [
   { id: "snake", name: "Matatu Snake", Icon: Target, desc: "Collect matatus without hitting the walls or yourself.", players: "Route King" },
   { id: "whack", name: "Whack-a-Matatu", Icon: Hammer, desc: "30 seconds. Tap every matatu that pops up.", players: "Route King" },
 ];
+// Brand colours show how much you play each game: red = not touched yet, amber = tried it, green = you play it a lot.
+const PLAYS_KEY = "ma3_game_plays";
+const readPlays = (): Record<string, number> => { try { return JSON.parse(localStorage.getItem(PLAYS_KEY) || "{}"); } catch { return {}; } };
+const playTone = (count: number) => count >= 3 ? { color: "var(--go)", label: "You play this a lot" } : count >= 1 ? { color: "var(--ready)", label: "Tried it" } : { color: "var(--stop)", label: "Not played yet" };
 const LazyTrivia = lazy(() => import("@/components/TriviaGame"));
 const LazyChess = lazy(() => import("@/components/ChessGame"));
 const LazyLudo = lazy(() => import("@/components/LudoGame"));
@@ -74,6 +78,8 @@ export default function MirthPage() {
   const sheet = useSheet("peek");
   const [gameQuery, setGameQuery] = useState("");
   const [gameChoice, setGameChoice] = useState(GAMES[0].id);
+  const [plays, setPlays] = useState<Record<string, number>>(readPlays);
+  const bumpPlay = (id: string) => setPlays(current => { const next = { ...current, [id]: (current[id] ?? 0) + 1 }; try { localStorage.setItem(PLAYS_KEY, JSON.stringify(next)); } catch { /* private mode */ } return next; });
   const [gameRadius, setGameRadius] = useState(5);
   const [gameMatchMode, setGameMatchMode] = useState<"onboard" | "same-route">("onboard");
   const [gameRoute, setGameRoute] = useState("");
@@ -371,13 +377,17 @@ export default function MirthPage() {
     </div>}
 
     {section === "games" && <section>
-      <div style={{ display: "flex", alignItems: "center", gap: 7 }}><p className="sec-label" style={{ flex: 1 }}>Stage games · 7 playable titles</p><span className="chip" style={{ color: "var(--go)", borderColor: "rgba(34,197,94,.3)" }}>OFFLINE READY</span></div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(2,minmax(0,1fr))", gap: 8 }}>{GAMES.map(game => {
-        const tone = ({ mchongwano: "#fb7185", tycoon: "#22d3ee", ludo: "#a78bfa", chess: "#facc15", trivia: "#34d399", memory: "#f472b6", snake: "#4ade80", whack: "#fb923c" } as Record<string, string>)[game.id] ?? "#d97706";
-        return <motion.button key={game.id} whileTap={{ scale: .97 }} onClick={() => setSelectedGame(game)} className="card" style={{ padding: 11, display: "flex", flexDirection: "column", gap: 6, textAlign: "left", color: "var(--white)", cursor: "pointer", gridColumn: game.id === "mchongwano" ? "1 / -1" : undefined, borderColor: `${tone}66`, background: `linear-gradient(145deg,${tone}18,rgba(10,12,22,.82) 62%)`, boxShadow: `0 0 16px ${tone}12` }}>
-          <span style={{ display: "flex", alignItems: "center", gap: 8 }}><span style={{ width: 34, height: 34, borderRadius: 10, background: `${tone}18`, border: `1px solid ${tone}55`, display: "grid", placeItems: "center", color: tone, boxShadow: `0 0 11px ${tone}30` }}><game.Icon size={17} /></span><b style={{ fontSize: ".76rem" }}>{game.name}</b></span>
+      <p className="sec-label">Pick a game</p>
+      <div style={{ display: "flex", gap: 10, flexWrap: "wrap", margin: "2px 0 8px", fontSize: ".54rem", color: "var(--muted2)" }}>
+        {[["var(--stop)", "Not played yet"], ["var(--ready)", "Tried it"], ["var(--go)", "You play it a lot"]].map(([color, label]) => <span key={label} style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><i style={{ width: 8, height: 8, borderRadius: 99, background: color, boxShadow: `0 0 8px ${color}` }} />{label}</span>)}
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(2,1fr)", gap: 8 }}>{GAMES.map(game => {
+        const tone = playTone(plays[game.id] ?? 0);
+        return <motion.button key={game.id} whileTap={{ scale: .97 }} onClick={() => { bumpPlay(game.id); setSelectedGame(game); }} className="card" aria-label={`${game.name}. ${tone.label}`}
+          style={{ padding: 11, display: "flex", flexDirection: "column", gap: 6, textAlign: "left", color: "var(--white)", cursor: "pointer", gridColumn: game.id === "mchongwano" ? "1 / -1" : undefined, borderColor: tone.color, boxShadow: `0 0 14px color-mix(in srgb, ${tone.color} 30%, transparent), inset 0 0 0 1px color-mix(in srgb, ${tone.color} 25%, transparent)` }}>
+          <span style={{ display: "flex", alignItems: "center", gap: 8 }}><span style={{ width: 34, height: 34, borderRadius: 10, background: `color-mix(in srgb, ${tone.color} 16%, transparent)`, display: "grid", placeItems: "center", color: tone.color }}><game.Icon size={17} /></span><b style={{ fontSize: ".76rem", flex: 1 }}>{game.name}</b><i style={{ width: 9, height: 9, borderRadius: 99, background: tone.color, boxShadow: `0 0 9px ${tone.color}`, flexShrink: 0 }} /></span>
           <small style={{ color: "var(--muted2)", lineHeight: 1.4, fontSize: ".58rem" }}>{game.desc}</small>
-          <small style={{ color: tone, fontSize: ".54rem", fontWeight: 700 }}>{game.players}</small>
+          <small style={{ color: tone.color, fontSize: ".54rem", fontWeight: 700 }}>{game.players} · {tone.label}</small>
           {personalBests[game.id] !== undefined && <small style={{ color: "var(--muted2)", fontSize: ".52rem" }}>Personal best · {personalBests[game.id]}</small>}
         </motion.button>;
       })}</div>

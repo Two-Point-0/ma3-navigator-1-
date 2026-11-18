@@ -116,7 +116,7 @@ export default function DriverPage() {
     </section>
 
     {driverType === "matatu-driver" && <section className="ios-glass" style={{ padding: 16, marginTop: 12 }}>
-      <div style={{ display: "flex", gap: 8, alignItems: "center" }}><Bus size={16} style={{ color: "var(--ready)" }} /><p className="sec-label" style={{ margin: 0, flex: 1 }}>Stage pickup demand</p><span style={{ color: "var(--ready)", fontSize: ".58rem" }}>15 sec refresh</span></div>
+      <div style={{ display: "flex", gap: 8, alignItems: "center" }}><Bus size={16} style={{ color: "var(--ready)" }} /><p className="sec-label" style={{ margin: 0, flex: 1 }}>Stop pickup demand</p><span style={{ color: "var(--ready)", fontSize: ".58rem" }}>15 sec refresh</span></div>
       <p style={{ margin: "7px 0 10px", color: "var(--muted2)", fontSize: ".58rem", lineHeight: 1.45 }}>{demandStatus}. “Walking” means a one-time GPS proximity check within an 800 m straight-line radius; it is not a confirmed booking. No passenger account, phone number, or exact location is shown.</p>
       <div style={{ display: "grid", gap: 5 }}>{(ROUTE_STOPS[routeId] ?? []).map(stopId => {
         const stop = STOPS[stopId]; if (!stop) return null;
