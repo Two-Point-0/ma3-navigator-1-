@@ -1,7 +1,7 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Crosshair, MapPin, Navigation, TrainFront, Map as MapIcon, Landmark } from "lucide-react";
 import { toast } from "sonner";
-import { KIND_LABEL, Place, searchPlaces } from "@/lib/places";
+import { KIND_LABEL, Place, searchMapPlaces, searchPlaces } from "@/lib/places";
 
 interface Props {
   /** What the person typed (or the name of the place they chose). */
@@ -29,7 +29,22 @@ const iconFor = (kind: Place["kind"], color: string) => {
 export default function PlacePicker({ text, onText, onPlace, placeholder, color, onPickOnMap, autoFocus, pageSearch }: Props) {
   const [open, setOpen] = useState(false);
   const [locating, setLocating] = useState(false);
-  const results = useMemo(() => searchPlaces(text), [text]);
+  const local = useMemo(() => searchPlaces(text), [text]);
+  const [remote, setRemote] = useState<Place[]>([]);
+  const [searching, setSearching] = useState(false);
+  // Not found in our own lists? Ask the free map search, so any place in Nairobi and around can be typed.
+  useEffect(() => {
+    setRemote([]);
+    if (!open || text.trim().length < 3 || local.length >= 4) { setSearching(false); return; }
+    const controller = new AbortController();
+    setSearching(true);
+    const timer = window.setTimeout(() => { void searchMapPlaces(text, controller.signal).then(found => { if (!controller.signal.aborted) { setRemote(found); setSearching(false); } }); }, 450);
+    return () => { controller.abort(); window.clearTimeout(timer); };
+  }, [text, open, local.length]);
+  const results = useMemo(() => {
+    const seen = new Set(local.map(place => place.name.toLowerCase()));
+    return [...local, ...remote.filter(place => !seen.has(place.name.toLowerCase()))].slice(0, 10);
+  }, [local, remote]);
 
   const useMyLocation = () => {
     if (!navigator.geolocation) { toast("Location is not available in this browser."); return; }
@@ -49,7 +64,7 @@ export default function PlacePicker({ text, onText, onPlace, placeholder, color,
         <input className="finput" style={{ paddingLeft: 32 }} value={text} placeholder={placeholder} autoFocus={autoFocus}
           {...(pageSearch ? { "data-page-search": true } : {})}
           onChange={event => onText(event.target.value)} onFocus={() => setOpen(true)} onBlur={() => setTimeout(() => setOpen(false), 160)} />
-        {open && results.length > 0 && (
+        {open && (results.length > 0 || searching) && (
           <div style={{ position: "absolute", top: "100%", left: 0, right: 0, marginTop: 3, background: "#0c0c18", border: "1px solid var(--border2)", borderRadius: 11, overflow: "hidden", zIndex: 100, maxHeight: 220, overflowY: "auto" }}>
             {results.map(place => (
               <button key={place.id} type="button" onMouseDown={event => event.preventDefault()} onClick={() => { onPlace(place); setOpen(false); }}
@@ -59,6 +74,7 @@ export default function PlacePicker({ text, onText, onPlace, placeholder, color,
                 <span style={{ fontSize: ".52rem", color: "var(--muted)", letterSpacing: ".06em", textTransform: "uppercase" }}>{KIND_LABEL[place.kind]}</span>
               </button>
             ))}
+            {searching && <div style={{ padding: "8px 12px", fontSize: ".6rem", color: "var(--muted2)" }}>Searching the map…</div>}
           </div>
         )}
       </div>

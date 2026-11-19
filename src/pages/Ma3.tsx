@@ -155,6 +155,7 @@ export default function Ma3Page() {
   const [fromStop, setFromStop]     = useState<StopMatch | null>(null);
   const [toStop, setToStop]         = useState<StopMatch | null>(null);
   const [journeyOpts, setJourneyOpts] = useState<JourneyOption[] | null>(null);
+  const [journeyCtx, setJourneyCtx] = useState<{ from: { lat: number; lon: number }; to: { lat: number; lon: number }; extra: [number, number][] } | null>(null);
   // Start and Stop can be any place: a stop, a landmark, a pinned spot on the map, or "my location".
   const [fromPlace, setFromPlace] = useState<Place | null>(null);
   const [toPlace, setToPlace] = useState<Place | null>(null);
@@ -210,8 +211,8 @@ export default function Ma3Page() {
     const near = place.stopId ? getStop(place.stopId) : nearestStops(place.lat, place.lon, 1, 3)[0] ?? null;
     toDerived.current = near?.id ?? null; setToPlace(place); setToStop(near); setToVal(place.name); setJourneyOpts(null);
   };
-  const typeStart = (value: string) => { setFromVal(value); if (!value) { setFromPlace(null); setFromStop(null); fromDerived.current = null; } };
-  const typeEnd = (value: string) => { setToVal(value); if (!value) { setToPlace(null); setToStop(null); toDerived.current = null; } };
+  const typeStart = (value: string) => { setFromVal(value); if (!value) { setFromPlace(null); setFromStop(null); fromDerived.current = null; setJourneyOpts(null); setJourneyCtx(null); } };
+  const typeEnd = (value: string) => { setToVal(value); if (!value) { setToPlace(null); setToStop(null); toDerived.current = null; setJourneyOpts(null); setJourneyCtx(null); } };
   const panelMinimized = sheet.minimized;
   coveredPx.current = panel ? sheet.height : 0;
   /** Zoom the map to show the given [lat, lon] points above the open panel. */
@@ -324,18 +325,30 @@ export default function Ma3Page() {
     frameMap(points);
   }, [clearStatic, railNet, frameMap]);
 
+  // One place decides what is on the map, so the matatu lines and the train lines can never mix.
   useEffect(() => {
     const map = mapInst.current;
     if (!map) return;
     clearStatic();
     if (panel === "train") {
       drawRail(map, railTrips ? railTrips[Math.min(railPick, railTrips.length - 1)] : undefined, railFromPlace, railToPlace);
-    } else if (selRoute) {
+    } else if (panel === "planner" && journeyOpts?.length && journeyCtx) {
+      paintJourney(map, journeyOpts, journeyCtx.from, journeyCtx.to, journeyCtx.extra);
+    } else if (panel && panel !== "parcel" && selRoute) {
       drawRoute(map, selRoute);
     }
-  }, [panel, selRoute, mapReady, drawRail, railTrips, railPick]);
+  }, [panel, selRoute, mapReady, drawRail, railTrips, railPick, journeyOpts, journeyCtx]);
 
-  const handleMapLoad = (map: maplibregl.Map) => { mapInst.current = map; setMapReady(true); };
+  /** Empty the matatu side of the map (route line, journey lines) so the page is blank for a fresh search. */
+  const wipeMatatu = () => { setSelRoute(null); setJourneyOpts(null); setJourneyCtx(null); };
+  /** Moving between Matatu, Parcel and Rail starts clean: nothing from the other tab stays on the map. */
+  const switchTab = (value: "search" | "parcel" | "train") => {
+    const group = (p: Panel) => (p === "train" ? "train" : p === "parcel" ? "parcel" : p ? "search" : null);
+    if (group(panel) !== value) { wipeMatatu(); setRailTrips(null); clearStatic(); }
+    setPanelMinimized(false); setPanel(value);
+  };
+
+  const handleMapLoad = (map: maplibregl.Map) => { mapInst.current = map; if (import.meta.env.DEV) (window as unknown as { __ma3map?: maplibregl.Map }).__ma3map = map; setMapReady(true); };
 
   useEffect(() => {
     if (!trackedLeg || !trackingActive) return;
@@ -565,12 +578,8 @@ export default function Ma3Page() {
     }, () => toast("Pin saved. Allow location, or choose your From stop, to plan the trip."), { enableHighAccuracy: false, timeout: 8000, maximumAge: 60000 });
   };
 
-  const drawJourney = (opts: JourneyOption[], from: { lat: number; lon: number }, to: { lat: number; lon: number }, extraPoints: [number, number][] = []) => {
-    setJourneyOpts(opts); setPanel("planner"); setPanelMinimized(false); sheet.setSnap("half");
-    setMapCenter([from.lat, from.lon]);
-    const map = mapInst.current;
-    if (!map) return;
-    clearStatic();
+  /** Paints the chosen journey on the map. Called from the effect below, so a tab change can never wipe or keep the wrong lines. */
+  const paintJourney = (map: maplibregl.Map, opts: JourneyOption[], from: { lat: number; lon: number }, to: { lat: number; lon: number }, extraPoints: [number, number][] = []) => {
     const allPoints: [number, number][] = [[from.lat, from.lon], [to.lat, to.lon], ...extraPoints];
     const journeyStops: LabelledStop[] = [];
     opts[0]?.legs.forEach((leg, i) => {
@@ -592,6 +601,14 @@ export default function Ma3Page() {
       { id: "to",   lat: to.lat,   lon: to.lon,   color: "#dc2626", radius: 10 },
     ], 10);
     frameMap(allPoints);
+  };
+
+
+  const drawJourney = (opts: JourneyOption[], from: { lat: number; lon: number }, to: { lat: number; lon: number }, extraPoints: [number, number][] = []) => {
+    setSelRoute(null); setRailTrips(null);
+    setJourneyCtx({ from, to, extra: extraPoints });
+    setJourneyOpts(opts); setPanel("planner"); setPanelMinimized(false); sheet.setSnap("half");
+    setMapCenter([from.lat, from.lon]);
   };
 
   const runJourney = (from: StopMatch, to: StopMatch, extraPoints: [number, number][] = []) => {
@@ -693,7 +710,7 @@ export default function Ma3Page() {
 
       <div style={{ position: "absolute", top: 10, left: 10, right: 10, zIndex: 50 }}>
         <PageTabs label="Ma3 sections" tone={tabTone} active={panel === "parcel" || panel === "train" ? panel : panel ? "search" : ""} tabs={MA3_TABS}
-          onChange={value => { setPanelMinimized(false); setPanel(value as "search" | "parcel" | "train"); }} />
+          onChange={value => switchTab(value as "search" | "parcel" | "train")} />
       </div>
 
       {/* ══════ UNIFIED SEARCH PANEL ══════ */}
@@ -709,7 +726,7 @@ export default function Ma3Page() {
                   <Search size={13} style={{ position: "absolute", left: 11, top: "50%", transform: "translateY(-50%)", color: "var(--ready)" }} />
                   <input data-page-search autoFocus className="finput" style={{ paddingLeft: 32 }}
                     placeholder="Route number, route name, or stop… e.g. 23W, Rongai, Kencom"
-                    value={query} onChange={e => setQuery(e.target.value)} />
+                    value={query} onChange={e => { setQuery(e.target.value); if (!e.target.value) { setSelRoute(null); clearStatic(); } }} />
                   {query && (
                     <button onClick={() => { setQuery(""); setSelRoute(null); clearStatic(); }}
                       style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: "var(--muted)", cursor: "pointer" }}>
@@ -1073,9 +1090,9 @@ export default function Ma3Page() {
             </div>
             <div className="bpanel-scroll" style={{ padding: "0 14px 24px" }}>
               <div style={{ display: "grid", gap: 8, marginBottom: 10 }}>
-                <PlacePicker text={railFromText} onText={value => { setRailFromText(value); if (!value) setRailFromPlace(null); }}
+                <PlacePicker text={railFromText} onText={value => { setRailFromText(value); if (!value) { setRailFromPlace(null); setRailTrips(null); } }}
                   onPlace={place => { setRailFromPlace(place); setRailFromText(place.name); setRailTrips(null); }} color="var(--go)" placeholder="Start: a station, a place, or my location" onPickOnMap={() => startMapPick("railFrom")} />
-                <PlacePicker text={railToText} onText={value => { setRailToText(value); if (!value) setRailToPlace(null); }}
+                <PlacePicker text={railToText} onText={value => { setRailToText(value); if (!value) { setRailToPlace(null); setRailTrips(null); } }}
                   onPlace={place => { setRailToPlace(place); setRailToText(place.name); setRailTrips(null); }} color="var(--stop)" placeholder="Stop (where you are going)" onPickOnMap={() => startMapPick("railTo")} />
                 <button className="btn btn-go" style={{ width: "100%", padding: 10, justifyContent: "center", fontSize: ".72rem" }} onClick={findRailTrip} disabled={railPlanning}>
                   {railPlanning ? <><Loader2 size={12} className="spin" /> Finding your best way…</> : <><TrainFront size={12} /> Show me the train way</>}

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import DicePopup from "@/components/DicePopup";
 import { motion } from "framer-motion";
 import { Banknote, BusFront, Dices, Hammer, Landmark, RotateCcw, Trophy } from "lucide-react";
 
@@ -57,7 +58,7 @@ const KITTY_CARDS = ["Chama payout — collect KSh 100", "Best-graffiti trophy �
 const DISPATCH_CARDS = ["Advance to Stage Start — collect KSh 200", "Advance to Karen", "Thika Road traffic — move back 3", "Cop wants chai — pay KSh 50", "Fuel jump — pay KSh 100 per landmark tower", "Go to the yard", "Rainy-day double fares — collect KSh 100", "Tyre burst — pay KSh 60", "88 Nairobi opens — collect KSh 200 if you own a yellow or green property"];
 const STARTING_PLAYERS: Player[] = [
   { name: "You", token: "🚌", cash: 1500, position: 0, owned: [], jailed: 0, freePasses: 0 },
-  { name: "Bot Makanga", token: "🚐", cash: 1500, position: 0, owned: [], jailed: 0, freePasses: 0 },
+  { name: "Bot Makanga", token: "🐘", cash: 1500, position: 0, owned: [], jailed: 0, freePasses: 0 },
 ];
 function tilePosition(index: number): [number, number] {
   if (index === 0) return [10, 10];
@@ -84,8 +85,10 @@ function fare(space: Space, owner: Player, diceTotal: number, levels: Record<str
   const level = levels[String(BOARD.indexOf(space))] ?? 0;
   return base * ([complete ? 2 : 1, 5, 15, 30, 40, 50][Math.min(level, 5)] ?? 50);
 }
+/** Pieces that make Kenya Kenya: the Big Five, plus Nairobi landmarks. */
+const PIECES: [string, string][] = [["🦁", "Lion"], ["🐘", "Elephant"], ["🐃", "Buffalo"], ["🐆", "Leopard"], ["🦏", "Rhino"], ["🏙️", "KICC"], ["🦒", "Giraffe"], ["🏃", "Marathoner"]];
 function makePlayers(): Player[] {
-  let token = "🚌";
+  let token = "🦁";
   try { token = JSON.parse(localStorage.getItem("mirth_active_cosmetic_v1") || "{}").token || token; } catch { /* keep the default token */ }
   return STARTING_PLAYERS.map((player, index) => ({ ...player, token: index === 0 ? token : player.token, owned: [] }));
 }
@@ -103,16 +106,11 @@ export default function TycoonGame({ onStart, onFinish }: { onStart?: () => void
   const [over, setOver] = useState(false);
   const [intro, setIntro] = useState(true);
   const [reported, setReported] = useState(false);
+  const [rollId, setRollId] = useState(0);
   const active = players[turn];
   const ownedBy = useMemo(() => new Map(players.flatMap((player, p) => player.owned.map(index => [index, p] as const))), [players]);
 
   useEffect(() => { onStart?.(); const timer = window.setTimeout(() => setIntro(false), 650); return () => window.clearTimeout(timer); }, []); // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => {
-    if (!over && turn === 1 && !pending) {
-      const timer = window.setTimeout(() => takeBotTurn(), 900);
-      return () => window.clearTimeout(timer);
-    }
-  }, [turn, pending, over]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const finish = (nextPlayers: Player[]) => {
     setPlayers(nextPlayers); setOver(true);
@@ -175,8 +173,9 @@ export default function TycoonGame({ onStart, onFinish }: { onStart?: () => void
     else { setDoubleCount(0); setTurn(playerIndex === 0 ? 1 : 0); }
     if (turnCount >= 39) finish(next);
   };
-  const roll = (playerIndex: number, bot = false) => {
-    const d1 = Math.floor(Math.random() * 6) + 1, d2 = Math.floor(Math.random() * 6) + 1;
+  const roll = (playerIndex: number, bot = false, values?: number[]) => {
+    setRollId(id => id + 1);
+    const d1 = values?.[0] ?? Math.floor(Math.random() * 6) + 1, d2 = values?.[1] ?? Math.floor(Math.random() * 6) + 1;
     setDice([d1, d2]);
     const player = players[playerIndex];
     if (player.jailed > 0) {
@@ -186,8 +185,7 @@ export default function TycoonGame({ onStart, onFinish }: { onStart?: () => void
     }
     moveTo(playerIndex, d1 + d2, d1 + d2, d1 === d2, bot);
   };
-  const takeBotTurn = () => { if (!over && turn === 1 && !pending) roll(1, true); };
-  const decideBuy = (buy: boolean) => {
+    const decideBuy = (buy: boolean) => {
     if (!pending) return;
     const next = players.map(player => ({ ...player, owned: [...player.owned] }));
     const player = next[0];
@@ -216,7 +214,10 @@ export default function TycoonGame({ onStart, onFinish }: { onStart?: () => void
   const pips = dice ? `${dice[0]} + ${dice[1]} = ${dice[0] + dice[1]}` : "Ready for the first roll";
 
   return <div style={{ color: "var(--white)" }}>
-    {intro && <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={{ position: "fixed", inset: 0, zIndex: 1200, background: "rgba(5,7,13,.94)", display: "grid", placeItems: "center", pointerEvents: "none" }}><motion.div initial={{ scale: .7, y: 18 }} animate={{ scale: 1, y: 0 }} style={{ textAlign: "center" }}><BusFront size={48} style={{ color: "#22d3ee", filter: "drop-shadow(0 0 16px #22d3ee)" }} /><h2 style={{ fontFamily: "var(--font-display)", color: "#f0abfc" }}>NGANYA TYCOON</h2><p style={{ color: "#86efac" }}>Stake your route. Build your landmark.</p></motion.div></motion.div>}
+    <DicePopup key={rollId} open={!over && !intro && !pending} count={2} auto={turn === 1} label={turn === 0 ? "Your turn" : "Bot Makanga"} color={turn === 0 ? "#22c55e" : "#f472b6"} onRolled={values => roll(turn, turn === 1, values)} />
+    {intro && <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={{ position: "fixed", inset: 0, zIndex: 1200, background: "rgba(5,7,13,.94)", display: "grid", placeItems: "center", pointerEvents: "none" }}><motion.div initial={{ scale: .7, y: 18 }} animate={{ scale: 1, y: 0 }} style={{ textAlign: "center" }}><BusFront size={48} style={{ color: "#22d3ee", filter: "drop-shadow(0 0 16px #22d3ee)" }} /><h2 style={{ fontFamily: "var(--font-display)", color: "#f0abfc" }}>NAIROBI TYCOON</h2><p style={{ color: "#86efac" }}>Stake your route. Build your landmark.</p></motion.div></motion.div>}
+    {turnCount === 0 && !dice && <div style={{ marginBottom: 8 }}><small style={{ color: "var(--muted2)", fontSize: ".6rem" }}>Pick your piece</small>
+      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 4 }}>{PIECES.map(([icon, name]) => <button key={name} type="button" aria-label={name} onClick={() => setPlayers(all => all.map((pl, i) => i === 0 ? { ...pl, token: icon } : i === 1 && pl.token === icon ? { ...pl, token: icon === "🐘" ? "🦏" : "🐘" } : pl))} style={{ width: 38, height: 38, borderRadius: 12, fontSize: 20, cursor: "pointer", border: players[0].token === icon ? "2px solid var(--go)" : "1px solid var(--border2)", background: "rgba(8,8,16,.7)" }}>{icon}</button>)}</div></div>}
     <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 8 }}><Landmark size={15} style={{ color: "#22d3ee" }} /><b style={{ flex: 1, fontSize: ".74rem" }}>Stage board · KSh {kitty} match-day kitty</b><span className="chip" style={{ color: "#f0abfc", background: "rgba(217,70,239,.12)" }}>TURN {turnCount + 1}/40</span></div>
     <p aria-live="polite" style={{ minHeight: 34, padding: 8, borderRadius: 10, background: "rgba(34,211,238,.08)", border: "1px solid rgba(34,211,238,.25)", color: "#cffafe", fontSize: ".64rem", lineHeight: 1.45 }}>{message}</p>
     <div style={{ display: "grid", gridTemplateColumns: "repeat(11,minmax(0,1fr))", gridTemplateRows: "repeat(11,minmax(24px,1fr))", gap: 2, aspectRatio: "1", maxWidth: 440, margin: "0 auto", background: "rgba(2,6,23,.8)", border: "1px solid rgba(34,211,238,.35)", borderRadius: 13, padding: 5, boxShadow: "0 0 22px rgba(34,211,238,.12)" }}>
@@ -231,7 +232,7 @@ export default function TycoonGame({ onStart, onFinish }: { onStart?: () => void
         </div>;
       })}
       <div style={{ gridRow: "2 / 11", gridColumn: "2 / 11", borderRadius: 8, background: "radial-gradient(circle,rgba(8,47,73,.55),rgba(2,6,23,.9) 68%)", border: "1px solid rgba(34,211,238,.12)", display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", textAlign: "center", padding: 8, gap: 5 }}>
-        <BusFront size={24} style={{ color: "#22d3ee", filter: "drop-shadow(0 0 8px #22d3ee)" }} /><b style={{ fontFamily: "var(--font-display)", fontSize: ".76rem", color: "#f0abfc" }}>NGANYA TYCOON</b>
+        <BusFront size={24} style={{ color: "#22d3ee", filter: "drop-shadow(0 0 8px #22d3ee)" }} /><b style={{ fontFamily: "var(--font-display)", fontSize: ".76rem", color: "#f0abfc" }}>NAIROBI TYCOON</b>
         <span style={{ fontSize: ".57rem", color: "#cbd5e1" }}>{active?.name ?? "Game over"} · {pips}</span>
         <div style={{ display: "flex", gap: 7, marginTop: 3 }}>{players.map(player => <span key={player.name} style={{ fontSize: ".6rem", color: player.name === "You" ? "#86efac" : "#f9a8d4" }}>{player.token} {player.name} · KSh {player.cash}</span>)}</div>
       </div>
@@ -242,7 +243,7 @@ export default function TycoonGame({ onStart, onFinish }: { onStart?: () => void
       <div style={{ display: "flex", gap: 7, marginTop: 7 }}><button className="btn btn-go" style={{ flex: 1, padding: 8 }} onClick={() => decideBuy(true)}>Buy logbook</button><button className="btn btn-ghost" style={{ flex: 1, padding: 8 }} onClick={() => decideBuy(false)}>Pass</button></div>
     </div>}
     {!over && <div style={{ display: "flex", gap: 7, marginTop: 8 }}>
-      <button className="btn btn-ready" style={{ flex: 1, padding: 9 }} onClick={() => roll(0)} disabled={turn !== 0 || !!pending}><Dices size={14} /> Roll dice</button>
+      <small style={{ flex: 1, color: "var(--muted2)", fontSize: ".6rem", alignSelf: "center" }}>{turn === 0 ? "Your turn: the dice will pop up." : "Bot Makanga is rolling…"}</small>
       {turn === 0 && active?.jailed > 0 && <button className="btn btn-ghost" style={{ flex: 1, padding: 8 }} onClick={() => { setPlayers(all => all.map((player, index) => index === 0 ? { ...player, cash: player.cash - 50, jailed: 0 } : player)); setMessage("You paid KSh 50 to leave the Impound Yard."); setTurn(1); }}>Pay KSh 50 to leave</button>}
       {turn === 0 && active?.jailed > 0 && active.freePasses > 0 && <button className="btn btn-ghost" style={{ flex: 1, padding: 8 }} onClick={() => { setPlayers(all => all.map((player, index) => index === 0 ? { ...player, jailed: 0, freePasses: player.freePasses - 1 } : player)); setMessage("You used a Sacco Kitty free-yard card."); setTurn(1); }}>Use free yard card</button>}
     </div>}

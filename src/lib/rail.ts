@@ -136,8 +136,8 @@ export function nearestStations(network: RailNetwork, lat: number, lon: number, 
 /** Full trip from any start to any destination: get to the station, ride the train, get to the destination. */
 export function planRailTrip(network: RailNetwork, from: PlacePoint & { stationId?: string }, to: PlacePoint & { stationId?: string }): RailTrip[] {
   const byId = new Map(network.stations.map(station => [station.id, station]));
-  const boardList = from.stationId && byId.get(from.stationId) ? [byId.get(from.stationId)!] : nearestStations(network, from.lat, from.lon, 2);
-  const alightList = to.stationId && byId.get(to.stationId) ? [byId.get(to.stationId)!] : nearestStations(network, to.lat, to.lon, 2);
+  const boardList = from.stationId && byId.get(from.stationId) ? [byId.get(from.stationId)!] : nearestStations(network, from.lat, from.lon, 3);
+  const alightList = to.stationId && byId.get(to.stationId) ? [byId.get(to.stationId)!] : nearestStations(network, to.lat, to.lon, 3);
   const accessCache = new Map<string, JourneyOption | null>(), egressCache = new Map<string, JourneyOption | null>();
   const bestOf = (a: PlacePoint, b: PlacePoint): JourneyOption | null => {
     if (haversineKm(a.lat, a.lon, b.lat, b.lon) < 0.08) return null;

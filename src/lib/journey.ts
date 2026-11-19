@@ -225,6 +225,46 @@ export function planJourney(fromStopId: string, toStopId: string): JourneyOption
 
 
 
+
+// ── Walking changes: after getting off, walk a few minutes to a DIFFERENT stop (e.g. Koja → the next terminus) ──
+const WALK_CHANGE_KM = 0.7;
+let stopGrid: Map<string, string[]> | null = null;
+const cellKey = (lat: number, lon: number) => `${Math.floor(lat / 0.007)}:${Math.floor(lon / 0.007)}`;
+const walkNeighbourCache = new Map<string, { hub: string; routeId: string }[]>();
+/** For every route that passes within a short walk of this stop: the nearest stop on that route to board at. */
+function walkNeighbours(stopId: string): { hub: string; routeId: string }[] {
+  const cached = walkNeighbourCache.get(stopId);
+  if (cached) return cached;
+  if (!stopGrid) {
+    stopGrid = new Map();
+    for (const [id, tuple] of Object.entries(stopsRaw)) {
+      if (!(stopRoutes[id] ?? []).length) continue;
+      const key = cellKey(tuple[1], tuple[2]);
+      const list = stopGrid.get(key) ?? []; list.push(id); stopGrid.set(key, list);
+    }
+  }
+  const here = stopsRaw[stopId];
+  const out: { hub: string; routeId: string }[] = [];
+  if (here) {
+    const equivalent = new Set([stopId, ...(sameStop.get(stopId) ?? [])]);
+    const best = new Map<string, { hub: string; km: number }>();
+    const [la, lo] = [Math.floor(here[1] / 0.007), Math.floor(here[2] / 0.007)];
+    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) for (const id of stopGrid.get(`${la + dy}:${lo + dx}`) ?? []) {
+      if (equivalent.has(id)) continue;
+      const t = stopsRaw[id];
+      const km = haversineKm(here[1], here[2], t[1], t[2]);
+      if (km > WALK_CHANGE_KM) continue;
+      for (const routeId of stopRoutes[id] ?? []) {
+        const prev = best.get(routeId);
+        if (!prev || km < prev.km) best.set(routeId, { hub: id, km });
+      }
+    }
+    for (const [routeId, item] of best) out.push({ hub: item.hub, routeId });
+  }
+  walkNeighbourCache.set(stopId, out);
+  return out;
+}
+
 /** Breadth-first search from ANY of several boarding stops to ANY of several alighting stops (fewest changes first). */
 function searchJourneys(fromIds: string[], toIds: string[], maxOptions = 60): JourneyOption[] {
   const options: JourneyOption[] = [];
@@ -238,6 +278,9 @@ function searchJourneys(fromIds: string[], toIds: string[], maxOptions = 60): Jo
     seen.add(key); queue.push({ stopId: hub, legs: [], usedRoutes: new Set([routeId]) });
   }
   let expanded = 0;
+  const deferred: State[] = []; // states that start with a walking change: tried only after every plain ride/change is exhausted
+  for (let pass = 0; pass < 2; pass++) {
+  if (pass === 1) { if (options.length >= 8) break; queue.length = 0; queue.push(...deferred); expanded = 0; }
   for (let cursor = 0; cursor < queue.length && expanded < 14000 && options.length < maxOptions; cursor++) {
     const state = queue[cursor];
     const lastRoute = [...state.usedRoutes].pop();
@@ -260,7 +303,7 @@ function searchJourneys(fromIds: string[], toIds: string[], maxOptions = 60): Jo
         if (!seen.has(signature)) {
           seen.add(signature);
           options.push({ legs, totalEtaMin: legs.reduce((sum, item) => sum + item.etaMin, 0), totalDistanceKm: legs.reduce((sum, item) => sum + item.distanceKm, 0),
-            transfers: legs.length - 1, fareEstimate: legs.reduce((sum, item) => sum + item.fareKes, 0) });
+            transfers: legs.filter(item => item.type === "matatu").length - 1, fareEstimate: legs.reduce((sum, item) => sum + item.fareKes, 0) });
         }
         break;
       }
@@ -272,7 +315,20 @@ function searchJourneys(fromIds: string[], toIds: string[], maxOptions = 60): Jo
         if (seen.has(key)) continue;
         seen.add(key); queue.push({ stopId: hub, legs, usedRoutes: new Set([...state.usedRoutes, nextRouteId]) });
       }
+      // Or get off here, WALK a few minutes to a different stop, and board the next matatu there (one walking change per trip).
+      if (pass === 0 && !legs.some(item => item.type === "walk")) {
+        for (const { hub, routeId: nextRouteId } of walkNeighbours(nextStopId)) {
+          if (state.usedRoutes.has(nextRouteId)) continue;
+          const key = `board|${hub}|${nextRouteId}`;
+          if (seen.has(key)) continue;
+          const target = getStop(hub);
+          if (!target) continue;
+          seen.add(key);
+          deferred.push({ stopId: hub, legs: [...legs, walkLeg(nextStop, target)], usedRoutes: new Set([...state.usedRoutes, nextRouteId]) });
+        }
+      }
     }
+  }
   }
   return options;
 }
@@ -322,31 +378,38 @@ export function planDoorToDoor(from: PlacePoint, to: PlacePoint, maxStops = 3): 
   const out: JourneyOption[] = [];
   if (straight <= 1.0) out.push(walkOnly(from, to));
   const pool = (p: PlacePoint, radius: number) => {
-    const near = nearestStops(p.lat, p.lon, 14, radius);
+    const near = nearestStops(p.lat, p.lon, 30, radius);
     const exact = p.stopId ? getStop(p.stopId) : null;
     const list = exact ? [{ ...exact, km: 0 }, ...near.filter(item => item.id !== exact.id)] : near;
     return list.length ? list : nearestStops(p.lat, p.lon, 1, 5);
   };
   const attempt = (radius: number) => {
-    const starts = pool(from, radius), ends = pool(to, radius);
+    const starts = pool(from, radius);
+    // Any stop near the destination is a fine place to get off, not only the busiest few.
+    const exactEnd = to.stopId ? getStop(to.stopId) : null;
+    const ends = Object.entries(stopsRaw).filter(([id, t]) => (stopRoutes[id] ?? []).length && haversineKm(to.lat, to.lon, t[1], t[2]) <= radius)
+      .map(([id, t]) => ({ id, name: t[0] as string, lat: t[1] as number, lon: t[2] as number, km: haversineKm(to.lat, to.lon, t[1], t[2]) })).sort((a, b) => a.km - b.km).slice(0, 120);
+    if (exactEnd && !ends.some(stop => stop.id === exactEnd.id)) ends.unshift({ ...exactEnd, km: 0 });
+    if (!ends.length) ends.push(...pool(to, radius));
     const startKm = new Map(starts.map(stop => [stop.id, stop.km])), endKm = new Map(ends.map(stop => [stop.id, stop.km]));
     const found = searchJourneys(starts.map(stop => stop.id), ends.map(stop => stop.id));
     const bestBySequence = new Map<string, JourneyOption>();
     for (const option of found) {
       const ride = option.legs;
+      const rides = ride.filter(leg => leg.type === "matatu");
       const first = walkLeg(from, ride[0].fromStop), last = walkLeg(ride[ride.length - 1].toStop, to);
       const legs: JourneyLeg[] = [];
       if (first.distanceKm > 0.06) legs.push(first);
       legs.push(...ride);
       if (last.distanceKm > 0.06) legs.push(last);
-      const waiting = 4 * ride.length; // honest allowance for waiting at each boarding
+      const waiting = 4 * rides.length; // honest allowance for waiting at each boarding
       const built: JourneyOption = {
         legs, totalEtaMin: legs.reduce((sum, leg) => sum + leg.etaMin, 0) + waiting,
         totalDistanceKm: legs.reduce((sum, leg) => sum + leg.distanceKm, 0),
         transfers: option.transfers, fareEstimate: legs.reduce((sum, leg) => sum + leg.fareKes, 0),
       };
       void startKm; void endKm;
-      const key = ride.map(leg => leg.routeId).join(">");
+      const key = ride.map(leg => leg.routeId ?? "walk").join(">");
       const existing = bestBySequence.get(key);
       if (!existing || built.totalEtaMin < existing.totalEtaMin) bestBySequence.set(key, built);
     }

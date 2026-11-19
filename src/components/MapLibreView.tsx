@@ -138,7 +138,7 @@ const MapLibreView = forwardRef<MapLibreHandle, MapLibreViewProps>(function MapL
   return (
     <div style={{ position: "relative", width: "100%", height, borderRadius, overflow: "hidden" }}>
       <div ref={containerRef} style={{ width: "100%", height: "100%" }} />
-      {zoomButtons && <div style={{ position: "absolute", right: 12, top: 168, zIndex: 40, display: "grid", gap: 6 }}>
+      {false && zoomButtons && <div style={{ position: "absolute", right: 12, top: 168, zIndex: 40, display: "grid", gap: 6 }}>
         {([["+", "Zoom in", 1], ["−", "Zoom out", -1]] as const).map(([symbol, label, step]) => (
           <button key={label} type="button" aria-label={label} onClick={() => mapRef.current?.easeTo({ zoom: mapRef.current.getZoom() + step, duration: 300 })}
             style={{ width: 40, height: 40, borderRadius: 12, border: "1px solid var(--border2)", background: "rgba(8,8,16,.82)", color: "#fff", fontSize: 20, fontWeight: 700, lineHeight: 1, cursor: "pointer" }}>{symbol}</button>
