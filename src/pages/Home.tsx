@@ -26,7 +26,7 @@ export default function HomePage() {
         </motion.div>
       </div>
 
-      <Link href="/profile">
+      <Link href="/wallet">
         <div className="card" style={{ padding: "12px 16px", marginBottom: 18, display: "flex", alignItems: "center", justifyContent: "space-between", background: "rgba(217,119,6,.06)", borderColor: "rgba(217,119,6,.24)", cursor: "pointer" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
             <div style={{ width: 36, height: 36, borderRadius: 10, background: "rgba(217,119,6,.12)", border: "1px solid rgba(217,119,6,.25)", display: "grid", placeItems: "center" }}>
@@ -34,10 +34,20 @@ export default function HomePage() {
             </div>
             <span>
               <b style={{ display: "block", fontSize: ".76rem" }}>Wallet</b>
-              <small style={{ color: "var(--muted2)", fontSize: ".59rem" }}>Open account and payment settings</small>
+              <small style={{ color: "var(--muted2)", fontSize: ".59rem" }}>Balance, past rides and load money</small>
             </span>
           </div>
           <ArrowRight size={14} style={{ color: "var(--muted2)" }} />
+        </div>
+      </Link>
+
+      <Link href="/profile">
+        <div className="card" style={{ padding: "12px 16px", marginBottom: 18, display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer" }}>
+          <span>
+            <b style={{ display: "block", fontSize: ".76rem" }}>Account & settings</b>
+            <small style={{ color: "var(--muted2)", fontSize: ".59rem" }}>Your profile, sign-in and payment details</small>
+          </span>
+          <UserCircle size={16} style={{ color: "var(--muted2)" }} />
         </div>
       </Link>
 

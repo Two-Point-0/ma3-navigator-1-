@@ -51,3 +51,11 @@ Big games spec (Nganya Tycoon, Chess, Ludo, Trivia, Whack-a-Matatu, Matatu Match
 ## Another AI also edited this repo (commit d488970)
 It added Nganya Tycoon (single player vs bot), weekly leaderboard, Mirth social/room-code panel, personal bests, and migration 20261120000000_mirth_prototype_foundation.sql. Merged with the Start/Stop planner, rail network and demo vehicles. The rail "prototype" data from that commit is superseded by supabase/seed/rail and src/data/railNetwork.ts.
 Always run `git fetch origin` and check for new commits before pushing.
+
+
+## Wallet (matatu-front, line art) — updated 2026-11-21
+- /wallet is reached from the first card on Home (no more top-left button). Account & settings is a separate Home card.
+- src/pages/Wallet.tsx: SVG outline of a nganya front in the 3 app colours. Windscreen = balance + number/amount boxes + chips; grille = tilted dial pad (CSS perspective); plate = send M-Pesa prompt; mirrors = Past/Trips and Gauge/Limits.
+- Demo-only features (APP_MODE.realPayments=false): Auto-pay toggle, Tap pay, Auto-stage (simulated ride, fare KES 70 on route R-111), Till/QR (fake QR). They use wallet.pay(); in real-payments mode they show "Coming soon".
+- Games: GameShell is portaled to <body> (full screen); DicePopup used by Ludo and Nairobi Tycoon; Ludo has 2-4 players, computer/pass-and-play/online room (roomTransport).
+- Still to build: matatu ride chat + game challenge, Explore sub-category buttons inside Food/Stays/Sights popups, Nairobi themes for other games.

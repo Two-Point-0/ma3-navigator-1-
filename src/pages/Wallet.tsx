@@ -1,16 +1,19 @@
-import { useMemo, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
-import { ArrowDownLeft, ArrowUpRight, ChevronLeft, Gauge, History, Loader2, Smartphone, X } from "lucide-react";
+import { ArrowDownLeft, ArrowUpRight, ChevronLeft, Delete, Gauge, History, Loader2 } from "lucide-react";
 import { useWallet } from "@/lib/wallet";
 import { normaliseKenyanPhone, requestStkPush } from "@/lib/mpesa";
 import { APP_MODE } from "@/lib/appMode";
-import { useSheet } from "@/lib/useSheet";
 import { supabase } from "@/lib/supabase";
 
 type View = "balance" | "history" | "gauge";
 const AVG_FARE = 60; // KES, rough Nairobi matatu fare used only for the gauge hint
 const AMOUNTS = [100, 200, 500, 1000];
+const DEMO_FARE = 70;
+const DEMO_ROUTE = "Rongai Express · R-111 (demo)";
+const STAGES = ["Boarded · Railways", "Bunyala Rd", "Mombasa Rd", "Nyayo Stadium"];
+const KEYS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "+", "0", "back"];
 
 function ago(at: number) {
   const m = Math.max(0, Math.round((Date.now() - at) / 60000));
@@ -19,91 +22,215 @@ function ago(at: number) {
   const h = Math.round(m / 60);
   return h < 24 ? `${h} h ago` : `${Math.round(h / 24)} d ago`;
 }
+/** A pretend QR code for the demo till screen (not scannable). */
+function FakeQr() {
+  const cells: JSX.Element[] = [];
+  for (let y = 0; y < 21; y++) for (let x = 0; x < 21; x++) {
+    const finder = (x < 7 && y < 7) || (x > 13 && y < 7) || (x < 7 && y > 13);
+    const on = finder ? (() => { const fx = x % 14 > 6 ? x - 14 : x, fy = y > 13 ? y - 14 : y; return fx === 0 || fx === 6 || fy === 0 || fy === 6 || (fx >= 2 && fx <= 4 && fy >= 2 && fy <= 4); })() : ((x * 7 + y * 13 + x * y) % 5 < 2);
+    if (on) cells.push(<rect key={`${x}-${y}`} x={x} y={y} width="1" height="1" />);
+  }
+  return <svg viewBox="0 0 21 21" width="86" height="86" style={{ background: "#e9f4f2", padding: 4, borderRadius: 6 }} aria-hidden="true" fill="#07070d">{cells}</svg>;
+}
 const kes = (n: number) => `KES ${Math.abs(n).toLocaleString()}`;
 
-/** Wallet drawn as the front of a matatu. Windscreen = balance & transactions,
- *  side mirrors = buttons (rear-view history / fuel gauge), number plate = load wallet. */
+/** Wallet drawn as the front of a matatu, in line art.
+ *  Windscreen = balance + what you are typing, side mirrors = history / gauge,
+ *  grille = the dial pad, number plate = send the M-Pesa prompt. Nothing opens in a new screen. */
 export default function WalletPage() {
   const [, setLocation] = useLocation();
-  const { wallet, history } = useWallet();
+  const { wallet, history, topUp, pay, refresh } = useWallet();
   const [view, setView] = useState<View>("balance");
-  const [loadOpen, setLoadOpen] = useState(false);
+  const [field, setField] = useState<"phone" | "amount">("phone");
+  const [phone, setPhone] = useState("");
+  const [amountText, setAmountText] = useState("500");
+  const [stage, setStage] = useState<"form" | "waiting" | "pending" | "done">("form");
+  const [message, setMessage] = useState("");
+  const [pendingTopupId, setPendingTopupId] = useState<string | null>(null);
 
   const level: "stop" | "ready" | "go" = wallet.balance < 100 ? "stop" : wallet.balance < 500 ? "ready" : "go";
   const levelText = { stop: "Low · top up", ready: "Getting low", go: "Good to go" }[level];
-  const last = history[0];
   const rides = Math.floor(wallet.balance / AVG_FARE);
   const gaugePct = Math.min(100, Math.round((wallet.balance / 1000) * 100));
+  const value = Number(amountText || 0);
+  const msisdn = normaliseKenyanPhone(phone);
+  const valid = msisdn !== null && Number.isFinite(value) && value >= 10 && value <= 150000;
 
   const back = () => (window.history.length > 1 ? window.history.back() : setLocation("/"));
   const toggle = (next: View) => setView(v => (v === next ? "balance" : next));
 
+  const press = (key: string) => {
+    try { navigator.vibrate?.(8); } catch { /* not supported */ }
+    if (key === "back") { field === "phone" ? setPhone(v => v.slice(0, -1)) : setAmountText(v => v.slice(0, -1)); return; }
+    if (field === "phone") setPhone(v => (v.length < 13 ? v + key : v));
+    else setAmountText(v => (v.length < 6 ? (v === "0" ? key : v + key) : v));
+  };
+
+  const watchTopup = async (id: string) => {
+    if (!supabase) { setStage("pending"); setMessage("This request is still pending. Check again later; do not send another prompt yet."); return; }
+    setStage("waiting");
+    for (let attempt = 0; attempt < 40; attempt++) {
+      await new Promise(resolve => setTimeout(resolve, 3000));
+      const { data, error } = await supabase.from("wallet_topups").select("status,result_description").eq("id", id).maybeSingle();
+      if (error || !data) continue;
+      if (data.status === "succeeded") { await refresh(); setMessage("M-Pesa payment confirmed and wallet balance updated."); setStage("done"); toast.success("Wallet top-up confirmed."); return; }
+      if (data.status === "failed" || data.status === "expired") { setMessage(data.result_description || "The M-Pesa transaction was not completed."); setStage("form"); toast.error("M-Pesa payment was not completed."); return; }
+    }
+    setMessage("Still awaiting Safaricom confirmation. Do not start another top-up; check this request again shortly."); setStage("pending");
+  };
+
+  const send = async () => {
+    if (!valid || !msisdn) { setField(msisdn === null ? "phone" : "amount"); return; }
+    setStage("waiting");
+    const result = await requestStkPush(msisdn, value);
+    setMessage(result.message);
+    if (!result.ok) { setStage("form"); toast.error(result.message); return; }
+    if (result.demo) { topUp(value, "M-Pesa top-up (demo)"); setStage("done"); toast(`Demo: KES ${value.toLocaleString()} added`); return; }
+    if (!result.topupId) { setStage("form"); toast.error("Payment request has no tracking ID."); return; }
+    setPendingTopupId(result.topupId);
+    void watchTopup(result.topupId);
+  };
+
+  const finish = () => { setStage("form"); setPhone(""); };
+
+  // ── demo features (pretend, no real money) ──
+  const [autoPay, setAutoPay] = useState(() => { try { return localStorage.getItem("ma3_wallet_autopay") !== "0"; } catch { return true; } });
+  const [demo, setDemo] = useState<null | "tap" | "stage" | "till">(null);
+  const [demoStep, setDemoStep] = useState(0);
+  const [demoMsg, setDemoMsg] = useState("");
+  const [flash, setFlash] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const alive = useRef(true);
+  useEffect(() => { alive.current = true; return () => { alive.current = false; }; }, []);
+  const later = (fn: () => void, ms: number) => setTimeout(() => { if (alive.current) fn(); }, ms);
+  const toggleAuto = () => setAutoPay(v => { try { localStorage.setItem("ma3_wallet_autopay", v ? "0" : "1"); } catch { /* ignore */ } toast(v ? "Auto-pay off (demo)" : "Auto-pay on (demo)"); return !v; });
+  const charge = (amount: number, label: string) => {
+    if (!pay(amount, label)) { setDemoMsg("Not enough balance. Load some first."); setDemoStep(9); return false; }
+    setFlash(true); later(() => setFlash(false), 1500);
+    setDemoMsg(`✓ KES ${amount} paid`); setDemoStep(9); try { navigator.vibrate?.([20, 40, 20]); } catch { /* ignore */ }
+    return true;
+  };
+  const openDemo = (kind: "tap" | "stage" | "till") => {
+    if (APP_MODE.realPayments) { toast("Coming soon"); return; }
+    setView("balance"); setDemo(kind); setDemoStep(0); setDemoMsg("");
+    if (kind === "stage") {
+      setBusy(true);
+      [1, 2, 3].forEach(i => later(() => setDemoStep(i), i * 1100));
+      later(() => { setBusy(false); charge(DEMO_FARE, "Auto-stage · " + DEMO_ROUTE); }, 4 * 1100);
+    }
+  };
+  const doTap = () => {
+    setDemoStep(1); setBusy(true);
+    later(() => { setBusy(false); if (autoPay) charge(DEMO_FARE, "Tap pay · " + DEMO_ROUTE); else setDemoStep(2); }, 1000);
+  };
+  const tillAmount = Number.isFinite(value) && value >= 10 ? value : 100;
+  const closeDemo = () => { setDemo(null); setDemoMsg(""); setBusy(false); };
+
   return (
     <div className="mw-screen">
       <div className="mw-stage">
-        {/* ── the matatu front, drawn in SVG ── */}
-        <svg className="mw-svg" viewBox="0 0 390 760" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+        {/* ── the matatu front, line art only, in the three app colours ── */}
+        <svg className={`mw-svg${flash ? " flash" : ""}${busy || stage === "waiting" ? " busy" : ""}`} viewBox="0 0 390 760" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
           <defs>
-            <linearGradient id="mw-body" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#fbfbf8" /><stop offset="1" stopColor="#c9c9c4" /></linearGradient>
-            <linearGradient id="mw-glass" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#0a1317" /><stop offset="1" stopColor="#101b21" /></linearGradient>
-            <linearGradient id="mw-mirror" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#2a3a44" /><stop offset="1" stopColor="#0b1116" /></linearGradient>
-            <pattern id="mw-grille" width="14" height="12" patternUnits="userSpaceOnUse"><path d="M0 6 L7 0 L14 6 L7 12 Z" fill="none" stroke="#2b2f36" strokeWidth="1.2" /></pattern>
+            <pattern id="mw-mesh" width="14" height="12" patternUnits="userSpaceOnUse"><path d="M0 6 L7 0 L14 6 L7 12 Z" className="l-a" strokeWidth=".8" opacity=".35" /></pattern>
           </defs>
-          <rect width="390" height="760" fill="#0b0b14" />
-          <rect y="690" width="390" height="70" fill="#15151f" />
-          {/* roof LED bar: multicolour chase */}
-          <rect x="62" y="18" width="266" height="26" rx="6" fill="#0b0b10" stroke="#2a2a36" />
-          {[0, 1, 2, 3, 4, 5].map(i => <circle key={i} className={`mw-led mw-led-${i % 3}`} style={{ animationDelay: `${i * 0.25}s` }} cx={86 + i * 43.5} cy="31" r="8" />)}
-          {/* roof vents */}
-          {Array.from({ length: 13 }).map((_, i) => <rect key={i} x={36 + i * 24.5} y="52" width="19" height="17" rx="5" fill="#0d0d12" stroke="#303038" />)}
-          {/* body */}
-          <path d="M26 74 Q26 66 36 66 H354 Q364 66 364 74 V672 Q364 690 346 690 H44 Q26 690 26 672 Z" fill="url(#mw-body)" />
+          <path d="M0 718 H130" className="l-r" /><path d="M130 718 H260" className="l-a" /><path d="M260 718 H390" className="l-g" />
+          <text x="195" y="744" textAnchor="middle" fontSize="9.5" fontWeight="700" fill="#8b93a0" fontFamily="JetBrains Mono, monospace" letterSpacing="2.6">MA3 DIGITAL TAP FARE · NAIROBI KENYA</text>
+          {/* roof light bar */}
+          <rect x="56" y="14" width="236" height="28" rx="14" className="l-r" />
+          {[0, 1, 2, 3, 4, 5].map(i => <circle key={i} className={`l-${["r", "a", "g"][i % 3]} mw-led`} style={{ animationDelay: `${i * 0.2}s` }} cx={84 + i * 37.5} cy="28" r="7" />)}
+          <path d="M70 52 H318" className="l-g" strokeDasharray="10 8" opacity=".6" />
+          {/* body: tapered, curved shoulders */}
+          <path d="M26 700 C16 560 18 240 44 100 Q52 66 86 64 H304 Q338 66 346 100 C372 240 374 560 364 700" className="l-g" strokeWidth="2" />
+          <path d="M36 696 C28 560 30 250 54 108" className="l-g" opacity=".3" /><path d="M354 696 C362 560 360 250 336 108" className="l-g" opacity=".3" />
+          {/* name banner */}
+          <path d="M62 74 H328 L322 94 H68 Z" className="l-a" />
+          <text x="195" y="88" textAnchor="middle" fontSize="11.5" fontWeight="800" className="l-a" strokeWidth=".8" fontFamily="Unbounded, Syne, sans-serif" letterSpacing="4">MA3 · NAIROBI · NGANYA</text>
           {/* windscreen */}
-          <rect x="40" y="86" width="310" height="262" rx="14" fill="url(#mw-glass)" stroke="#05080a" strokeWidth="3" />
-          <path d="M40 330 L350 330 L350 348 L40 348 Z" fill="#06090b" opacity=".6" />
-          {/* dash band + bonnet notch */}
-          <rect x="40" y="352" width="310" height="58" rx="10" fill="#eceae6" />
-          <path d="M165 414 L225 414 L208 434 L182 434 Z" fill="#101014" />
-          {/* headlights */}
-          <path d="M44 452 L150 478 L142 516 L44 500 Z" fill="#101014" />
-          <path d="M346 452 L240 478 L248 516 L346 500 Z" fill="#101014" />
-          <path d="M54 466 L132 486" stroke="#fff" strokeWidth="5" strokeLinecap="round" className="mw-beam" />
-          <path d="M336 466 L258 486" stroke="#fff" strokeWidth="5" strokeLinecap="round" className="mw-beam" />
-          {/* grille */}
-          <path d="M120 470 H270 L290 600 L278 668 H112 L100 600 Z" fill="#0c0d11" />
-          <path d="M120 470 H270 L290 600 L278 668 H112 L100 600 Z" fill="url(#mw-grille)" />
-          <circle cx="195" cy="520" r="22" fill="#0c0d11" stroke="var(--ready)" strokeWidth="3" />
-          <text x="195" y="530" textAnchor="middle" fontSize="28" fontWeight="900" fill="var(--ready)" fontFamily="Unbounded, Syne, sans-serif">3</text>
-          {/* bumper with traffic-light lamps */}
-          <rect x="60" y="672" width="270" height="16" rx="8" fill="#101014" />
-          {[0, 1, 2, 3, 4, 5].map(i => <circle key={i} className={`mw-led mw-led-${(i + 1) % 3}`} style={{ animationDelay: `${i * 0.25}s` }} cx={92 + i * 41.2} cy="680" r="5" />)}
-          {/* wheels peeking */}
-          <rect x="6" y="640" width="26" height="62" rx="8" fill="#0b0b0f" /><rect x="358" y="640" width="26" height="62" rx="8" fill="#0b0b0f" />
+          <rect x="56" y="98" width="278" height="220" rx="16" className="l-g" strokeWidth="2" />
+          
           {/* mirror arms */}
-          <rect x="26" y="150" width="14" height="10" fill="#0b0b0f" /><rect x="350" y="150" width="14" height="10" fill="#0b0b0f" />
+          <path d="M46 150 L56 144 M46 268 L56 274" className="l-a" strokeWidth="2" /><path d="M344 150 L334 144 M344 268 L334 274" className="l-a" strokeWidth="2" />
+          {/* art band: waves with ticks */}
+          <rect x="56" y="324" width="278" height="28" rx="10" className="l-g" />
+          <path d="M62 342 Q120 326 195 338 T328 332" className="l-r" /><path d="M62 346 Q120 330 195 342 T328 336" className="l-a" /><path d="M62 350 Q120 334 195 346 T328 340" className="l-g" />
+          {Array.from({ length: 8 }).map((_, i) => <path key={i} d={`M${78 + i * 8} 332 v${3 + (i % 3) * 2}`} className="l-r" opacity=".8" />)}{Array.from({ length: 5 }).map((_, i) => <path key={i} d={`M${262 + i * 8} 332 v${3 + (i % 3) * 2}`} className="l-g" opacity=".8" />)}
+          {/* headlights */}
+          <path d="M58 366 L138 362 L132 404 L58 408 Z" className="l-r" /><path d="M332 366 L252 362 L258 404 L332 408 Z" className="l-r" />
+          {[[84, 386], [114, 384], [306, 386], [276, 384]].map(([x, y], i) => <g key={i}><circle cx={x} cy={y} r="12" className="l-a" /><circle cx={x} cy={y} r="7" className="l-g" /><circle cx={x} cy={y} r="2.6" className="l-r mw-led" style={{ animationDelay: `${i * 0.3}s` }} /></g>)}
+          {/* grille outline sits behind the dial pad; the pad draws its own cells */}
+          <path d="M92 428 H298 L312 640 H78 Z" className="l-a" opacity=".0" />
+          <circle cx="195" cy="436" r="13" className="l-r" strokeWidth="2" fill="#07070d" />
+          <text x="195" y="442" textAnchor="middle" fontSize="16" fontWeight="900" className="l-a" strokeWidth="1" fontFamily="Unbounded, Syne, sans-serif">3</text>
+          {/* wheel-arch arcs and bumper */}
+          <path d="M70 668 Q64 636 98 628" className="l-g" /><path d="M320 668 Q326 636 292 628" className="l-g" />
+          <rect x="40" y="666" width="310" height="24" rx="12" className="l-a" strokeWidth="1.8" />
+          <circle cx="62" cy="678" r="7" className="l-r" /><circle cx="62" cy="678" r="3" className="l-a" /><circle cx="328" cy="678" r="7" className="l-r" /><circle cx="328" cy="678" r="3" className="l-a" />
+          {[0, 1, 2, 3, 4].map(i => <circle key={i} className={`l-${["r", "a", "g"][(i + 1) % 3]} mw-led`} style={{ animationDelay: `${i * 0.25}s` }} cx={124 + i * 35.5} cy="678" r="4.5" />)}
+          {/* wheels */}
+          <path d="M22 664 V710 H48 V664" className="l-r" /><path d="M368 664 V710 H342 V664" className="l-r" />
+          <path d="M30 672 V700 M36 672 V700 M42 672 V700" className="l-a" opacity=".6" /><path d="M360 672 V700 M354 672 V700 M348 672 V700" className="l-a" opacity=".6" />
         </svg>
 
         {/* ── windscreen display ── */}
         <div className="mw-windscreen">
           <div className="mw-ws-top">
-            <span>{view === "history" ? "Rear view · transactions" : view === "gauge" ? "Fuel gauge" : "Available balance"}</span>
-            <span className={`mw-state mw-state-${level}`}><i />{levelText}</span>
+            <span>{view === "history" ? "Rear view · trips" : view === "gauge" ? "Fuel gauge · limits" : "Ma3 Nganya pass"}</span>
+            {view === "balance"
+              ? <button type="button" className={`mw-auto${autoPay ? " on" : ""}`} onClick={toggleAuto} aria-pressed={autoPay}><i />{autoPay ? "Auto-pay on" : "Auto-pay off"}</button>
+              : <span className={`mw-state mw-state-${level}`}><i />{levelText}</span>}
           </div>
 
-          {view === "balance" && (
+          {view === "balance" && !demo && stage === "form" && (
             <>
-              <p className="mw-balance">KES {wallet.balance.toLocaleString()}</p>
-              <p className="mw-sub">{APP_MODE.realPayments ? "Wallet balance" : "Demo wallet · no real money"}</p>
-              {last && (
-                <p className="mw-last">
-                  {last.amount >= 0 ? <ArrowDownLeft size={13} /> : <ArrowUpRight size={13} />}
-                  <span>{last.label}</span>
-                  <b className={last.amount >= 0 ? "in" : "out"}>{last.amount >= 0 ? "+" : "−"}{kes(last.amount)}</b>
-                  <small>{ago(last.at)}</small>
-                </p>
-              )}
-              {wallet.plan && <p className="mw-sub" style={{ marginTop: 6 }}>Plan: KES {wallet.planAmount} / {wallet.plan}</p>}
+              <p className="mw-balance"><span>KES</span> {wallet.balance.toLocaleString()}</p>
+              <p className="mw-sub">{history[0] ? `${history[0].amount < 0 ? "Deducted" : "Added"} KES ${Math.abs(history[0].amount)} · ${history[0].label} · ${ago(history[0].at)}` : APP_MODE.realPayments ? "Wallet balance" : "Demo wallet · no real money"}</p>
+              <div className="mw-fields">
+                <button type="button" className={`mw-field${field === "phone" ? " on" : ""}`} onClick={() => setField("phone")}><small>Top-up M-Pesa</small><b>{phone || "07XX XXX XXX"}</b></button>
+                <button type="button" className={`mw-field${field === "amount" ? " on" : ""}`} onClick={() => setField("amount")}><small>Load (KES)</small><b>{Number(amountText || 0).toLocaleString()}</b></button>
+              </div>
+              <div className="mw-chips">{AMOUNTS.map(a => <button key={a} type="button" className={`mw-chip${String(a) === amountText ? " on" : ""}`} onClick={() => { setAmountText(String(a)); setField("amount"); }}>{a.toLocaleString()}</button>)}</div>
+              <div className="mw-acts">{([["Tap pay", "tap"], ["Auto-stage", "stage"], ["Till / QR", "till"]] as const).map(([t, k], i) => <button key={t} type="button" className={`mw-act mw-act-${["r", "a", "g"][i]}`} onClick={() => openDemo(k)}>{t}</button>)}</div>
             </>
+          )}
+
+          {view === "balance" && demo === "tap" && (
+            <div className="mw-ws-msg">
+              {demoStep === 0 && <><div className="mw-rings"><i /><i /><i /><b>)))</b></div><b>Tap pay · {DEMO_ROUTE}</b><span>Fare KES {DEMO_FARE}. Hold your phone to the reader (demo).</span><button type="button" className="mw-chip on" style={{ flex: "none", padding: "8px 18px" }} onClick={doTap}>Tap phone on reader</button></>}
+              {demoStep === 1 && <><Loader2 size={26} style={{ color: "var(--ready)", animation: "spin3 1s linear infinite" }} /><b>Reading…</b></>}
+              {demoStep === 2 && <><b>Confirm KES {DEMO_FARE}?</b><span>Auto-pay is off, so you confirm each fare.</span><button type="button" className="mw-chip on" style={{ flex: "none", padding: "8px 18px" }} onClick={() => charge(DEMO_FARE, "Tap pay · " + DEMO_ROUTE)}>Confirm</button></>}
+              {demoStep === 9 && <b style={{ color: demoMsg.startsWith("✓") ? "var(--go)" : "var(--stop)" }}>{demoMsg}</b>}
+              <button type="button" className="mw-link" onClick={closeDemo}>← Back to wallet</button>
+            </div>
+          )}
+
+          {view === "balance" && demo === "stage" && (
+            <div className="mw-ws-msg">
+              <b>Auto-stage · {DEMO_ROUTE}</b>
+              <div className="mw-stages">{STAGES.map((n, i) => <span key={n} className={demoStep >= i ? "on" : ""}><i />{n}</span>)}</div>
+              {demoStep === 9 ? <b style={{ color: demoMsg.startsWith("✓") ? "var(--go)" : "var(--stop)" }}>{demoMsg}</b> : <span>You are riding. The fare is taken when you get off (demo).</span>}
+              <button type="button" className="mw-link" onClick={closeDemo}>← Back to wallet</button>
+            </div>
+          )}
+
+          {view === "balance" && demo === "till" && (
+            <div className="mw-ws-msg">
+              <FakeQr />
+              <b>Till 600123 · Demo shop</b>
+              {demoStep === 9 ? <b style={{ color: demoMsg.startsWith("✓") ? "var(--go)" : "var(--stop)" }}>{demoMsg}</b> : <button type="button" className="mw-chip on" style={{ flex: "none", padding: "8px 18px" }} onClick={() => charge(tillAmount, "Till 600123 (demo)")}>Pay KES {tillAmount.toLocaleString()}</button>}
+              <button type="button" className="mw-link" onClick={closeDemo}>← Back to wallet</button>
+            </div>
+          )}
+
+          {view === "balance" && !demo && stage === "waiting" && (
+            <div className="mw-ws-msg"><Loader2 size={26} style={{ color: "var(--ready)", animation: "spin3 1s linear infinite" }} /><b>Check your phone</b><span>Waiting for the M-Pesa prompt to be confirmed…</span></div>
+          )}
+          {view === "balance" && !demo && stage === "pending" && (
+            <div className="mw-ws-msg"><b style={{ color: "var(--ready)" }}>Payment still pending</b><span>{message}</span>
+              <button type="button" className="mw-chip" style={{ flex: "none", padding: "7px 14px" }} disabled={!pendingTopupId} onClick={() => pendingTopupId && void watchTopup(pendingTopupId)}>Check status</button></div>
+          )}
+          {view === "balance" && !demo && stage === "done" && (
+            <div className="mw-ws-msg"><b style={{ color: "var(--go)" }}>✓ {message}</b><button type="button" className="mw-chip" style={{ flex: "none", padding: "7px 14px" }} onClick={finish}>Done</button></div>
           )}
 
           {view === "history" && (
@@ -126,122 +253,31 @@ export default function WalletPage() {
                 <i style={{ left: `${Math.max(2, Math.min(98, gaugePct))}%` }} />
               </div>
               <p className="mw-sub">Estimate at KES {AVG_FARE} per ride. Red under 100, amber under 500, green above.</p>
+              {wallet.plan && <p className="mw-sub" style={{ marginTop: 6 }}>Plan: KES {wallet.planAmount} / {wallet.plan}</p>}
             </>
           )}
         </div>
 
         {/* ── side mirrors = buttons ── */}
         <button className={`mw-mirror mw-mirror-l${view === "history" ? " on" : ""}`} onClick={() => toggle("history")} aria-label="Rear view: show recent transactions" aria-pressed={view === "history"}>
-          <History size={14} /><span>Past</span>
+          <History size={15} /><span className="mw-vt">Past</span><small className="mw-vt">Trips</small>
         </button>
         <button className={`mw-mirror mw-mirror-r${view === "gauge" ? " on" : ""}`} onClick={() => toggle("gauge")} aria-label="Fuel gauge: show how many rides your balance covers" aria-pressed={view === "gauge"}>
-          <Gauge size={14} /><span>Gauge</span>
+          <Gauge size={15} /><span className="mw-vt">Gauge</span><small className="mw-vt">Limits</small>
         </button>
 
-        {/* ── number plate = load wallet ── */}
-        <button className="mw-plate" onClick={() => setLoadOpen(true)} aria-label="Load wallet">
-          <small>KE · MA3</small><b>LOAD WALLET</b>
-        </button>
-        <p className="mw-hint">Mirrors: past &amp; gauge · Plate: add money</p>
-
-        <button className="mw-back" onClick={back} aria-label="Back"><ChevronLeft size={18} /></button>
-      </div>
-
-      {loadOpen && <LoadSheet onClose={() => setLoadOpen(false)} />}
-    </div>
-  );
-}
-
-function LoadSheet({ onClose }: { onClose: () => void }) {
-  const { topUp, refresh } = useWallet();
-  const sheet = useSheet("half", { aboveNav: false });
-  const [amount, setAmount] = useState(500);
-  const [custom, setCustom] = useState("");
-  const [phone, setPhone] = useState("");
-  const [stage, setStage] = useState<"form" | "waiting" | "pending" | "done">("form");
-  const [message, setMessage] = useState("");
-  const [pendingTopupId, setPendingTopupId] = useState<string | null>(null);
-
-  const watchTopup = async (id: string) => {
-    if (!supabase) { setStage("pending"); setMessage("This request is still pending. Check again later; do not send another prompt yet."); return; }
-    setStage("waiting");
-    for (let attempt = 0; attempt < 40; attempt++) {
-      await new Promise(resolve => setTimeout(resolve, 3000));
-      const { data, error } = await supabase.from("wallet_topups").select("status,result_description").eq("id", id).maybeSingle();
-      if (error || !data) continue;
-      if (data.status === "succeeded") {
-        await refresh(); setMessage("M-Pesa payment confirmed and wallet balance updated."); setStage("done"); toast.success("Wallet top-up confirmed."); return;
-      }
-      if (data.status === "failed" || data.status === "expired") {
-        setMessage(data.result_description || "The M-Pesa transaction was not completed."); setStage("form"); toast.error("M-Pesa payment was not completed."); return;
-      }
-    }
-    setMessage("Still awaiting Safaricom confirmation. Do not start another top-up; check this request again shortly."); setStage("pending");
-  };
-
-  const value = useMemo(() => (custom ? Number(custom) : amount), [custom, amount]);
-  const msisdn = normaliseKenyanPhone(phone);
-  const valid = msisdn !== null && Number.isFinite(value) && value >= 10 && value <= 150000;
-
-  const send = async () => {
-    if (!valid || !msisdn) return;
-    setStage("waiting");
-    const result = await requestStkPush(msisdn, value);
-    setMessage(result.message);
-    if (!result.ok) { setStage("form"); toast.error(result.message); return; }
-    if (result.demo) { topUp(value, "M-Pesa top-up (demo)"); setStage("done"); toast(`Demo: KES ${value.toLocaleString()} added`); return; }
-    if (!result.topupId) { setStage("form"); toast.error("Payment request has no tracking ID."); return; }
-    setPendingTopupId(result.topupId);
-    void watchTopup(result.topupId);
-  };
-
-  return (
-    <div {...sheet.panelProps} style={{ ...sheet.panelProps.style, zIndex: 2000 }}>
-      <div className="bpanel-head" style={{ padding: "2px 16px 8px" }}>
-        <button {...sheet.gripProps} />
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <Smartphone size={15} style={{ color: "var(--go)" }} />
-          <b style={{ flex: 1, fontFamily: "var(--font-display)", fontSize: ".88rem" }}>Load wallet</b>
-          <span className="chip" style={{ color: "var(--ready)", border: "1px solid rgba(217,119,6,.35)", fontSize: ".55rem" }}>{APP_MODE.realPayments ? "M-PESA" : "DEMO"}</span>
-          <button className="icon-btn" aria-label="Close" onClick={onClose}><X size={14} /></button>
+        {/* ── grille = dial pad, tilted back like a real radiator grille ── */}
+        <div className="mw-pad" role="group" aria-label="Dial pad">
+          {KEYS.map(k => <button key={k} type="button" className="mw-key" aria-label={k === "back" ? "Delete" : k} onClick={() => press(k)} disabled={stage !== "form" || demo !== null}><em>{k === "back" ? <Delete size={17} /> : k}</em></button>)}
         </div>
-      </div>
-      <div className="bpanel-scroll" style={{ padding: "0 16px 20px" }}>
-        {stage === "form" && (
-          <div style={{ display: "grid", gap: 10 }}>
-            <div>
-              <p className="sec-label">Amount (KES)</p>
-              <div className="tab-row">{AMOUNTS.map(a => <button key={a} className={`pill${!custom && amount === a ? " on" : ""}`} onClick={() => { setAmount(a); setCustom(""); }}>{a.toLocaleString()}</button>)}</div>
-              <input className="finput" style={{ marginTop: 8 }} inputMode="numeric" placeholder="Other amount" value={custom} onChange={e => setCustom(e.target.value.replace(/[^0-9]/g, ""))} />
-            </div>
-            <label>M-Pesa number<input className="finput" inputMode="tel" placeholder="07XX XXX XXX" value={phone} onChange={e => setPhone(e.target.value)} /></label>
-            <button className="btn btn-go" disabled={!valid} style={{ width: "100%", opacity: valid ? 1 : .5 }} onClick={send}>Send M-Pesa prompt · KES {Number.isFinite(value) ? value.toLocaleString() : 0}</button>
-            <p style={{ fontSize: ".58rem", color: "var(--muted2)", lineHeight: 1.5 }}>
-              {APP_MODE.realPayments ? "You will get a prompt on your phone. Enter your M-Pesa PIN to confirm." : "Demo mode: this pretends to send the prompt and adds fake credits. No real money moves."}
-            </p>
-            <p style={{ fontSize: ".58rem", color: "var(--muted)" }}>Card and bank top-ups: coming later.</p>
-          </div>
-        )}
-        {stage === "waiting" && (
-          <div style={{ textAlign: "center", padding: "26px 0" }}>
-            <Loader2 size={30} style={{ color: "var(--ready)", animation: "spin3 1s linear infinite" }} />
-            <p style={{ marginTop: 12, fontWeight: 700, fontSize: ".78rem" }}>Check your phone</p>
-            <p style={{ color: "var(--muted2)", fontSize: ".62rem" }}>Waiting for the M-Pesa prompt to be confirmed…</p>
-          </div>
-        )}
-        {stage === "pending" && (
-          <div style={{ textAlign: "center", padding: "20px 0" }}>
-            <p style={{ color: "var(--ready)", fontWeight: 700, fontSize: ".8rem" }}>Payment request still pending</p>
-            <p style={{ color: "var(--muted2)", fontSize: ".62rem", marginTop: 6, lineHeight: 1.5 }}>{message}</p>
-            <button className="btn btn-ready" style={{ marginTop: 12 }} disabled={!pendingTopupId} onClick={() => pendingTopupId && void watchTopup(pendingTopupId)}>Check payment status</button>
-          </div>
-        )}
-        {stage === "done" && (
-          <div style={{ textAlign: "center", padding: "22px 0" }}>
-            <p style={{ color: "var(--go)", fontWeight: 800, fontSize: ".9rem" }}>✓ {message}</p>
-            <button className="btn btn-ghost" style={{ marginTop: 14 }} onClick={onClose}>Back to the matatu</button>
-          </div>
-        )}
+
+        {/* ── number plate = load the wallet ── */}
+        <button className="mw-plate" onClick={send} disabled={stage !== "form" || demo !== null} aria-label="Load wallet by M-Pesa">
+          <small>KDG · 111M · NAIROBI</small><b>{valid ? `LOAD · KES ${value.toLocaleString()}` : msisdn === null ? "ENTER NUMBER" : "ENTER AMOUNT"}</b>
+        </button>
+
+        <span className="mw-badge">{APP_MODE.realPayments ? "KE · LIVE" : "R-111"}</span>
+        <button className="mw-back" onClick={back} aria-label="Back"><ChevronLeft size={18} /></button>
       </div>
     </div>
   );

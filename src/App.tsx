@@ -2,7 +2,7 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import { Switch, Route, Router as WouterRouter, Link, useLocation } from "wouter";
 import { Toaster, toast } from "sonner";
 import { motion } from "framer-motion";
-import { Bus, Car, Plane, Home, Store, MapPin, Gamepad2, Bell, Wallet as WalletIcon, HelpCircle, Navigation } from "lucide-react";
+import { Bus, Car, Plane, Home, Store, MapPin, Gamepad2, Bell, HelpCircle, Navigation } from "lucide-react";
 import { Suspense, lazy, useState, useEffect } from "react";
 import SeoAndConsent from "@/components/SeoAndConsent";
 import { WalletProvider } from "@/lib/wallet";
@@ -54,13 +54,6 @@ function TopBar() {
 
   return (
     <div className="topbar">
-      <div style={{ position: "absolute", left: "1.1rem" }}>
-        <Link href="/wallet">
-          <div className="token-pill" style={{ cursor: "pointer" }}>
-            <WalletIcon size={12} /><span>Wallet</span>
-          </div>
-        </Link>
-      </div>
       <div style={{ textAlign: "center" }}>
         <div className="app-logo">
           <span style={{ color: "var(--white)" }}>Ma</span>
