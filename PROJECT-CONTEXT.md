@@ -59,3 +59,9 @@ Always run `git fetch origin` and check for new commits before pushing.
 - Demo-only features (APP_MODE.realPayments=false): Auto-pay toggle, Tap pay, Auto-stage (simulated ride, fare KES 70 on route R-111), Till/QR (fake QR). They use wallet.pay(); in real-payments mode they show "Coming soon".
 - Games: GameShell is portaled to <body> (full screen); DicePopup used by Ludo and Nairobi Tycoon; Ludo has 2-4 players, computer/pass-and-play/online room (roomTransport).
 - Still to build: matatu ride chat + game challenge, Explore sub-category buttons inside Food/Stays/Sights popups, Nairobi themes for other games.
+
+## Nov 22 batch
+- Wallet: green body outline flares around the bumper and glows (LED strip) after payments; red on failure. Wallet name = nickname set in Account & settings (`src/lib/account.ts`, localStorage `ma3_nickname`); route chip/charge label = most-paid route from wallet history (falls back to the demo route).
+- `/profile` is now one "Account & settings" container with sub-pages: Profile & name, My trips (Trips.tsx), Privacy & terms (Legal.tsx). Wallet section removed from it. Home no longer lists /trips and /legal separately (routes still exist).
+- Journey engine: walking change radius 1.5 km (terminus to terminus), deferred walk states sorted nearest-first, search budget 60000. Added areas Wangige, Langata, Kikuyu, Zambezi, Githurai, Kahawa, Gikomba, Kiserian, Ongata Rongai, Thome, Mwiki. Verified Wangige to Langata/Embakasi/Thika/Karen/Ngong/Kitengela all return matatu + walk + matatu plans.
+- `supabase/seed/demo_flights.sql`: demo flights for Fly. Docs F and G in docs/launch-checklist.md.

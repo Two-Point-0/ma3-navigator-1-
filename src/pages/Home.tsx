@@ -45,7 +45,7 @@ export default function HomePage() {
         <div className="card" style={{ padding: "12px 16px", marginBottom: 18, display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer" }}>
           <span>
             <b style={{ display: "block", fontSize: ".76rem" }}>Account & settings</b>
-            <small style={{ color: "var(--muted2)", fontSize: ".59rem" }}>Your profile, sign-in and payment details</small>
+            <small style={{ color: "var(--muted2)", fontSize: ".59rem" }}>Profile, my trips, privacy & terms</small>
           </span>
           <UserCircle size={16} style={{ color: "var(--muted2)" }} />
         </div>
@@ -62,26 +62,6 @@ export default function HomePage() {
               <small style={{ color: "var(--muted2)", fontSize: ".59rem" }}>Pair both phones · each person controls sharing</small>
             </span>
           </div>
-          <ArrowRight size={14} style={{ color: "var(--muted2)" }} />
-        </div>
-      </Link>
-
-      <Link href="/trips">
-        <div className="card" style={{ padding: "12px 16px", marginBottom: 18, display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer" }}>
-          <span>
-            <b style={{ display: "block", fontSize: ".76rem" }}>My trips</b>
-            <small style={{ color: "var(--muted2)", fontSize: ".59rem" }}>Tours, bookings and saved plans</small>
-          </span>
-          <ArrowRight size={14} style={{ color: "var(--muted2)" }} />
-        </div>
-      </Link>
-
-      <Link href="/legal">
-        <div className="card" style={{ padding: "12px 16px", marginBottom: 18, display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer" }}>
-          <span>
-            <b style={{ display: "block", fontSize: ".76rem" }}>Privacy & terms</b>
-            <small style={{ color: "var(--muted2)", fontSize: ".59rem" }}>How Ma3 handles your data</small>
-          </span>
           <ArrowRight size={14} style={{ color: "var(--muted2)" }} />
         </div>
       </Link>

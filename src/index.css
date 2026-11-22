@@ -412,3 +412,8 @@ html.map-locked, html.map-locked body { overflow: hidden; height: 100%; overscro
 .mw-balance-big { font-size: clamp(2.1rem, 11.5vw, 3.1rem) !important; text-align: center; margin: 0 !important; }
 .mw-ws-msg .mw-auto { margin-bottom: 2px; }
 
+
+/* v8: green body outline lights up like matatu LED strips after a transaction */
+.mw-svg.ok .mw-body, .mw-svg.ok .l-g { animation: mw-strip .3s ease-in-out 7; filter: drop-shadow(0 0 7px var(--go)); }
+.mw-svg.fail .mw-body, .mw-svg.fail .l-g { stroke: var(--stop); animation: mw-strip .22s ease-in-out 9; filter: drop-shadow(0 0 7px var(--stop)); }
+@keyframes mw-strip { 0%,100% { stroke-width: 2.4; opacity: 1; } 50% { stroke-width: 4.2; opacity: .55; } }

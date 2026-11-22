@@ -70,3 +70,19 @@ then `npx.cmd supabase functions deploy flight-offers`.
 - Rail times and fares are estimates: confirm them.
 - Turn off the demo wallet extras by setting `realPayments: true` (Tap pay, Stage and Till then show "Coming soon").
 - Add a privacy policy contact email and check the Legal pages.
+
+## F. Load the Market sample data (supermarket prices)
+The two files are already in `supabase/sample_data/`. They are demo rows (SKU starts with SAMPLE-) so they never pass as real prices.
+1. Supabase dashboard → Project Settings → API keys → copy the **service_role** secret key. Never paste it into Vercel, the app, GitHub or a chat.
+2. In the project folder terminal (PowerShell), set these two for this window only:
+   - `$env:SUPABASE_URL="https://uygefywqxtqpfaibjete.supabase.co"`
+   - `$env:SUPABASE_SERVICE_ROLE_KEY="paste-the-secret-here"`
+3. Run: `node scripts/import-market-csv.mjs --products supabase/sample_data/products.csv --prices supabase/sample_data/price_observations.csv`
+4. Close the terminal window. Open the Market page: products and prices from the five stores should appear.
+Later, replace them by importing your real checked CSVs the same way (use `manual_entry` as the source type).
+
+## G. Fly with demo flights
+1. Supabase → SQL Editor → New query → paste all of `supabase/seed/demo_flights.sql` → Run. It makes about 1,300 made-up flights for the next 30 days (NBO to Mombasa, Kisumu, Malindi, Eldoret, Lamu, Entebbe, Dar, Addis, Joburg, Dubai, London, and back).
+2. Open Fly → pick Nairobi (NBO) to Mombasa (MBA) → the demo flights and a drawn line appear. Every airline says "(demo)".
+3. Run the file again any time to refresh the dates. Remove all of it later: `delete from public.flight_routes where id like 'demo-%';`
+4. Real prices later: add the Amadeus keys (section D) and the live price card takes over.

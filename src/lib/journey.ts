@@ -227,7 +227,7 @@ export function planJourney(fromStopId: string, toStopId: string): JourneyOption
 
 
 // ── Walking changes: after getting off, walk a few minutes to a DIFFERENT stop (e.g. Koja → the next terminus) ──
-const WALK_CHANGE_KM = 0.7;
+const WALK_CHANGE_KM = 1.5; // terminus to terminus in town can be a 15-20 minute walk
 let stopGrid: Map<string, string[]> | null = null;
 const cellKey = (lat: number, lon: number) => `${Math.floor(lat / 0.007)}:${Math.floor(lon / 0.007)}`;
 const walkNeighbourCache = new Map<string, { hub: string; routeId: string }[]>();
@@ -249,7 +249,7 @@ function walkNeighbours(stopId: string): { hub: string; routeId: string }[] {
     const equivalent = new Set([stopId, ...(sameStop.get(stopId) ?? [])]);
     const best = new Map<string, { hub: string; km: number }>();
     const [la, lo] = [Math.floor(here[1] / 0.007), Math.floor(here[2] / 0.007)];
-    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) for (const id of stopGrid.get(`${la + dy}:${lo + dx}`) ?? []) {
+    for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) for (const id of stopGrid.get(`${la + dy}:${lo + dx}`) ?? []) {
       if (equivalent.has(id)) continue;
       const t = stopsRaw[id];
       const km = haversineKm(here[1], here[2], t[1], t[2]);
@@ -266,7 +266,7 @@ function walkNeighbours(stopId: string): { hub: string; routeId: string }[] {
 }
 
 /** Breadth-first search from ANY of several boarding stops to ANY of several alighting stops (fewest changes first). */
-function searchJourneys(fromIds: string[], toIds: string[], maxOptions = 60): JourneyOption[] {
+function searchJourneys(fromIds: string[], toIds: string[], maxOptions = 60, maxRides = 3): JourneyOption[] {
   const options: JourneyOption[] = [];
   type State = { stopId: string; legs: JourneyLeg[]; usedRoutes: Set<string> };
   const toHubs = new Set<string>(toIds.flatMap(id => [id, ...(sameStop.get(id) ?? [])]));
@@ -280,8 +280,8 @@ function searchJourneys(fromIds: string[], toIds: string[], maxOptions = 60): Jo
   let expanded = 0;
   const deferred: State[] = []; // states that start with a walking change: tried only after every plain ride/change is exhausted
   for (let pass = 0; pass < 2; pass++) {
-  if (pass === 1) { if (options.length >= 8) break; queue.length = 0; queue.push(...deferred); expanded = 0; }
-  for (let cursor = 0; cursor < queue.length && expanded < 14000 && options.length < maxOptions; cursor++) {
+  if (pass === 1) { if (options.length >= 8) break; queue.length = 0; deferred.sort((a, b) => a.legs.reduce((n, l) => n + (l.type === "walk" ? l.distanceKm : 0), 0) - b.legs.reduce((n, l) => n + (l.type === "walk" ? l.distanceKm : 0), 0)); queue.push(...deferred); expanded = 0; }
+  for (let cursor = 0; cursor < queue.length && expanded < 60000 && options.length < maxOptions; cursor++) {
     const state = queue[cursor];
     const lastRoute = [...state.usedRoutes].pop();
     if (!lastRoute) continue;
@@ -307,7 +307,7 @@ function searchJourneys(fromIds: string[], toIds: string[], maxOptions = 60): Jo
         }
         break;
       }
-      if (state.usedRoutes.size >= 3) continue;
+      if (state.usedRoutes.size >= maxRides) continue;
       for (const hub of [nextStopId, ...(sameStop.get(nextStopId) ?? [])]) for (const nextRouteId of stopRoutes[hub] ?? []) {
         if (state.usedRoutes.has(nextRouteId)) continue;
         expanded++;
@@ -383,7 +383,7 @@ export function planDoorToDoor(from: PlacePoint, to: PlacePoint, maxStops = 3): 
     const list = exact ? [{ ...exact, km: 0 }, ...near.filter(item => item.id !== exact.id)] : near;
     return list.length ? list : nearestStops(p.lat, p.lon, 1, 5);
   };
-  const attempt = (radius: number) => {
+  const attempt = (radius: number, maxRides = 3) => {
     const starts = pool(from, radius);
     // Any stop near the destination is a fine place to get off, not only the busiest few.
     const exactEnd = to.stopId ? getStop(to.stopId) : null;
@@ -392,7 +392,7 @@ export function planDoorToDoor(from: PlacePoint, to: PlacePoint, maxStops = 3): 
     if (exactEnd && !ends.some(stop => stop.id === exactEnd.id)) ends.unshift({ ...exactEnd, km: 0 });
     if (!ends.length) ends.push(...pool(to, radius));
     const startKm = new Map(starts.map(stop => [stop.id, stop.km])), endKm = new Map(ends.map(stop => [stop.id, stop.km]));
-    const found = searchJourneys(starts.map(stop => stop.id), ends.map(stop => stop.id));
+    const found = searchJourneys(starts.map(stop => stop.id), ends.map(stop => stop.id), 60, maxRides);
     const bestBySequence = new Map<string, JourneyOption>();
     for (const option of found) {
       const ride = option.legs;
@@ -416,7 +416,9 @@ export function planDoorToDoor(from: PlacePoint, to: PlacePoint, maxStops = 3): 
     out.push(...bestBySequence.values());
   };
   attempt(1.3);
-  if (!out.some(option => option.legs.some(leg => leg.type === "matatu"))) attempt(2.4);
+  const hasRide = () => out.some(option => option.legs.some(leg => leg.type === "matatu"));
+  if (!hasRide()) attempt(2.4);
+  if (!hasRide()) attempt(2.4, 4); // long trips: allow a third change
 
   out.sort((a, b) => a.totalEtaMin - b.totalEtaMin || a.fareEstimate - b.fareEstimate);
   const top = out.slice(0, 4).map(option => ({ ...option, isFastest: false, isCheapest: false }));

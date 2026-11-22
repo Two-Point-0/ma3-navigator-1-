@@ -5,13 +5,13 @@ import {
   Check, X, Bus, MapPin, Lock, Flame, Calendar, Camera, LoaderCircle,
 } from "lucide-react";
 import { toast } from "sonner";
-import { useWallet } from "@/lib/wallet";
-import { WALLET_PLAN_OPTIONS, WalletPlan } from "@/data/ma3_core";
+import { setNickname, useNickname } from "@/lib/account";
+import TripsPage from "@/pages/Trips";
+import LegalPage from "@/pages/Legal";
 import PageTabs from "@/components/PageTabs";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 
 const PROFILE_TABS = [
-  { id: "wallet", label: "Wallet", Icon: CreditCard },
   { id: "activity", label: "Activity", Icon: Clock },
   { id: "account", label: "Account", Icon: Shield },
 ] as const;
@@ -27,54 +27,10 @@ function privateAvatarPath(value: unknown, userId: string): string | null {
 }
 
 // Matatu-shaped SVG wallet
-function MatatuWallet({ balance }: { balance: number }) {
-  return (
-    <div style={{ position: "relative", width: "100%", padding: "1px" }}>
-      <svg viewBox="0 0 340 160" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: "100%", filter: "drop-shadow(0 8px 24px rgba(0,0,0,.5))" }}>
-        {/* Matatu body */}
-        <rect x="4" y="18" width="332" height="118" rx="14" fill="#0e0e18" stroke="rgba(217,119,6,.35)" strokeWidth="1.5"/>
-        {/* Top stripe */}
-        <rect x="4" y="18" width="332" height="22" rx="14" fill="rgba(217,119,6,.12)"/>
-        <rect x="4" y="32" width="332" height="8" fill="rgba(217,119,6,.12)"/>
-        {/* Front windshield bump */}
-        <rect x="290" y="4" width="46" height="32" rx="8" fill="#0e0e18" stroke="rgba(217,119,6,.35)" strokeWidth="1.5"/>
-        <rect x="294" y="8" width="38" height="22" rx="6" fill="rgba(100,180,255,.08)" stroke="rgba(100,180,255,.2)" strokeWidth="1"/>
-        {/* Windows */}
-        {[20, 70, 120, 170, 220].map(x => (
-          <rect key={x} x={x} y={47} width={38} height={24} rx={5} fill="rgba(68,138,255,.08)" stroke="rgba(68,138,255,.18)" strokeWidth="1"/>
-        ))}
-        {/* Wheels */}
-        <circle cx="60" cy="140" r="16" fill="#1c1c2a" stroke="rgba(217,119,6,.4)" strokeWidth="2"/>
-        <circle cx="60" cy="140" r="8" fill="#0e0e18" stroke="rgba(217,119,6,.3)" strokeWidth="1.5"/>
-        <circle cx="280" cy="140" r="16" fill="#1c1c2a" stroke="rgba(217,119,6,.4)" strokeWidth="2"/>
-        <circle cx="280" cy="140" r="8" fill="#0e0e18" stroke="rgba(217,119,6,.3)" strokeWidth="1.5"/>
-        {/* Balance display area */}
-        <rect x="20" y="75" width="240" height="50" rx="10" fill="rgba(0,0,0,.4)"/>
-        {/* Decorative route line */}
-        <line x1="20" y1="58" x2="265" y2="58" stroke="rgba(217,119,6,.15)" strokeWidth="1" strokeDasharray="4 3"/>
-      </svg>
-      {/* Balance text overlay */}
-      <div style={{ position: "absolute", top: "50%", left: 28, transform: "translateY(-25%)" }}>
-        <p style={{ fontSize: ".55rem", color: "rgba(217,119,6,.7)", letterSpacing: ".2em", textTransform: "uppercase", marginBottom: 2 }}>Demo Balance</p>
-        <p style={{ fontFamily: "var(--font-mono)", fontSize: "1.7rem", fontWeight: 700, color: "var(--ready)", lineHeight: 1 }}>
-          KES {balance.toLocaleString()}
-        </p>
-        <p style={{ fontSize: ".58rem", color: "var(--muted2)", marginTop: 4 }}>This device only · no real money</p>
-      </div>
-      {/* Bus icon */}
-      <div style={{ position: "absolute", top: "28%", right: 68, transform: "translateY(-50%)" }}>
-        <Bus size={22} style={{ color: "rgba(217,119,6,.5)" }} />
-      </div>
-    </div>
-  );
-}
-
-export default function ProfilePage() {
-  const { wallet, topUp, setPlan, cancelPlan } = useWallet();
-  const [showTopUp, setShowTopUp] = useState(false);
-  const [selPlan, setSelPlan] = useState<WalletPlan>("weekly");
-  const [selAmt, setSelAmt] = useState<number | null>(null);
-  const [activeSection, setActiveSection] = useState("wallet");
+function ProfileDetails() {
+  const nickname = useNickname();
+  const [nameDraft, setNameDraft] = useState(nickname);
+  const [activeSection, setActiveSection] = useState("activity");
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const [avatarUrl, setAvatarUrl] = useState("");
   const [avatarUploading, setAvatarUploading] = useState(false);
@@ -132,19 +88,6 @@ export default function ProfilePage() {
     } finally { setAvatarUploading(false); if (avatarInputRef.current) avatarInputRef.current.value = ""; }
   };
 
-  const doTopUp = () => {
-    if (!selAmt) { toast("Pick an amount first"); return; }
-    if (wallet.plan) {
-      setPlan(selPlan, selAmt);
-      toast(`Demo plan selected — KES ${selAmt.toLocaleString()} demo credit; no payment was processed.`);
-    } else {
-      topUp(selAmt);
-      toast(`KES ${selAmt.toLocaleString()} demo credit added on this device; no payment was processed.`);
-    }
-    setShowTopUp(false);
-    setSelAmt(null);
-  };
-
   return (
     <div className="page-wrap">
       <div className="inner">
@@ -164,66 +107,6 @@ export default function ProfilePage() {
           </div>
         </div>
 
-        {/* Matatu-shaped wallet */}
-          <div id="profile-wallet" style={{ marginBottom: 12 }}>
-            <MatatuWallet balance={wallet.balance} />
-            <p style={{ fontSize: ".62rem", color: "var(--muted2)", lineHeight: 1.5, marginTop: 4 }}>Prototype balance only. No payment is taken, no funds are added to an account, and this is not a stored-value wallet.</p>
-        </div>
-
-        {/* Plan indicator */}
-        {wallet.plan && (
-          <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", borderRadius: 10, background: "rgba(22,163,74,.08)", border: "1px solid rgba(22,163,74,.2)", marginBottom: 10 }}>
-            <Clock size={13} style={{ color: "var(--go)" }} />
-            <span style={{ fontSize: ".68rem", color: "var(--go)", fontWeight: 600 }}>
-              Demo plan · KES {wallet.planAmount}/{WALLET_PLAN_OPTIONS[wallet.plan].periodLabel} · no subscription or payment
-            </span>
-            <button onClick={() => { cancelPlan(); toast("Demo plan cleared"); }} style={{ marginLeft: "auto", background: "none", border: "none", color: "var(--muted)", cursor: "pointer", fontSize: ".65rem" }}>Clear</button>
-          </div>
-        )}
-
-        {/* Top Up button */}
-        <button className="btn btn-primary" style={{ width: "100%", padding: 12, justifyContent: "center", marginBottom: 14 }} onClick={() => setShowTopUp(s => !s)}>
-          <CreditCard size={15} /> Add Demo Credit
-        </button>
-
-        {/* Top-up form */}
-        <AnimatePresence>
-          {showTopUp && (
-            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} style={{ overflow: "hidden", marginBottom: 14 }}>
-              <div className="card" style={{ padding: 16, borderColor: "rgba(217,119,6,.25)" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 12 }}>
-                  <p style={{ fontFamily: "var(--font-display)", fontSize: ".88rem", fontWeight: 700 }}>Add demo credit</p>
-                  <button onClick={() => setShowTopUp(false)} style={{ background: "none", border: "none", color: "var(--muted)", cursor: "pointer" }}><X size={16} /></button>
-                </div>
-                <p style={{ fontSize: ".62rem", color: "var(--muted2)", lineHeight: 1.5, marginBottom: 10 }}>This only changes the local prototype balance; no real payment is processed.</p>
-                {/* Plan selector */}
-                <label style={{ marginBottom: 6 }}>Demo plan length</label>
-                <div style={{ display: "flex", gap: 6, marginBottom: 12 }}>
-                  {(["daily", "weekly", "monthly"] as WalletPlan[]).map(p => (
-                    <button key={p} onClick={() => { setSelPlan(p); setSelAmt(null); }}
-                      style={{ flex: 1, padding: "8px 4px", borderRadius: 10, border: `1px solid ${selPlan === p ? "rgba(217,119,6,.45)" : "var(--border2)"}`, background: selPlan === p ? "rgba(217,119,6,.1)" : "var(--glass)", color: selPlan === p ? "var(--ready)" : "var(--muted2)", fontSize: ".68rem", fontWeight: 700, cursor: "pointer", textTransform: "capitalize" }}>
-                      {p}
-                    </button>
-                  ))}
-                </div>
-                {/* Amount selector */}
-                <label style={{ marginBottom: 6 }}>Demo amount (KES)</label>
-                <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 14 }}>
-                  {WALLET_PLAN_OPTIONS[selPlan].suggested.map(amt => (
-                    <button key={amt} onClick={() => setSelAmt(amt)}
-                      style={{ padding: "8px 14px", borderRadius: 99, border: `1px solid ${selAmt === amt ? "rgba(217,119,6,.5)" : "var(--border2)"}`, background: selAmt === amt ? "rgba(217,119,6,.12)" : "var(--glass)", color: selAmt === amt ? "var(--ready)" : "var(--white)", fontFamily: "var(--font-mono)", fontSize: ".78rem", fontWeight: 700, cursor: "pointer" }}>
-                      {amt.toLocaleString()}
-                    </button>
-                  ))}
-                </div>
-                <button className="btn btn-go" style={{ width: "100%", padding: 11, justifyContent: "center" }} onClick={doTopUp}>
-                  <Check size={14} /> Add demo credit — KES {selAmt?.toLocaleString() ?? "—"}
-                </button>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
         <section id="profile-activity" style={{ marginBottom: 16 }}>
           <div className="sec-label" style={{ marginBottom: 8 }}>Recent Activity</div>
           <div className="card" style={{ padding: 14, marginBottom: 12 }}>
@@ -236,25 +119,55 @@ export default function ProfilePage() {
           </div>
         </section>
 
-        {/* Settings */}
         <div id="profile-account" className="sec-label" style={{ marginBottom: 8 }}>Account</div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 5, marginBottom: 24 }}>
-          {[
-            { Icon: Shield,   label: "Privacy & Safety" },
-            { Icon: Star,     label: "Ratings & Reviews" },
-            { Icon: Calendar, label: "Journey History" },
-          ].map(({ Icon, label }) => (
-            <div key={label} className="card" style={{ padding: "12px 14px", display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer" }}
-              onClick={() => toast(`${label} — coming soon`)}>
-              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <Icon size={15} style={{ color: "var(--muted2)" }} />
-                <span style={{ fontSize: ".8rem" }}>{label}</span>
-              </div>
+        <div className="card" style={{ padding: 14, marginBottom: 24 }}>
+          <label htmlFor="nick" style={{ marginBottom: 6 }}>Your name on Ma3</label>
+          <div style={{ display: "flex", gap: 8 }}>
+            <input id="nick" value={nameDraft} maxLength={24} onChange={e => setNameDraft(e.target.value)} placeholder="e.g. Muhia" style={{ flex: 1 }} />
+            <button className="btn btn-primary" onClick={() => { setNickname(nameDraft); toast("Name saved. Your wallet now uses it."); }}>Save</button>
+          </div>
+          <p style={{ fontSize: ".62rem", color: "var(--muted2)", lineHeight: 1.5, marginTop: 6 }}>This name appears on your wallet.</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+type View = "menu" | "profile" | "trips" | "privacy";
+const MENU: { id: Exclude<View, "menu">; label: string; hint: string; Icon: typeof Shield }[] = [
+  { id: "profile", label: "Profile & name", hint: "Photo, your name on Ma3, activity", Icon: Camera },
+  { id: "trips", label: "My trips", hint: "Saved routes, earnings and fuel saved", Icon: Bus },
+  { id: "privacy", label: "Privacy & terms", hint: "How Ma3 handles your data", Icon: Shield },
+];
+
+/** One container: everything about the account lives under here, with its own sub-pages. */
+export default function AccountSettingsPage() {
+  const [view, setView] = useState<View>("menu");
+  const current = MENU.find(m => m.id === view);
+  return (
+    <div>
+      <div className="inner" style={{ paddingTop: 12, paddingBottom: 0 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          {view !== "menu" && <button className="btn" onClick={() => setView("menu")} aria-label="Back to Account & settings" style={{ padding: "6px 10px" }}>‹ Back</button>}
+          <h1 style={{ fontFamily: "var(--font-display)", fontSize: "1.1rem", fontWeight: 900 }}>{current ? current.label : "Account & settings"}</h1>
+        </div>
+      </div>
+      {view === "menu" && (
+        <div className="inner" style={{ display: "flex", flexDirection: "column", gap: 6, paddingTop: 12 }}>
+          {MENU.map(({ id, label, hint, Icon }) => (
+            <div key={id} role="button" tabIndex={0} className="card" onClick={() => setView(id)} onKeyDown={e => { if (e.key === "Enter") setView(id); }} style={{ padding: "13px 14px", display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer" }}>
+              <span style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <Icon size={16} style={{ color: "var(--muted2)" }} />
+                <span><b style={{ display: "block", fontSize: ".8rem" }}>{label}</b><small style={{ color: "var(--muted2)", fontSize: ".6rem" }}>{hint}</small></span>
+              </span>
               <ChevronRight size={14} style={{ color: "var(--muted)" }} />
             </div>
           ))}
         </div>
-      </div>
+      )}
+      {view === "profile" && <ProfileDetails />}
+      {view === "trips" && <TripsPage />}
+      {view === "privacy" && <LegalPage />}
     </div>
   );
 }

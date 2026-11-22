@@ -6,6 +6,7 @@ import { useWallet } from "@/lib/wallet";
 import { normaliseKenyanPhone, requestStkPush } from "@/lib/mpesa";
 import { APP_MODE } from "@/lib/appMode";
 import { supabase } from "@/lib/supabase";
+import { topRoute, useNickname } from "@/lib/account";
 
 type Panel = "home" | "load" | "statement" | "gauge" | "tap" | "stage" | "till";
 const AVG_FARE = 60; // KES, rough Nairobi matatu fare used only for the gauge hint
@@ -41,6 +42,9 @@ const kes = (n: number) => `KES ${Math.abs(n).toLocaleString()}`;
 export default function WalletPage() {
   const [, setLocation] = useLocation();
   const { wallet, history, topUp, pay, refresh } = useWallet();
+  const nickname = useNickname();
+  const fav = topRoute(history);
+  const routeLabel = fav ? fav.label : DEMO_ROUTE;
   const [panel, setPanel] = useState<Panel>("home");
   const [shown, setShown] = useState<Panel>("home");
   const [phase, setPhase] = useState<"idle" | "out" | "in">("idle");
@@ -95,7 +99,7 @@ export default function WalletPage() {
     later(() => {
       setBusy(true);
       [1, 2, 3].forEach(i => later(() => setDemoStep(i), i * 1100));
-      later(() => { setBusy(false); charge(DEMO_FARE, "Auto-stage · " + DEMO_ROUTE); }, 4 * 1100);
+      later(() => { setBusy(false); charge(DEMO_FARE, "Auto-stage · " + routeLabel); }, 4 * 1100);
     }, 1100);
   };
   const needDemo = (next: Panel) => {
@@ -155,7 +159,7 @@ export default function WalletPage() {
   };
   const doTap = () => {
     setDemoStep(1); setBusy(true);
-    later(() => { setBusy(false); if (autoPay) charge(DEMO_FARE, "Tap pay · " + DEMO_ROUTE); else setDemoStep(2); }, 1000);
+    later(() => { setBusy(false); if (autoPay) charge(DEMO_FARE, "Tap pay · " + routeLabel); else setDemoStep(2); }, 1000);
   };
   const tillAmount = amountOk ? value : 100;
   const exportCsv = () => {
@@ -181,7 +185,7 @@ export default function WalletPage() {
   return (
     <div className="mw-screen">
       <button className="mw-back" onClick={back} aria-label="Back"><ChevronLeft size={18} /></button>
-      <span className="mw-badge">{APP_MODE.realPayments ? "LIVE" : "R-111"}</span>
+      <span className="mw-badge">{fav ? fav.code : APP_MODE.realPayments ? "LIVE" : "R-111"}</span>
       <div className="mw-stage">
         {/* ── the matatu front, line art only, in the three app colours ── */}
         <svg className={`mw-svg${alertKind ? " " + alertKind : ""}${busy || stage === "waiting" ? " busy" : ""}`} viewBox="0 0 390 800" preserveAspectRatio="none" aria-hidden="true">
@@ -212,7 +216,7 @@ export default function WalletPage() {
           <path className="l-r" d="M71 68H319L326 86H64Z" />
           
           
-          <path className="l-g" d="M84 48Q48 52 47 115L45 695Q45 737 53 770H337Q345 737 345 695L343 115Q342 52 306 48" />
+          <path className="l-g mw-body" d="M84 48Q48 52 47 115L45 690Q42 716 16 731" /><path className="l-g mw-body" d="M306 48Q342 52 343 115L345 690Q348 716 374 731" />
           <path className="l-g" d="M57 119V733M333 119V733" />
           <path className="l-a" d="M66 94H324M66 359V393M324 359V393" />
           
@@ -299,7 +303,7 @@ export default function WalletPage() {
             )}
 
             {shown === "home" && (
-              <div className="mw-ws-msg"><p className="mw-balance mw-balance-big"><span>KES</span> {wallet.balance.toLocaleString()}</p></div>
+              <div className="mw-ws-msg"><p className="mw-sub" style={{ margin: 0, fontWeight: 800 }}>{nickname ? `${nickname}'s wallet` : "My wallet"}</p><p className="mw-balance mw-balance-big"><span>KES</span> {wallet.balance.toLocaleString()}</p></div>
             )}
 
             {shown === "load" && stage === "form" && (
@@ -357,16 +361,16 @@ export default function WalletPage() {
 
             {shown === "tap" && (
               <div className="mw-ws-msg">
-                {demoStep === 0 && <><button type="button" className={`mw-auto${autoPay ? " on" : ""}`} onClick={toggleAuto} aria-pressed={autoPay}><i />{autoPay ? "Auto-pay on" : "Auto-pay off"}</button><div className="mw-rings"><i /><i /><i /><b>)))</b></div><b>{DEMO_ROUTE}</b><span>Fare KES {DEMO_FARE}. Hold your phone to the reader (demo).</span><button type="button" className="mw-chip on" style={{ flex: "none", padding: "8px 18px" }} onClick={doTap}>Tap phone on reader</button></>}
+                {demoStep === 0 && <><button type="button" className={`mw-auto${autoPay ? " on" : ""}`} onClick={toggleAuto} aria-pressed={autoPay}><i />{autoPay ? "Auto-pay on" : "Auto-pay off"}</button><div className="mw-rings"><i /><i /><i /><b>)))</b></div><b>{routeLabel}</b><span>Fare KES {DEMO_FARE}. Hold your phone to the reader (demo).</span><button type="button" className="mw-chip on" style={{ flex: "none", padding: "8px 18px" }} onClick={doTap}>Tap phone on reader</button></>}
                 {demoStep === 1 && <><Loader2 size={26} style={{ color: "var(--ready)", animation: "spin3 1s linear infinite" }} /><b>Reading…</b></>}
-                {demoStep === 2 && <><b>Confirm KES {DEMO_FARE}?</b><span>Auto-pay is off, so you confirm each fare.</span><button type="button" className="mw-chip on" style={{ flex: "none", padding: "8px 18px" }} onClick={() => charge(DEMO_FARE, "Tap pay · " + DEMO_ROUTE)}>Confirm</button></>}
+                {demoStep === 2 && <><b>Confirm KES {DEMO_FARE}?</b><span>Auto-pay is off, so you confirm each fare.</span><button type="button" className="mw-chip on" style={{ flex: "none", padding: "8px 18px" }} onClick={() => charge(DEMO_FARE, "Tap pay · " + routeLabel)}>Confirm</button></>}
                 {demoStep === 9 && <b style={{ color: okColor(demoMsg) }}>{demoMsg}</b>}
               </div>
             )}
 
             {shown === "stage" && (
               <div className="mw-ws-msg">
-                <b>{DEMO_ROUTE}</b>
+                <b>{routeLabel}</b>
                 <div className="mw-stages">{STAGES.map((n, i) => <span key={n} className={demoStep >= i ? "on" : ""}><i />{n}</span>)}</div>
                 {demoStep === 9 ? <b style={{ color: okColor(demoMsg) }}>{demoMsg}</b> : <span>You are riding. The fare is taken when you get off (demo).</span>}
               </div>
