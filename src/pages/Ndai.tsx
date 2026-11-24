@@ -116,8 +116,10 @@ export default function NdaiPage() {
   const sheet = useSheet("peek");
   const [stage, setStage]     = useState<RideStage>("idle");
   const [rideId, setRideId]   = useState("comfort");
-  const [pickup, setPickup]   = useState("");
-  const [dest, setDest]       = useState("");
+  // Ma3 can send people here with the pickup and destination already filled in: /ndai?pickup=...&dest=...
+  const startParams = useMemo(() => new URLSearchParams(window.location.search), []);
+  const [pickup, setPickup]   = useState(() => startParams.get("pickup") ?? "");
+  const [dest, setDest]       = useState(() => startParams.get("dest") ?? "");
   const [driver, setDriver]   = useState<typeof DRIVERS[0] | null>(null);
   const { pay } = useWallet();
   const mapRef = useRef<MapLibreHandle>(null);

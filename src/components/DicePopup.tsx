@@ -47,7 +47,7 @@ export default function DicePopup({ open, count = 1, label, color = "#f5b301", a
       ticks++;
       if (ticks < 9) { setFaces(Array.from({ length: count }, () => 1 + Math.floor(Math.random() * 6))); timers.current.push(window.setTimeout(tick, 75)); return; }
       setFaces(finalValues); setPhase("result");
-      timers.current.push(window.setTimeout(() => done.current(finalValues), 750));
+      timers.current.push(window.setTimeout(() => { done.current(finalValues); setPhase("idle"); }, 750)); // ready for the next roll even if the dice stay open (a pass, or a six)
     };
     tick();
   };

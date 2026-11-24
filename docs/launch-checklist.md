@@ -86,3 +86,9 @@ Later, replace them by importing your real checked CSVs the same way (use `manua
 2. Open Fly → pick Nairobi (NBO) to Mombasa (MBA) → the demo flights and a drawn line appear. Every airline says "(demo)".
 3. Run the file again any time to refresh the dates. Remove all of it later: `delete from public.flight_routes where id like 'demo-%';`
 4. Real prices later: add the Amadeus keys (section D) and the live price card takes over.
+
+## H. Trivia categories (Supabase)
+1. Run `supabase/migrations/20261122000000_trivia_questions.sql` and `20261122000100_allow_pool_game.sql` (or `npx.cmd supabase db push --remote` from the project folder).
+2. Supabase → SQL Editor → paste `supabase/seed/trivia_kenya.sql` → Run. This adds starter Kenya questions in 8 categories.
+3. Add more any time in Table Editor → `trivia_questions` → Insert row (or Import CSV with columns category, difficulty, question, correct, wrong). `wrong` must hold exactly 3 wrong answers, like `{"A","B","C"}`. A new category name shows up in the app by itself.
+4. World categories come free from Open Trivia DB (no key needed).

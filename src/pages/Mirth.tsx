@@ -38,8 +38,9 @@ const GAMES: GameDef[] = [
   { id: "mchongwano", name: "Mchongwano Live", Icon: Mic2, desc: "Live roast battles and tournaments. The audience votes for the winner.", players: "Live · 2 fighters + crowd" },
   { id: "tycoon", name: "Nairobi Tycoon", Icon: Landmark, desc: "The classic property-trading game on a Nairobi board: buy estates and stages, build towers, collect fares.", players: "You vs bot" },
   { id: "ludo", name: "Ludo", Icon: Dices, desc: "2 to 4 players. Play the computer, pass the phone around, or join friends online with a room code.", players: "2–4 players · online" },
+  { id: "pool", name: "Pool", Icon: Target, desc: "8-ball pool. Drag back like a catapult and shoot. Play the computer or pass the phone.", players: "1–2 players" },
   { id: "chess", name: "Chess", Icon: Crown, desc: "Classic strategy: you play white against the computer.", players: "Route King" },
-  { id: "trivia", name: "Trivia", Icon: Brain, desc: "Kenya general knowledge, five questions.", players: "Route King" },
+  { id: "trivia", name: "Trivia", Icon: Brain, desc: "Pick Kenya or world categories and a level. Five questions a round.", players: "Route King" },
   { id: "memory", name: "Matatu Match", Icon: Puzzle, desc: "Flip cards and find all 8 pairs in the fewest moves.", players: "Route King" },
   { id: "snake", name: "Matatu Snake", Icon: Target, desc: "Collect matatus without hitting the walls or yourself.", players: "Route King" },
   { id: "whack", name: "Whack-a-Matatu", Icon: Hammer, desc: "30 seconds. Tap every matatu that pops up.", players: "Route King" },
@@ -49,6 +50,7 @@ const PLAYS_KEY = "ma3_game_plays";
 const readPlays = (): Record<string, number> => { try { return JSON.parse(localStorage.getItem(PLAYS_KEY) || "{}"); } catch { return {}; } };
 const playTone = (count: number) => count >= 3 ? { color: "var(--go)", label: "You play this a lot" } : count >= 1 ? { color: "var(--ready)", label: "Tried it" } : { color: "var(--stop)", label: "Not played yet" };
 const LazyTrivia = lazy(() => import("@/components/TriviaGame"));
+const LazyPool = lazy(() => import("@/components/PoolGame"));
 const LazyChess = lazy(() => import("@/components/ChessGame"));
 const LazyLudo = lazy(() => import("@/components/LudoGame"));
 const LazyMemory = lazy(() => import("@/components/MiniGames").then(m => ({ default: m.MemoryGame })));
@@ -454,6 +456,7 @@ export default function MirthPage() {
       {selectedGame && <Suspense fallback={<p style={{ padding: 14, textAlign: "center", color: "var(--muted2)", fontSize: ".66rem" }}><LoaderCircle size={14} /> Loading game…</p>}>
         {selectedGame.id === "mchongwano" ? <LazyMchongwano /> :
          selectedGame.id === "tycoon" ? <LazyTycoon onStart={() => void beginKingGame("tycoon")} onFinish={points => submitFinishedScore("tycoon", points)} /> :
+         selectedGame.id === "pool" ? <LazyPool onStart={() => void beginKingGame("pool")} onFinish={points => submitFinishedScore("pool", points)} /> :
          selectedGame.id === "chess" ? <LazyChess onStart={() => void beginKingGame("chess")} onFinish={points => submitFinishedScore("chess", points)} /> :
          selectedGame.id === "ludo" ? <LazyLudo joinCode={joinCode} onStart={() => void beginKingGame("ludo")} onFinish={points => submitFinishedScore("ludo", points)} /> :
          selectedGame.id === "trivia" ? <LazyTrivia onStart={markTriviaStarted} onFinish={(score, total) => submitFinishedScore("trivia", Math.round((score / Math.max(1, total)) * 100))} /> :

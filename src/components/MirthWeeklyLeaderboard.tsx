@@ -7,7 +7,7 @@ type LeaderRow = { game_id: string; player: string; best_score: number; games_pl
 const GAMES = [
   { id: "overall", label: "Overall" }, { id: "tycoon", label: "Tycoon" }, { id: "chess", label: "Chess" },
   { id: "ludo", label: "Ludo" }, { id: "trivia", label: "Trivia" }, { id: "memory", label: "Matatu Match" },
-  { id: "snake", label: "Matatu Snake" }, { id: "whack", label: "Whack-a-Matatu" },
+  { id: "pool", label: "Pool" }, { id: "snake", label: "Matatu Snake" }, { id: "whack", label: "Whack-a-Matatu" },
 ];
 const MEDALS = ["#facc15", "#cbd5e1", "#d97706"];
 

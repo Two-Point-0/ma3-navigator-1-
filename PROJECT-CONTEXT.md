@@ -65,3 +65,7 @@ Always run `git fetch origin` and check for new commits before pushing.
 - `/profile` is now one "Account & settings" container with sub-pages: Profile & name, My trips (Trips.tsx), Privacy & terms (Legal.tsx). Wallet section removed from it. Home no longer lists /trips and /legal separately (routes still exist).
 - Journey engine: walking change radius 1.5 km (terminus to terminus), deferred walk states sorted nearest-first, search budget 60000. Added areas Wangige, Langata, Kikuyu, Zambezi, Githurai, Kahawa, Gikomba, Kiserian, Ongata Rongai, Thome, Mwiki. Verified Wangige to Langata/Embakasi/Thika/Karen/Ngong/Kitengela all return matatu + walk + matatu plans.
 - `supabase/seed/demo_flights.sql`: demo flights for Fly. Docs F and G in docs/launch-checklist.md.
+
+## Nov 22 (later)
+- Games: Ludo freeze fixed (DicePopup resets to idle after each roll). Nairobi Tycoon board is portrait and fills the screen. New Pool game (`PoolGame.tsx`, id `pool`; migration 20261122000100 allows the id). Trivia: category + level chips, Kenya questions from Supabase `trivia_questions` (migration 20261122000000, seed supabase/seed/trivia_kenya.sql) with bundled fallback, World categories from Open Trivia DB.
+- Rail: `src/lib/railPath.ts` follows OSM track station by station and bridges track gaps (SGR terminus). Stations only appear when picked. Access/egress legs are drawn; long walks show Book a Ndai / Try a matatu (Ndai reads ?pickup=&dest=).

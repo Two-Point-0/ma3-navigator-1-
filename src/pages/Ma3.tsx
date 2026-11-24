@@ -15,6 +15,8 @@ import { useAuthContext } from "@/context/AuthContext";
 import DemoVehicleLayer, { type DemoLeg } from "@/components/DemoVehicleLayer";
 import ParcelPanel from "@/components/ParcelPanel";
 import { hideSheets, showSheets, useSheet } from "@/lib/useSheet";
+import { fetchWalkPath } from "@/lib/walkRoute";
+import { railPathThrough } from "@/lib/railPath";
 import { setLineLayer, setPointLayer, removeLineLayer, removePointLayer, setRouteLine, setLabelledStops, setStationIcons, fitAboveSheet, LabelledStop } from "@/lib/mapLayers";
 import { classifyMotion, computeTripProgress, MOTION_LABEL, MOTION_TONE, stopsAlongRoute, MotionState } from "@/lib/tripProgress";
 import { MA3_GTFS } from "@/data/ma3_gtfs";
@@ -91,57 +93,6 @@ function shapeBetweenStops(routeId: string, from: StopMatch, to: StopMatch): [nu
   const toIndex = nearestIndex(to);
   const segment = shape.slice(Math.min(fromIndex, toIndex), Math.max(fromIndex, toIndex) + 1);
   return fromIndex <= toIndex ? segment : segment.reverse();
-}
-
-function findRailPath(from: OSMStation, to: OSMStation): [number, number][] {
-  type Edge = { id: string; distance: number };
-  const graph = new Map<string, Edge[]>();
-  const coordinates = new Map<string, [number, number]>();
-  const keyFor = (lon: number, lat: number) => `${lon.toFixed(5)},${lat.toFixed(5)}`;
-  const addEdge = (a: [number, number], b: [number, number]) => {
-    const aId = keyFor(a[0], a[1]), bId = keyFor(b[0], b[1]);
-    coordinates.set(aId, [Number(aId.split(",")[1]), Number(aId.split(",")[0])]);
-    coordinates.set(bId, [Number(bId.split(",")[1]), Number(bId.split(",")[0])]);
-    const distance = haversineKm(a[1], a[0], b[1], b[0]);
-    graph.set(aId, [...(graph.get(aId) ?? []), { id: bId, distance }]);
-    graph.set(bId, [...(graph.get(bId) ?? []), { id: aId, distance }]);
-  };
-  const features = (OSMRailways as any).features as any[];
-  for (const feature of features) {
-    if (feature.properties?.railway !== "rail") continue;
-    const geometry = feature.geometry;
-    const lines = geometry?.type === "LineString" ? [geometry.coordinates] : geometry?.type === "MultiLineString" ? geometry.coordinates : [];
-    for (const line of lines) for (let index = 1; index < line.length; index++) addEdge(line[index - 1], line[index]);
-  }
-  const nearest = (station: OSMStation) => {
-    let id = "", best = Infinity;
-    for (const [candidate, [lat, lon]] of coordinates) {
-      const distance = haversineKm(station.lat, station.lon, lat, lon);
-      if (distance < best) { best = distance; id = candidate; }
-    }
-    return best < 2 ? id : "";
-  };
-  const start = nearest(from), finish = nearest(to);
-  if (!start || !finish) return [];
-  const distances = new Map<string, number>([[start, 0]]), previous = new Map<string, string>();
-  const heap: { id: string; distance: number }[] = [];
-  const push = (item: { id: string; distance: number }) => { heap.push(item); let index = heap.length - 1; while (index > 0) { const parent = (index - 1) >> 1; if (heap[parent].distance <= item.distance) break; heap[index] = heap[parent]; index = parent; } heap[index] = item; };
-  const pop = () => { const first = heap[0], last = heap.pop(); if (heap.length && last) { let index = 0; while (index * 2 + 1 < heap.length) { let child = index * 2 + 1; if (child + 1 < heap.length && heap[child + 1].distance < heap[child].distance) child++; if (heap[child].distance >= last.distance) break; heap[index] = heap[child]; index = child; } heap[index] = last; } return first; };
-  push({ id: start, distance: 0 });
-  while (heap.length) {
-    const current = pop()!;
-    if (current.distance !== distances.get(current.id)) continue;
-    if (current.id === finish) break;
-    for (const edge of graph.get(current.id) ?? []) {
-      const next = current.distance + edge.distance;
-      if (next >= (distances.get(edge.id) ?? Infinity)) continue;
-      distances.set(edge.id, next); previous.set(edge.id, current.id); push({ id: edge.id, distance: next });
-    }
-  }
-  if (!distances.has(finish)) return [];
-  const path = [finish];
-  while (path[0] !== start) { const parent = previous.get(path[0]); if (!parent) return []; path.unshift(parent); }
-  return path.map(id => coordinates.get(id)!).filter(Boolean);
 }
 
 export default function Ma3Page() {
@@ -263,7 +214,18 @@ export default function Ma3Page() {
     return [...routeMatches, ...stopMatches, ...railMatches];
   }, [query, railNet]);
 
+  const paintToken = useRef(0);
+  /** Draw a walk as a straight dashed line now, then swap in the real street path when it arrives. */
+  const paintWalk = (map: maplibregl.Map, id: string, from: [number, number], to: [number, number]) => {
+    setLineLayer(map, id, [from, to], "#94a3b8", 3, 0.95, true);
+    const token = paintToken.current;
+    void fetchWalkPath(from, to).then(path => {
+      if (path && token === paintToken.current && mapInst.current === map) setLineLayer(map, id, path, "#94a3b8", 3, 0.95, true);
+    });
+  };
+
   const clearStatic = useCallback(() => {
+    paintToken.current++;
     const map = mapInst.current;
     if (!map) return;
     staticMarkers.current.forEach(m => m.remove());
@@ -271,7 +233,7 @@ export default function Ma3Page() {
     ROUTES.forEach(r => {
       removeLineLayer(map, `route-${r.id}`);
     });
-    [0, 1, 2, 3, 4, 5, 6, 7].forEach(i => removeLineLayer(map, `journey-leg-${i}`));
+    Array.from({ length: 16 }, (_, i) => i).forEach(i => removeLineLayer(map, `journey-leg-${i}`));
     [0, 1, 2, 3].forEach(i => removeLineLayer(map, `rail-trip-${i}`));
     removePointLayer(map, "rail-trip-stations");
     if (map.getLayer("osm-rail-line")) map.removeLayer("osm-rail-line");
@@ -304,23 +266,40 @@ export default function Ma3Page() {
     frameMap(shape?.length ? shape : pts.map(point => [point.lat, point.lon] as [number, number]));
   }, [clearStatic, frameMap]);
 
+  /** Paint a "get to the station" part of a train trip: walks follow streets, matatu parts follow their route colour. */
+  const paintAccessLegs = (map: maplibregl.Map, option: JourneyOption | null, base: number, points: [number, number][]) => {
+    option?.legs.forEach((leg, i) => {
+      const id = `journey-leg-${base + i}`;
+      if (leg.type === "walk") { const line: [number, number][] = [[leg.fromStop.lat, leg.fromStop.lon], [leg.toStop.lat, leg.toStop.lon]]; paintWalk(map, id, line[0], line[1]); points.push(...line); return; }
+      if (!leg.routeId) return;
+      const segment = shapeBetweenStops(leg.routeId, leg.fromStop, leg.toStop);
+      if (segment.length > 1) { setRouteLine(map, id, segment, leg.routeColor ?? "#d97706", 5, 0.95); points.push(...segment); }
+    });
+  };
+
   const drawRail = useCallback((map: maplibregl.Map, trip?: RailTrip, from?: Place | null, to?: Place | null) => {
     clearStatic();
     if (!trip) {
-      setStationIcons(map, "rail-stations-all", railNet.stations.map(station => ({ id: station.id, lat: station.lat, lon: station.lon, name: station.name, color: "#d97706" })));
+      // Only the stations the person has picked or searched for. The rest stay off the map.
+      const picked = [from, to].filter((place): place is Place => Boolean(place?.stationId));
+      if (picked.length) {
+        setStationIcons(map, "rail-stations-all", picked.map(place => ({ id: place.stationId!, lat: place.lat, lon: place.lon, name: place.name.replace(/ station$/, ""), color: "#d97706" })));
+        frameMap(picked.map(place => [place.lat, place.lon] as [number, number]));
+      }
       return;
     }
     const points: [number, number][] = [];
     const stationPins: { id: string; lat: number; lon: number; name: string; color: string }[] = [];
     trip.rail.legs.forEach((leg, index) => {
-      let path = findRailPath(leg.from, leg.to);
-      if (path.length < 2) path = leg.stations.map(station => [station.lat, station.lon] as [number, number]);
+      const path = railPathThrough(leg.stations);
       setLineLayer(map, `rail-trip-${index}`, path, leg.line.color, 5, .96); points.push(...path);
       leg.stations.forEach(station => stationPins.push({ id: `${leg.line.id}-${station.id}`, lat: station.lat, lon: station.lon, name: station.name, color: leg.line.color }));
     });
     setStationIcons(map, "rail-trip-stations", stationPins);
-    if (from) { const line: [number, number][] = [[from.lat, from.lon], [trip.board.lat, trip.board.lon]]; setLineLayer(map, "journey-leg-0", line, "#94a3b8", 3, .95, true); points.push(...line); }
-    if (to) { const line: [number, number][] = [[trip.alight.lat, trip.alight.lon], [to.lat, to.lon]]; setLineLayer(map, "journey-leg-1", line, "#94a3b8", 3, .95, true); points.push(...line); }
+    if (trip.access) paintAccessLegs(map, trip.access, 0, points);
+    else if (from && !(from.stationId && from.stationId === trip.board.id)) { const line: [number, number][] = [[from.lat, from.lon], [trip.board.lat, trip.board.lon]]; paintWalk(map, "journey-leg-0", line[0], line[1]); points.push(...line); }
+    if (trip.egress) paintAccessLegs(map, trip.egress, 8, points);
+    else if (to && !(to.stationId && to.stationId === trip.alight.id)) { const line: [number, number][] = [[trip.alight.lat, trip.alight.lon], [to.lat, to.lon]]; paintWalk(map, "journey-leg-8", line[0], line[1]); points.push(...line); }
     if (from && to) setPointLayer(map, "planner-pts", [{ id: "from", lat: from.lat, lon: from.lon, color: "#16a34a", radius: 10 }, { id: "to", lat: to.lat, lon: to.lon, color: "#dc2626", radius: 10 }], 10);
     frameMap(points);
   }, [clearStatic, railNet, frameMap]);
@@ -585,7 +564,7 @@ export default function Ma3Page() {
     opts[0]?.legs.forEach((leg, i) => {
       if (leg.type === "walk") {
         const line: [number, number][] = [[leg.fromStop.lat, leg.fromStop.lon], [leg.toStop.lat, leg.toStop.lon]];
-        setLineLayer(map, `journey-leg-${i}`, line, "#94a3b8", 3, 0.95, true); allPoints.push(...line);
+        paintWalk(map, `journey-leg-${i}`, line[0], line[1]); allPoints.push(...line);
         return;
       }
       if (!leg.routeId) return;
@@ -1101,6 +1080,17 @@ export default function Ma3Page() {
 
               {railTrips && <div id="rail-results" />}
               {railTrips && railTrips.map((trip, index) => {
+                const walkOnlyKm = (option: JourneyOption | null) => option && option.legs.every(leg => leg.type === "walk") ? option.totalDistanceKm : 0;
+                const longWalk = (option: JourneyOption | null) => walkOnlyKm(option) > 1.2;
+                const goNdai = (pickup: string, dest: string) => setLocation(`/ndai?pickup=${encodeURIComponent(pickup)}&dest=${encodeURIComponent(dest)}`);
+                const connectRow = (label: string, option: JourneyOption | null, pickup: Place | null, dest: Place | null) => option && longWalk(option) ? (
+                  <div style={{ ...stepStyle, flexDirection: "column", alignItems: "stretch", gap: 6, background: "rgba(217,119,6,.08)" }}>
+                    <span style={{ color: "var(--ready)" }}>{label} is a long walk ({option.totalDistanceKm.toFixed(1)} km) and no matatu was found for it.</span>
+                    <div style={{ display: "flex", gap: 6 }}>
+                      <button className="btn btn-ghost" style={{ flex: 1, padding: 7, fontSize: ".66rem", justifyContent: "center" }} onClick={e => { e.stopPropagation(); goNdai(pickup?.name ?? "", dest?.name ?? ""); }}>Book a Ndai</button>
+                      <button className="btn btn-ghost" style={{ flex: 1, padding: 7, fontSize: ".66rem", justifyContent: "center" }} onClick={e => { e.stopPropagation(); if (pickup && dest) { setFromVal(pickup.name); setToVal(dest.name); setFromPlace(pickup); setToPlace(dest); runPlaces(pickup, dest); } }}>Try a matatu</button>
+                    </div>
+                  </div>) : null;
                 const describe = (option: JourneyOption | null) => option ? option.legs.map(leg => leg.type === "walk" ? `Walk ${leg.etaMin} min` : `Matatu ${leg.routeShortName} (${leg.fromStop.name} to ${leg.toStop.name})`).join(" › ") : "";
                 const stepStyle = { display: "flex", gap: 8, alignItems: "flex-start", padding: "6px 8px", background: "rgba(0,0,0,.3)", borderRadius: 8, marginBottom: 4, fontSize: ".64rem", color: "var(--muted2)", lineHeight: 1.4 } as const;
                 return (
@@ -1111,6 +1101,7 @@ export default function Ma3Page() {
                       <span style={{ fontFamily: "var(--font-mono)", fontSize: ".8rem", fontWeight: 700 }}>~{trip.totalMin >= 60 ? `${Math.floor(trip.totalMin / 60)}h ${trip.totalMin % 60}m` : `${trip.totalMin}m`} · ~KES {trip.totalFare}</span>
                     </div>
                     {trip.access && <div style={stepStyle}><Footprints size={11} style={{ marginTop: 2, flexShrink: 0 }} /><span><strong style={{ color: "var(--white)" }}>Get to {trip.board.name} station</strong> · {describe(trip.access)} · ~{trip.access.totalEtaMin} min</span></div>}
+                    {connectRow("Getting to the station", trip.access, railFromPlace ?? null, stationToPlace(trip.board))}
                     {trip.rail.legs.map((leg, legIndex) => (
                       <div key={legIndex}>
                         {legIndex > 0 && <div style={{ ...stepStyle, background: "rgba(217,119,6,.08)", color: "var(--ready)" }}><ArrowRight size={11} style={{ marginTop: 2, flexShrink: 0 }} /><span>Change trains at {leg.from.name}</span></div>}
@@ -1121,6 +1112,7 @@ export default function Ma3Page() {
                       </div>
                     ))}
                     {trip.egress && <div style={stepStyle}><Footprints size={11} style={{ marginTop: 2, flexShrink: 0 }} /><span><strong style={{ color: "var(--white)" }}>From {trip.alight.name} station to your stop</strong> · {describe(trip.egress)} · ~{trip.egress.totalEtaMin} min</span></div>}
+                    {connectRow("The last stretch", trip.egress, stationToPlace(trip.alight), railToPlace ?? null)}
                   </motion.div>
                 );
               })}
