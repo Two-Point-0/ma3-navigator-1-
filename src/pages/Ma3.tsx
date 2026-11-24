@@ -17,6 +17,7 @@ import ParcelPanel from "@/components/ParcelPanel";
 import { hideSheets, showSheets, useSheet } from "@/lib/useSheet";
 import { fetchWalkPath } from "@/lib/walkRoute";
 import { railPathThrough } from "@/lib/railPath";
+import { animateRoute } from "@/lib/routeAnim";
 import { setLineLayer, setPointLayer, removeLineLayer, removePointLayer, setRouteLine, setLabelledStops, setStationIcons, fitAboveSheet, LabelledStop } from "@/lib/mapLayers";
 import { classifyMotion, computeTripProgress, MOTION_LABEL, MOTION_TONE, stopsAlongRoute, MotionState } from "@/lib/tripProgress";
 import { MA3_GTFS } from "@/data/ma3_gtfs";
@@ -224,8 +225,11 @@ export default function Ma3Page() {
     });
   };
 
+  const railAnim = useRef<(() => void)[]>([]);
   const clearStatic = useCallback(() => {
     paintToken.current++;
+    railAnim.current.forEach(stop => stop());
+    railAnim.current = [];
     const map = mapInst.current;
     if (!map) return;
     staticMarkers.current.forEach(m => m.remove());
@@ -293,6 +297,7 @@ export default function Ma3Page() {
     trip.rail.legs.forEach((leg, index) => {
       const path = railPathThrough(leg.stations);
       setLineLayer(map, `rail-trip-${index}`, path, leg.line.color, 5, .96); points.push(...path);
+      railAnim.current.push(animateRoute(map, `rail-anim-${index}`, path.map(([lat, lon]) => [lon, lat] as [number, number]), { color: leg.line.color, kind: "train", dashes: false, seconds: Math.max(6, Math.min(16, path.length / 30)) }));
       leg.stations.forEach(station => stationPins.push({ id: `${leg.line.id}-${station.id}`, lat: station.lat, lon: station.lon, name: station.name, color: leg.line.color }));
     });
     setStationIcons(map, "rail-trip-stations", stationPins);

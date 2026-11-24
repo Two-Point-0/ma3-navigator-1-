@@ -7,6 +7,8 @@ import PageTabs from "@/components/PageTabs";
 import { useSheet } from "@/lib/useSheet";
 import { removeLineLayer, removePointLayer, setLineLayer, setPointLayer } from "@/lib/mapLayers";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
+import { flightArc } from "@/lib/arc";
+import { animateRoute } from "@/lib/routeAnim";
 
 type FlyTab = "domestic" | "international" | "sgr";
 type Coordinate = [number, number];
@@ -162,7 +164,15 @@ export default function FlyPage() {
     removePointLayer(map, "fly-tourist-destination");
     const geometry = tab === "sgr" ? sgrRoute?.geometry : selectedFlight?.geometry;
     const lines = tab === "sgr" ? railSegment(geometry, selectedSgrOrigin, selectedSgrDestination) : geometryLines(geometry).filter(line => line.length > 1);
-    lines.forEach((line, index) => setLineLayer(map, `fly-track-${index}`, line.map(([lon, lat]) => [lat, lon]), tab === "sgr" ? "#d97706" : "#16a34a", 4, 0.95));
+    // Flights: a curved great-circle arc between the two airports. Trains: the real track, never curved.
+    const paths: Coordinate[][] = tab === "sgr" ? lines : lines.map(line => flightArc(line[0], line[line.length - 1]));
+    const stops = paths.map((path, index) => animateRoute(map, `fly-anim-${index}`, path, tab === "sgr"
+      ? { color: "#d97706", kind: "train", seconds: Math.max(8, Math.min(18, path.length / 40)) }
+      : { color: "#16a34a", kind: "plane", seconds: 7 }));
+    if (tab !== "sgr" && lines.length) {
+      const first = lines[0][0], last = lines[0][lines[0].length - 1];
+      setPointLayer(map, "fly-stations", [{ id: "from", lat: first[1], lon: first[0], color: "#16a34a", radius: 6 }, { id: "to", lat: last[1], lon: last[0], color: "#dc2626", radius: 6 }], 6);
+    }
     if (tab === "sgr" && sgrRoute) {
       const originSequence = selectedSgrOrigin?.sequence_number ?? -Infinity;
       const destinationSequence = selectedSgrDestination?.sequence_number ?? Infinity;
@@ -172,11 +182,12 @@ export default function FlyPage() {
       setPointLayer(map, "fly-stations", points, 5);
     }
     if (touristDestination) setPointLayer(map, "fly-tourist-destination", [{ id: "explore-destination", lat: touristDestination.lat, lon: touristDestination.lon, color: "#dc2626", radius: 8 }], 8);
-    const points = lines.flat();
+    const points = paths.flat();
     if (points.length && mapRef.current) {
       const lons = points.map(point => point[0]), lats = points.map(point => point[1]);
       mapRef.current.fitBounds([[Math.min(...lons), Math.min(...lats)], [Math.max(...lons), Math.max(...lats)]], 72);
     }
+    return () => stops.forEach(stop => stop());
   }, [map, tab, sgrRoute, sgrStations, selectedFlight, touristDestination, selectedSgrOrigin, selectedSgrDestination, sgrOriginId, sgrDestinationId]);
 
 

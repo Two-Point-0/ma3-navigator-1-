@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 import { useAuthContext } from "@/context/AuthContext";
 import { MA3_GTFS } from "@/data/ma3_gtfs";
+import { vehicleElement } from "@/lib/vehicleIcons";
 
 /** One matatu the rider is going to use. With no from/to, vehicles in BOTH directions are shown. */
 export interface DemoLeg { routeId: string; fromId?: string; toId?: string; fromName?: string }
@@ -152,12 +153,8 @@ export default function DemoVehicleLayer({ map, legs, onStatus }: Props) {
     shown.forEach(v => {
       if (live.has(v.id)) return;
       const route = ROUTES.get(v.route_id);
-      const el = document.createElement("div");
       const arrow = v.direction === "forward" ? "▶" : "◀";
-      el.textContent = `${route?.sn ?? ""} ${arrow}`;
-      el.setAttribute("role", "img");
-      el.setAttribute("aria-label", `Demo matatu ${v.plate}`);
-      el.style.cssText = `background:${route?.c ?? "#d97706"};color:#fff;border:2px dashed #fde68a;border-radius:99px;padding:4px 8px;font:800 10px system-ui;box-shadow:0 2px 10px #000a;white-space:nowrap;cursor:pointer`;
+      const el = vehicleElement("matatu", { badge: `${route?.sn ?? ""} ${arrow}`, label: `Demo matatu ${v.plate}` });
       const pos = positionOf(v, Date.now()) ?? [0, 0];
       const marker = new maplibregl.Marker({ element: el, anchor: "center" }).setLngLat([pos[1], pos[0]]).addTo(map);
       el.addEventListener("click", ev => { ev.stopPropagation(); const p = positionOf(v, Date.now()); if (p) openCard(v, [p[1], p[0]]); });
