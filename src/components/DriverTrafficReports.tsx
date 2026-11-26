@@ -88,12 +88,12 @@ export default function DriverTrafficReports({ routeId, routeName }: { routeId: 
     setChecking(true);
     if (loading) return () => { active = false; };
     if (!isSupabaseConfigured || !supabase) {
-      setAccessMessage("Traffic reporting is ready after Supabase is connected and the traffic-report migration is applied.");
+      setAccessMessage("Traffic reports are not available yet.");
       setChecking(false);
       return () => { active = false; };
     }
     if (!user) {
-      setAccessMessage("Sign in with a verified driver account approved for this route to report or view traffic issues.");
+      setAccessMessage("Sign in as an approved driver to report or view traffic.");
       setChecking(false);
       return () => { active = false; };
     }
@@ -109,8 +109,8 @@ export default function DriverTrafficReports({ routeId, routeName }: { routeId: 
         if (error) setAccessMessage("Could not check route approval. Confirm Supabase migrations and sign-in, then retry.");
         else if (data?.status === "approved" && (data.route_ids as string[] | null)?.includes(routeId)) {
           setCanReport(true);
-          setAccessMessage("Only verified drivers approved for this route can create or view reports. Reports expire automatically from the live map.");
-        } else setAccessMessage("This account is not approved for the selected route. Ask the project administrator to approve the driver and route first.");
+          setAccessMessage("Only approved drivers on this route can report. Reports expire automatically.");
+        } else setAccessMessage("This account is not approved for this route.");
         setChecking(false);
       });
     return () => { active = false; };
@@ -205,7 +205,7 @@ export default function DriverTrafficReports({ routeId, routeName }: { routeId: 
     setPendingPoint(null);
     setNote("");
     setPlaceMode(true);
-    setAccessMessage("Tap directly on the highlighted route line to place the report. Submit only when safely stopped.");
+    setAccessMessage("Tap the route line to place the report. Only report when stopped.");
   };
 
   const submitReport = async () => {
@@ -269,7 +269,7 @@ export default function DriverTrafficReports({ routeId, routeName }: { routeId: 
     </div>}
 
     {accessMessage && <p role="status" style={{ margin: "9px 0 0", fontSize: ".63rem", lineHeight: 1.5, color: accessMessage.includes("not approved") || accessMessage.includes("Could not") ? "var(--ready)" : "var(--muted2)" }}>{checking ? "Checking driver approval…" : accessMessage}</p>}
-    {!canReport && !checking && <p style={{ margin: "5px 0 0", fontSize: ".58rem", lineHeight: 1.45, color: "var(--muted)" }}>Reports are private to verified, route-approved drivers; passenger accounts cannot read the report map.</p>}
+    {!canReport && !checking && <p style={{ margin: "5px 0 0", fontSize: ".58rem", lineHeight: 1.45, color: "var(--muted)" }}>Reports are visible to approved drivers only.</p>}
 
     {canReport && <div style={{ marginTop: 12 }}>
       <div style={{ display: "flex", gap: 6, alignItems: "center", marginBottom: 7 }}><Clock3 size={13} style={{ color: "var(--ready)" }} /><p className="sec-label" style={{ margin: 0, flex: 1 }}>Current route reports</p><span style={{ fontSize: ".58rem", color: "var(--muted2)" }}>Live · expires by type</span></div>
@@ -285,6 +285,6 @@ export default function DriverTrafficReports({ routeId, routeName }: { routeId: 
         })}
       </div>}
     </div>}
-    <div style={{ display: "flex", alignItems: "flex-start", gap: 6, marginTop: 10, color: "var(--muted)", fontSize: ".57rem", lineHeight: 1.45 }}><AlertTriangle size={13} style={{ color: "var(--ready)", flexShrink: 0 }} /><span>Reports are driver-submitted, not verified emergency alerts. Avoid names, number plates and sensitive personal details. For immediate danger, use local emergency services and follow official road instructions.</span></div>
+    <div style={{ display: "flex", alignItems: "flex-start", gap: 6, marginTop: 10, color: "var(--muted)", fontSize: ".57rem", lineHeight: 1.45 }}><AlertTriangle size={13} style={{ color: "var(--ready)", flexShrink: 0 }} /><span>Driver reports, not emergency alerts. For danger, call emergency services.</span></div>
   </section>;
 }

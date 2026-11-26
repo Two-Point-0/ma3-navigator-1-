@@ -62,7 +62,7 @@ export default function DriverPage() {
         if (error) throw error;
         if (cancelled) return;
         setWaitingCounts(Object.fromEntries((data ?? []).map((row: { stop_id: string; waiting_count: number; walking_count: number }) => [row.stop_id, { waiting: Number(row.waiting_count), walking: Number(row.walking_count) }])));
-        setDemandStatus("Verified, route-approved driver view · anonymous counts only · refreshed every 15 seconds · walking status expires after 10 minutes");
+        setDemandStatus("Approved driver view · counts only · updates every 15 seconds");
       } catch (error) {
         if (!cancelled) { setWaitingCounts({}); setDemandStatus(error instanceof Error ? error.message : "Could not load pickup counts."); }
       }
@@ -83,7 +83,7 @@ export default function DriverPage() {
     <div className="card" style={{ padding: 20, borderLeft: "3px solid var(--stop)" }}>
       <p className="sec-label">Passenger workspace</p>
       <h1 style={{ fontSize: "1.25rem" }}>Driver operations are not enabled</h1>
-      <p style={{ color: "var(--muted2)", fontSize: ".8rem", lineHeight: 1.5 }}>Passenger accounts can still opt in to location sharing with a paired account. Driver broadcasts are available only in the approved driver workspace.</p>
+      <p style={{ color: "var(--muted2)", fontSize: ".8rem", lineHeight: 1.5 }}>Riders can share location with a paired account. Driver tools are for approved drivers.</p>
       <Link href="/location-share"><button className="btn btn-go">Open location sharing</button></Link>
     </div>
   </div>;
@@ -106,13 +106,13 @@ export default function DriverPage() {
       {checkItems.map(([key, label]) => <label key={key} style={{ display: "flex", alignItems: "flex-start", gap: 9, textTransform: "none", letterSpacing: 0, fontSize: ".72rem", marginBottom: 9, color: "var(--muted2)" }}>
         <input type="checkbox" checked={checks[key]} onChange={event => setChecks(previous => ({ ...previous, [key]: event.target.checked }))} />{label}
       </label>)}
-      <p style={{ margin: "8px 0 0", fontSize: ".6rem", lineHeight: 1.5, color: "var(--muted)" }}>These checkboxes do not verify documents. Public driver approval must be performed by an authorised reviewer in Supabase.</p>
+      <p style={{ margin: "8px 0 0", fontSize: ".6rem", lineHeight: 1.5, color: "var(--muted)" }}>Ticking does not verify documents. An admin approves drivers.</p>
     </section>
 
     <section id="driver-vehicle" className="card" style={{ padding: 18, marginTop: 12, scrollMarginTop: 16 }}>
       <p className="sec-label">Operating details</p>
       <div style={{ display: "flex", gap: 9, alignItems: "center" }}>{vehicleIcon}<div><b style={{ fontSize: ".78rem" }}>{driverType === "matatu-driver" ? "Matatu route" : "Carpool trip"}</b><p style={{ color: "var(--muted2)", fontSize: ".68rem", marginTop: 4 }}>{selectedRoute ? `${selectedRoute.sn} · ${selectedRoute.ln}` : "Select an approved route in Live driver availability above"}</p></div></div>
-      <p style={{ color: "var(--muted2)", fontSize: ".64rem", lineHeight: 1.5, marginTop: 10 }}>The same approved route and seat count are used by the live rider map and route pickup-demand panel.</p>
+      <p style={{ color: "var(--muted2)", fontSize: ".64rem", lineHeight: 1.5, marginTop: 10 }}>The same route and seat count show on the rider map.</p>
     </section>
 
     {driverType === "matatu-driver" && <section className="ios-glass" style={{ padding: 16, marginTop: 12 }}>
@@ -127,7 +127,7 @@ export default function DriverPage() {
     {driverType === "matatu-driver" && <DriverParcelInbox />}
 
     <section id="driver-safety" className="card" style={{ padding: 18, marginTop: 12, borderLeft: "3px solid var(--ready)", scrollMarginTop: 16 }}>
-      <div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}><AlertTriangle size={16} style={{ color: "var(--ready)" }} /><p style={{ color: "var(--muted2)", fontSize: ".72rem", lineHeight: 1.55, margin: 0 }}>Insurance, licensing, inspection and privacy checks are legal launch requirements where the operating model makes Ma3 a passenger-transport or transport-network service. Cost-sharing limits do not replace those requirements.</p></div>
+      <div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}><AlertTriangle size={16} style={{ color: "var(--ready)" }} /><p style={{ color: "var(--muted2)", fontSize: ".72rem", lineHeight: 1.55, margin: 0 }}>Insurance, licence and inspection rules apply. Cost-sharing does not replace them.</p></div>
     </section>
   </div>;
 }

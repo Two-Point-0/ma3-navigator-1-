@@ -417,3 +417,11 @@ html.map-locked, html.map-locked body { overflow: hidden; height: 100%; overscro
 .mw-svg.ok .mw-body, .mw-svg.ok .l-g { animation: mw-strip .3s ease-in-out 7; filter: drop-shadow(0 0 7px var(--go)); }
 .mw-svg.fail .mw-body, .mw-svg.fail .l-g { stroke: var(--stop); animation: mw-strip .22s ease-in-out 9; filter: drop-shadow(0 0 7px var(--stop)); }
 @keyframes mw-strip { 0%,100% { stroke-width: 2.4; opacity: 1; } 50% { stroke-width: 4.2; opacity: .55; } }
+
+/* Map pop-ups: dark card with light text so they are always readable */
+.maplibregl-popup-content{background:#0b1530;color:#f8fafc;border:1px solid #ffffff33;border-radius:12px;box-shadow:0 6px 22px #000a;padding:10px 12px}
+.maplibregl-popup-close-button{color:#cbd5e1;font-size:18px}
+.maplibregl-popup-anchor-top .maplibregl-popup-tip{border-bottom-color:#0b1530}
+.maplibregl-popup-anchor-bottom .maplibregl-popup-tip{border-top-color:#0b1530}
+.maplibregl-popup-anchor-left .maplibregl-popup-tip{border-right-color:#0b1530}
+.maplibregl-popup-anchor-right .maplibregl-popup-tip{border-left-color:#0b1530}

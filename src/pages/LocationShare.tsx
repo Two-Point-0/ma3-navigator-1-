@@ -204,7 +204,7 @@ export default function LocationSharePage() {
     {!isSupabaseConfigured && <div className="card" style={{ padding: 14, marginBottom: 12, borderLeft: "3px solid var(--ready)" }}><b>Backend setup needed</b><p style={{ margin: "6px 0 0", color: "var(--muted2)", fontSize: ".72rem", lineHeight: 1.5 }}>This feature uses Supabase Auth, Realtime and the migration <code>20261107_private_location_sharing.sql</code>. It does not fall back to demo or local-storage coordinates.</p></div>}
 
     {!user && <div className="card" style={{ padding: 16, marginBottom: 12 }}>
-      <p style={{ margin: "0 0 10px", color: "var(--muted2)", fontSize: ".76rem", lineHeight: 1.55 }}>Sign in on both phones with separate Supabase accounts before pairing. For a quick sandbox check you can use guest accounts; verify OTP later if testing the phone-number sign-in flow.</p>
+      <p style={{ margin: "0 0 10px", color: "var(--muted2)", fontSize: ".76rem", lineHeight: 1.55 }}>Sign in on both phones before pairing.</p>
       <Link href="/login"><button className="btn btn-ready">Sign in or create guest account</button></Link>
     </div>}
 
@@ -220,13 +220,13 @@ export default function LocationSharePage() {
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,250px),1fr))", gap: 12 }}>
         <div className="ios-glass" style={{ padding: 14 }}>
           <h2 style={{ fontSize: ".9rem", margin: "0 0 6px" }}>On the first phone</h2>
-          <p style={{ margin: "0 0 12px", color: "var(--muted2)", fontSize: ".68rem", lineHeight: 1.5 }}>Create a one-time code, then send it privately to the other phone. Anyone holding it can request a pair during its 15-minute lifetime.</p>
+          <p style={{ margin: "0 0 12px", color: "var(--muted2)", fontSize: ".68rem", lineHeight: 1.5 }}>Create a code and send it privately to the other phone. It lasts 15 minutes.</p>
           <button className="btn btn-ready" type="button" disabled={!user || !isSupabaseConfigured || busy} onClick={() => void createInvite()}><Link2 size={14} />{busy ? "Working…" : "Create pairing code"}</button>
           {invite && <div style={{ marginTop: 12 }}><label htmlFor="location-invite-code">One-time code · expires in 15 minutes</label><div style={{ display: "flex", gap: 6 }}><input id="location-invite-code" className="finput" readOnly value={invite} style={{ fontFamily: "var(--font-mono)", fontSize: ".68rem" }} /><button className="btn btn-go" type="button" onClick={() => void copyInvite()} aria-label="Copy pairing code"><Copy size={15} /></button></div></div>}
         </div>
         <div className="ios-glass" style={{ padding: 14 }}>
           <h2 style={{ fontSize: ".9rem", margin: "0 0 6px" }}>On the second phone</h2>
-          <p style={{ margin: "0 0 12px", color: "var(--muted2)", fontSize: ".68rem", lineHeight: 1.5 }}>Sign in as the second account, paste the code from the first phone, and accept. Pairing alone does not start location sharing.</p>
+          <p style={{ margin: "0 0 12px", color: "var(--muted2)", fontSize: ".68rem", lineHeight: 1.5 }}>On the second phone, paste the code and accept. Pairing does not start sharing.</p>
           <label htmlFor="location-invite-input">Paste pairing code</label>
           <input id="location-invite-input" className="finput" autoComplete="off" spellCheck={false} value={inviteInput} onChange={event => setInviteInput(event.target.value)} placeholder="48-character code" />
           <button className="btn btn-go" type="button" disabled={!user || !isSupabaseConfigured || busy || inviteInput.trim().length !== 48} style={{ marginTop: 9 }} onClick={() => void acceptInvite()}><Check size={14} />Accept and pair</button>
@@ -243,14 +243,14 @@ export default function LocationSharePage() {
               <button className="btn btn-stop" type="button" disabled={busy} onClick={() => void revokePair(peerId)}>Disconnect</button>
             </div>;
           })}</div>}
-        <p style={{ color: "var(--muted)", fontSize: ".6rem", lineHeight: 1.45 }}>Account IDs are shown in shortened form; phone numbers are not exposed by this feature. Anyone you pair with can see your precise current position while you are sharing.</p>
+        <p style={{ color: "var(--muted)", fontSize: ".6rem", lineHeight: 1.45 }}>Anyone you pair with sees your exact position while you share.</p>
       </div>
     </section>}
 
     {activeTab === "share" && <section className="card" style={{ padding: 16 }}>
       <p className="sec-label">Step 2 · Choose on this phone</p>
       <h2 style={{ fontSize: "1rem", margin: "0 0 6px" }}>Your location sharing</h2>
-      <p style={{ color: "var(--muted2)", fontSize: ".72rem", lineHeight: 1.5, margin: "0 0 14px" }}>GPS permission is requested only after you press Start. While enabled, this page sends the latest phone location to Supabase about every 10 seconds; stopping or leaving the page clears your row. Keep this tab open while testing.</p>
+      <p style={{ color: "var(--muted2)", fontSize: ".72rem", lineHeight: 1.5, margin: "0 0 14px" }}>Location is requested only when you press Start. It updates about every 10 seconds and clears when you stop.</p>
       {sharing
         ? <button className="btn btn-stop" type="button" style={{ width: "100%" }} onClick={() => setSharing(false)}><Power size={15} />Stop sharing this phone</button>
         : <button className="btn btn-go" type="button" style={{ width: "100%" }} disabled={!user || !isSupabaseConfigured || pairedIds.length === 0} onClick={startSharing}><Power size={15} />Start sharing this phone</button>}

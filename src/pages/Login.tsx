@@ -93,14 +93,14 @@ export default function LoginPage() {
               <button className="btn btn-ready" type="submit" disabled={verifyingOtp}>{verifyingOtp ? "Verifying…" : "Verify and sign in"}</button>
               <button type="button" className="btn btn-ghost" onClick={() => { setSentPhone(""); setOtpValue(""); }}>Change number</button>
             </form>}
-            <p style={{ display: "flex", gap: 6, margin: "10px 0 0", fontSize: ".58rem", lineHeight: 1.45, color: "var(--muted)" }}><ShieldCheck size={13} style={{ flexShrink: 0 }} />Phone OTP works after an SMS provider is configured in Supabase. SMS provider charges may apply.</p>
+            <p style={{ display: "flex", gap: 6, margin: "10px 0 0", fontSize: ".58rem", lineHeight: 1.45, color: "var(--muted)" }}><ShieldCheck size={13} style={{ flexShrink: 0 }} />Phone login needs SMS set up. Charges may apply.</p>
           </div>
         </div>}
 
         {panel === "guest" && <button onClick={handleGuest} style={{ width: "100%", padding: "12px 20px", borderRadius: 12, background: "var(--glass2)", border: "1px solid var(--border2)", color: "var(--white)", fontFamily: "var(--font)", fontWeight: 700, fontSize: ".82rem", cursor: "pointer" }}>Continue as Guest</button>}
-        {panel === "about" && <div className="card" style={{ padding: 16, textAlign: "left" }}><p style={{ fontSize: ".75rem", fontWeight: 700, marginBottom: 6 }}>What each option does</p><p style={{ fontSize: ".64rem", color: "var(--muted2)", lineHeight: 1.6 }}>Use phone verification on both test phones so the driver and passenger have separate verified accounts. Guest mode is for browsing. The wallet remains a prototype until M-Pesa sandbox credentials are configured and tested.</p></div>}
+        {panel === "about" && <div className="card" style={{ padding: 16, textAlign: "left" }}><p style={{ fontSize: ".75rem", fontWeight: 700, marginBottom: 6 }}>What each option does</p><p style={{ fontSize: ".64rem", color: "var(--muted2)", lineHeight: 1.6 }}>Use phone login for separate driver and rider accounts. Guest mode is for browsing only.</p></div>}
 
-        <p style={{ fontSize: ".62rem", color: "var(--muted)", marginTop: "1.5rem", lineHeight: 1.6 }}>No sign-in option charges money. Phone SMS delivery depends on your configured provider and its terms.</p>
+        <p style={{ fontSize: ".62rem", color: "var(--muted)", marginTop: "1.5rem", lineHeight: 1.6 }}>Signing in is free. SMS charges may apply.</p>
       </motion.div>
     </div>
   );

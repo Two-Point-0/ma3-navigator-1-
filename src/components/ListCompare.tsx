@@ -190,7 +190,7 @@ export default function ListCompare({ userLocation, requestLocation, locating, o
         <button className={`btn ${!ignoreDistance ? "btn-ready" : "btn-ghost"}`} style={{ padding: "6px 10px", fontSize: ".6rem" }} onClick={() => { setIgnoreDistance(false); if (!userLocation) requestLocation(); }} disabled={locating}><LocateFixed size={11} /> {locating ? "Finding you…" : "Nearest to me"}</button>
       </div>
       <p className="sec-label">{complete.length ? `3 best stores for your whole list${!ignoreDistance && userLocation ? " (nearest)" : ""}` : "No single store has everything"}</p>
-      {!complete.length && <p style={{ color: "var(--muted2)", fontSize: ".61rem", lineHeight: 1.45 }}>No one branch has a price for every item. These are the closest matches; the items marked missing are not priced there. Try swapping an item below.</p>}
+      {!complete.length && <p style={{ color: "var(--muted2)", fontSize: ".61rem", lineHeight: 1.45 }}>No branch prices every item. These are the closest. Try swapping an item.</p>}
       {ranked.map((option, index) => {
         const reasons = index === 0 || option.complete ? why(option) : [];
         const open = openKey === option.key;
@@ -223,7 +223,7 @@ export default function ListCompare({ userLocation, requestLocation, locating, o
       </div>)}</div>
     </>}
     {!!notFound.length && <p style={{ color: "var(--ready)", fontSize: ".6rem", marginTop: 9, lineHeight: 1.45 }}>Not found in the catalogue, so left out: {notFound.join(", ")}.</p>}
-    <p style={{ color: "var(--muted2)", fontSize: ".55rem", lineHeight: 1.45, marginTop: 10 }}>Prices are the latest observations we hold, not live shelf prices or stock. Distances are straight-line.</p>
+    <p style={{ color: "var(--muted2)", fontSize: ".55rem", lineHeight: 1.45, marginTop: 10 }}>Prices are recent observations, not live shelf prices.</p>
   </div>;
 }
 

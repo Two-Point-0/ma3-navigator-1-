@@ -113,7 +113,7 @@ export default function ParcelPanel({ routes, routeStops, stops, onRoutePicked }
     <div>
       <div className="ios-glass" style={{ padding: 10, marginBottom: 10 }}>
         <p style={{ fontSize: ".67rem", fontWeight: 700, color: "var(--ready)" }}>Send a parcel on a matatu route</p>
-        <p style={{ marginTop: 4, fontSize: ".59rem", color: "var(--muted2)", lineHeight: 1.45 }}>Choose a route and two stops. Requests are shared with approved drivers on that route; no payment is taken here. Share the receiver code privately with the recipient.</p>
+        <p style={{ marginTop: 4, fontSize: ".59rem", color: "var(--muted2)", lineHeight: 1.45 }}>Pick a route and two stops. No payment here. Share the receiver code privately.</p>
       </div>
 
       <label>Route

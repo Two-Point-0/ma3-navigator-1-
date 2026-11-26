@@ -9,6 +9,9 @@ import { removeLineLayer, removePointLayer, setLineLayer, setPointLayer } from "
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 import { flightArc } from "@/lib/arc";
 import { animateRoute } from "@/lib/routeAnim";
+import { sightsAlongPath } from "@/data/sights";
+import { SGR_FALLBACK } from "@/data/sgrFallback";
+import { useLocation } from "wouter";
 
 type FlyTab = "domestic" | "international" | "sgr";
 type Coordinate = [number, number];
@@ -69,6 +72,7 @@ function displayAirport(value: string) { return AIRPORTS.find(item => item.code 
 function airportCode(value: string) { const match = value.match(/\(([A-Z0-9]{3})\)/i); return match?.[1]?.toUpperCase() ?? AIRPORTS.find(item => item.name.toLowerCase() === value.toLowerCase())?.code ?? value.trim().toUpperCase(); }
 
 export default function FlyPage() {
+  const [, setLocation] = useLocation();
   const mapRef = useRef<MapLibreHandle>(null);
 
   const [map, setMap] = useState<maplibregl.Map | null>(null);
@@ -101,7 +105,7 @@ export default function FlyPage() {
       const value = JSON.parse(raw) as { name?: string; lat?: number; lon?: number };
       if (!value.name || !Number.isFinite(value.lat) || !Number.isFinite(value.lon)) return;
       const point = { name: value.name, lat: value.lat!, lon: value.lon! };
-      setTouristDestination(point); setTab("domestic"); setFlightError(`Explore destination: ${point.name}. Choose the nearest available airport above, then search sourced flights.`);
+      setTouristDestination(point); setTab("domestic"); setFlightError(`Going to ${point.name}. Pick the nearest airport, then search.`);
       setOrigin("Nairobi (NBO)"); setDestination(""); mapRef.current?.flyTo(point.lon, point.lat, 9);
     } catch { sessionStorage.removeItem("ma3_fly_destination"); }
   }, []);
@@ -115,7 +119,12 @@ export default function FlyPage() {
   const stationName = (id: string) => sgrStations.find(station => station.id === id)?.name ?? id;
 
   useEffect(() => {
-    if (tab !== "sgr" || !isSupabaseConfigured || !supabase) return;
+    if (tab !== "sgr") return;
+    const useBuiltIn = () => {
+      setSgrRoutes([SGR_FALLBACK.route as SgrRoute]); setSgrStations(SGR_FALLBACK.stations); setSgrSchedules([]); setSgrError("");
+      setSelectedSgrId(current => current || SGR_FALLBACK.route.id); setSgrLoading(false);
+    };
+    if (!isSupabaseConfigured || !supabase) { useBuiltIn(); return; }
     let cancelled = false;
     setSgrLoading(true); setSgrError("");
     void (async () => {
@@ -126,20 +135,20 @@ export default function FlyPage() {
       ]);
       if (cancelled) return;
       const error = routesResult.error || stationsResult.error || schedulesResult.error;
-      if (error) setSgrError(error.message);
+      if (error || !(routesResult.data ?? []).length) useBuiltIn();
       else {
         const routes = (routesResult.data ?? []) as SgrRoute[];
         setSgrRoutes(routes); setSgrStations((stationsResult.data ?? []) as SgrStation[]); setSgrSchedules((schedulesResult.data ?? []) as SgrSchedule[]);
         setSelectedSgrId(current => current || routes[0]?.id || "");
       }
       setSgrLoading(false);
-    })().catch(error => { if (!cancelled) { setSgrError(error instanceof Error ? error.message : "Could not load SGR data."); setSgrLoading(false); } });
+    })().catch(() => { if (!cancelled) useBuiltIn(); });
     return () => { cancelled = true; };
   }, [tab]);
 
   const searchFlights = async () => {
     setFlightError(""); setFlightRoutes([]); setSelectedFlight(null);
-    if (!isSupabaseConfigured || !supabase) { setFlightError("Sourced flight schedules are temporarily unavailable."); return; }
+    if (!isSupabaseConfigured || !supabase) { setFlightError("Flights are not available right now."); return; }
     const originCode = airportCode(origin), destinationCode = airportCode(destination);
     if (!originCode || !destinationCode || originCode === destinationCode) { setFlightError("Choose two different airports to search."); return; }
     setFlightLoading(true);
@@ -152,8 +161,8 @@ export default function FlyPage() {
       const { data, error } = await request;
       if (error) throw error;
       setFlightRoutes((data ?? []) as FlightRoute[]);
-      if (!data?.length) setFlightError("No sourced flights match those airports and date. Try another airport or travel date.");
-    } catch (error) { setFlightError(error instanceof Error ? error.message : "Could not search the flight-route catalogue."); }
+      if (!data?.length) setFlightError("No flights found. Try another airport or date.");
+    } catch (error) { setFlightError(error instanceof Error ? error.message : "Could not search flights."); }
     finally { setFlightLoading(false); }
   };
 
@@ -166,9 +175,11 @@ export default function FlyPage() {
     const lines = tab === "sgr" ? railSegment(geometry, selectedSgrOrigin, selectedSgrDestination) : geometryLines(geometry).filter(line => line.length > 1);
     // Flights: a curved great-circle arc between the two airports. Trains: the real track, never curved.
     const paths: Coordinate[][] = tab === "sgr" ? lines : lines.map(line => flightArc(line[0], line[line.length - 1]));
-    const stops = paths.map((path, index) => animateRoute(map, `fly-anim-${index}`, path, tab === "sgr"
-      ? { color: "#d97706", kind: "train", seconds: Math.max(8, Math.min(18, path.length / 40)) }
-      : { color: "#16a34a", kind: "plane", seconds: 7 }));
+    // Slow and calm: about 20 seconds for a flight, 28 for a train. Sights near the line pop up as the vehicle passes them.
+    const stops = paths.map((path, index) => animateRoute(map, `fly-anim-${index}`, path, {
+      color: tab === "sgr" ? "#d97706" : "#16a34a", kind: tab === "sgr" ? "train" : "plane", seconds: tab === "sgr" ? 28 : 20,
+      sights: sightsAlongPath(path, tab === "sgr" ? 25 : 45, 5).map(item => ({ ...item, onOpen: sight => setLocation(`/explore?sight=${encodeURIComponent(sight.id)}`) })),
+    }));
     if (tab !== "sgr" && lines.length) {
       const first = lines[0][0], last = lines[0][lines[0].length - 1];
       setPointLayer(map, "fly-stations", [{ id: "from", lat: first[1], lon: first[0], color: "#16a34a", radius: 6 }, { id: "to", lat: last[1], lon: last[0], color: "#dc2626", radius: 6 }], 6);
@@ -195,7 +206,7 @@ export default function FlyPage() {
   return <div style={{ position: "relative", height: "calc(100dvh - var(--top-h) - var(--nav-h))", marginTop: "-12px", overflow: "hidden" }}>
     <MapLibreView ref={mapRef} center={NAIROBI} zoom={5} height="100%" borderRadius={0} onLoad={setMap} />
     <div style={{ position: "absolute", top: 8, left: 10, right: 10, zIndex: 20, maxWidth: 640, margin: "0 auto" }}>
-      <header style={{ padding: "0 0 .5rem" }}><div style={{ display: "flex", alignItems: "center", gap: 7 }}><Plane size={17} style={{ color: "var(--ready)" }} /><h2 style={{ fontFamily: "var(--font-display)", fontSize: "1.1rem" }}>Fly & Rail</h2><span style={{ marginLeft: "auto", color: "var(--muted2)", fontSize: ".56rem" }}>Sourced route map</span></div></header>
+      <header style={{ padding: "0 0 .5rem" }}><div style={{ display: "flex", alignItems: "center", gap: 7 }}><Plane size={17} style={{ color: "var(--ready)" }} /><h2 style={{ fontFamily: "var(--font-display)", fontSize: "1.1rem" }}>Fly & Rail</h2><span style={{ marginLeft: "auto", color: "var(--muted2)", fontSize: ".56rem" }}>Route map</span></div></header>
       <div style={{ marginTop: 7 }}><PageTabs label="Travel sections" active={sheetOpen ? tab : ""} tabs={TABS} onChange={value => { setTab(value as FlyTab); sheet.setSnap("full"); setSelectedFlight(null); setSheetOpen(true); }} /></div>
     </div>
 
@@ -203,7 +214,7 @@ export default function FlyPage() {
       <div className="bpanel-head" style={{ position: "sticky", top: 0, zIndex: 2, padding: "9px 14px 7px", background: "rgba(12,14,24,.58)" }}><button {...sheet.gripProps} /><div style={{ display: "flex", alignItems: "center", gap: 7 }}><b style={{ fontSize: ".76rem", flex: 1 }}>{tab === "sgr" ? "SGR route & departures" : `${tab === "domestic" ? "Domestic" : "International"} flight search`}</b><button className="icon-btn" aria-label="Change panel height" onClick={sheet.cycle}>{sheet.snap === "full" ? <ChevronDown size={14} /> : <ChevronUp size={14} />}</button><button className="icon-btn" aria-label="Close panel" onClick={() => setSheetOpen(false)}><X size={14} /></button></div></div>
       <div style={{ padding: "0 14px 22px", maxWidth: 720, margin: "0 auto" }}>
         {tab !== "sgr" && <>
-          <p style={{ color: "var(--muted2)", fontSize: ".61rem", lineHeight: 1.45, margin: "2px 0 10px" }}>Search available flight schedules. Selecting a result draws its verified route on the map.</p>
+          <p style={{ color: "var(--muted2)", fontSize: ".61rem", lineHeight: 1.45, margin: "2px 0 10px" }}>Pick two airports and a date. Tap a result to see its route.</p>
           {touristDestination && <p className="ios-glass" style={{ padding: 8, marginBottom: 8, color: "var(--muted2)", fontSize: ".59rem" }}><MapPin size={12} style={{ color: "var(--stop)", verticalAlign: "-2px" }} /> Explore destination pinned: {touristDestination.name}. Select the nearest available airport; this pin marks the place, not an airport.</p>}
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
             <label>From<input data-page-search className="finput" list="fly-airports" placeholder="Search airport…" value={origin} onChange={event => setOrigin(event.target.value)} /></label>
@@ -220,16 +231,16 @@ export default function FlyPage() {
         </>}
 
         {tab === "sgr" && <>
-          {(sgrError || !sgrRoutes.length) && <div className="ios-glass" style={{ padding: 10, margin: "2px 0 9px", display: "flex", gap: 7, fontSize: ".61rem", lineHeight: 1.45, color: "var(--muted2)" }}><Database size={13} style={{ color: "var(--ready)", flexShrink: 0 }} /><span>{sgrError ? "SGR route information is temporarily unavailable." : "No SGR route information is available yet."}</span></div>}
+          {(sgrError || !sgrRoutes.length) && <div className="ios-glass" style={{ padding: 10, margin: "2px 0 9px", display: "flex", gap: 7, fontSize: ".61rem", lineHeight: 1.45, color: "var(--muted2)" }}><Database size={13} style={{ color: "var(--ready)", flexShrink: 0 }} /><span>{sgrError ? "SGR information is not available right now." : "SGR information is not available yet."}</span></div>}
           {sgrLoading && <p style={{ color: "var(--muted2)", fontSize: ".64rem" }}><LoaderCircle size={14} /> Loading rail data…</p>}
           {sgrRoute ? <>
             <label>Rail service<select className="finput" value={sgrRoute.id} onChange={event => setSelectedSgrId(event.target.value)}>{sgrRoutes.map(route => <option key={route.id} value={route.id}>{route.name}</option>)}</select></label>
             <p style={{ color: "var(--muted2)", fontSize: ".58rem", marginTop: 5 }}>{sgrRoute.operator}{sgrRoute.source_updated_at ? ` · updated ${new Date(sgrRoute.source_updated_at).toLocaleDateString()}` : ""}{sgrRoute.source_url ? <> · <a href={sgrRoute.source_url} target="_blank" rel="noopener noreferrer" style={{ color: "var(--ready)" }}>source</a></> : ""}</p>
             <div style={{ position: "relative", margin: "9px 0" }}><Search size={13} style={{ position: "absolute", left: 11, top: "50%", transform: "translateY(-50%)", color: "var(--ready)" }} /><input data-page-search className="finput" style={{ paddingLeft: 32 }} placeholder="Search SGR stations…" value={stationQuery} onChange={event => setStationQuery(event.target.value)} /></div>
             <div className="card" style={{ padding: 10, display: "grid", gap: 8 }}><p className="sec-label">Choose your SGR journey</p><label>Board at<select className="finput" value={selectedSgrOrigin?.id ?? ""} onChange={event => setSgrOriginId(event.target.value)}>{allRouteStations.map(station => <option key={station.id} value={station.id}>{station.name}</option>)}</select></label><label>Alight at<select className="finput" value={selectedSgrDestination?.id ?? ""} onChange={event => setSgrDestinationId(event.target.value)}>{allRouteStations.map(station => <option key={station.id} value={station.id}>{station.name}</option>)}</select></label><p style={{ fontSize: ".57rem", color: "var(--muted2)" }}>The map highlights the sourced track between these stations only.</p><div>{routeStations.map(station => <button key={station.id} onClick={() => setSgrDestinationId(station.id)} style={{ display: "flex", alignItems: "center", gap: 7, padding: "6px 0", width: "100%", textAlign: "left", color: "var(--white)", background: "transparent", border: 0, borderBottom: "1px solid var(--border)", cursor: "pointer" }}><MapPin size={12} style={{ color: station.id === sgrDestinationId ? "var(--go)" : "var(--ready)" }} /><span style={{ flex: 1, fontSize: ".63rem" }}>{station.name}</span><small style={{ color: "var(--muted2)" }}>Alight</small></button>)}</div></div>
-            <div className="card" style={{ padding: 10, marginTop: 8 }}><p className="sec-label">Published departures</p>{sgrSchedules.filter(schedule => schedule.route_id === sgrRoute.id).map(schedule => <div key={schedule.id} style={{ padding: "8px 0", borderBottom: "1px solid var(--border)" }}><b style={{ fontSize: ".67rem" }}>{schedule.train_code} · {stationName(schedule.origin_station_id)} → {stationName(schedule.destination_station_id)}</b><p style={{ color: "var(--muted2)", fontSize: ".59rem", marginTop: 4 }}>{new Date(schedule.departure_at).toLocaleString()} – {new Date(schedule.arrival_at).toLocaleTimeString()}{schedule.fare_kes !== null ? ` · KES ${Number(schedule.fare_kes).toLocaleString()}` : ""}</p><small style={{ fontSize: ".54rem", color: "var(--muted2)" }}>Source refreshed {new Date(schedule.source_updated_at).toLocaleDateString()} · <a href={schedule.source_url} target="_blank" rel="noopener noreferrer" style={{ color: "var(--ready)" }}>source</a></small></div>)}{!sgrSchedules.some(schedule => schedule.route_id === sgrRoute.id) && <p style={{ color: "var(--muted2)", fontSize: ".6rem", marginTop: 6 }}>No sourced timetable rows published yet.</p>}</div>
+            <div className="card" style={{ padding: 10, marginTop: 8 }}><p className="sec-label">Published departures</p>{sgrSchedules.filter(schedule => schedule.route_id === sgrRoute.id).map(schedule => <div key={schedule.id} style={{ padding: "8px 0", borderBottom: "1px solid var(--border)" }}><b style={{ fontSize: ".67rem" }}>{schedule.train_code} · {stationName(schedule.origin_station_id)} → {stationName(schedule.destination_station_id)}</b><p style={{ color: "var(--muted2)", fontSize: ".59rem", marginTop: 4 }}>{new Date(schedule.departure_at).toLocaleString()} – {new Date(schedule.arrival_at).toLocaleTimeString()}{schedule.fare_kes !== null ? ` · KES ${Number(schedule.fare_kes).toLocaleString()}` : ""}</p><small style={{ fontSize: ".54rem", color: "var(--muted2)" }}>Source refreshed {new Date(schedule.source_updated_at).toLocaleDateString()} · <a href={schedule.source_url} target="_blank" rel="noopener noreferrer" style={{ color: "var(--ready)" }}>source</a></small></div>)}{!sgrSchedules.some(schedule => schedule.route_id === sgrRoute.id) && <p style={{ color: "var(--muted2)", fontSize: ".6rem", marginTop: 6 }}>No timetable published yet.</p>}</div>
           </> : <div className="ios-glass" style={{ padding: 12, color: "var(--muted2)", fontSize: ".68rem" }}>SGR route and station information will appear here when published.</div>}
-          <div className="ios-glass" style={{ padding: 9, marginTop: 8, display: "flex", gap: 7, color: "var(--muted2)", fontSize: ".56rem", lineHeight: 1.45 }}><AlertTriangle size={12} style={{ color: "var(--ready)", flexShrink: 0 }} />Only verified track geometry and dated official/authorized timetable data belong here. A map line alone is not evidence that a passenger train is operating.</div>
+          <div className="ios-glass" style={{ padding: 9, marginTop: 8, display: "flex", gap: 7, color: "var(--muted2)", fontSize: ".56rem", lineHeight: 1.45 }}><AlertTriangle size={12} style={{ color: "var(--ready)", flexShrink: 0 }} />Train times shown only when officially published.</div>
         </>}
       </div>
     </section>

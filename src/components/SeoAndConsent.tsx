@@ -28,7 +28,7 @@ export default function SeoAndConsent() {
   }, [location]);
   if (asked) return null;
   return <div role="dialog" aria-label="Usage statistics" className="ios-glass" style={{ position: "fixed", left: 10, right: 10, bottom: "calc(var(--nav-h) + 12px)", maxWidth: 520, margin: "0 auto", zIndex: 1200, padding: 12, borderRadius: 16 }}>
-    <p style={{ fontSize: ".66rem", lineHeight: 1.5, margin: "0 0 8px" }}>Help us improve Ma3? We count visits and which screens are used. No name, phone number or exact location is sent.</p>
+    <p style={{ fontSize: ".66rem", lineHeight: 1.5, margin: "0 0 8px" }}>Help improve Ma3? We count visits and screens used. No name, phone or location is sent.</p>
     <div style={{ display: "flex", gap: 8 }}><button className="btn btn-ready" style={{ flex: 1, justifyContent: "center" }} onClick={() => { setConsent("yes"); setAsked(true); }}>Allow</button><button className="btn btn-ghost" style={{ flex: 1, justifyContent: "center" }} onClick={() => { setConsent("no"); setAsked(true); }}>No thanks</button></div>
   </div>;
 }

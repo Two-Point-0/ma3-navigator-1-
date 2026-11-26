@@ -109,7 +109,7 @@ export default function TripsPage() {
         <button className="btn btn-ready" onClick={() => void logEarning()}><Plus size={13} /> Save</button>
       </div>
       {earnings.slice(0, 15).map(item => <div key={item.id} className="card" style={{ padding: 9, display: "flex", justifyContent: "space-between", fontSize: ".68rem" }}><span>{item.earned_on} · {item.source}</span><b>{kes(Number(item.amount_kes))}</b></div>)}
-      <small style={{ color: "var(--muted2)", lineHeight: 1.45 }}>These are numbers you type yourself. They are private to you and are not tax or income records.</small>
+      <small style={{ color: "var(--muted2)", lineHeight: 1.45 }}>Numbers you type yourself. Private to you.</small>
     </section>}
 
     {tab === "fuel" && <section style={{ marginTop: 10 }} className="ios-glass">
@@ -122,7 +122,7 @@ export default function TripsPage() {
           <label>People in the car<input className="finput" inputMode="numeric" value={fuel.people} onChange={e => setFuel({ ...fuel, people: e.target.value })} /></label>
         </div>
         <div className="card" style={{ padding: 10, fontSize: ".72rem", lineHeight: 1.6 }}>Fuel for the trip: <b>{kes(fuelMath.total)}</b><br />Each person's share: <b style={{ color: "var(--go)" }}>{kes(fuelMath.share)}</b><br />Saved by sharing: <b style={{ color: "var(--ready)" }}>{kes(fuelMath.saved)}</b></div>
-        <small style={{ color: "var(--muted2)", lineHeight: 1.45 }}>Carpool is cost-sharing only. The driver should not make a profit from passengers, otherwise it may count as carrying passengers for hire, which needs a PSV licence.</small>
+        <small style={{ color: "var(--muted2)", lineHeight: 1.45 }}>Carpool is cost-sharing only. Drivers must not profit from passengers, or a PSV licence is needed.</small>
       </div>
     </section>}
     </>}

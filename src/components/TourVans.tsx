@@ -50,10 +50,10 @@ export function TourVanLive() {
   if (!signedIn) return <div className="ios-glass" style={{ padding: 14, fontSize: ".7rem", color: "var(--muted2)" }}>Sign in with Google or phone to list and show your tour van.</div>;
   return <section className="ios-glass" style={{ padding: 14, display: "grid", gap: 9 }}>
     <b style={{ display: "flex", gap: 7, alignItems: "center", fontSize: ".8rem" }}><Compass size={15} style={{ color: "var(--ready)" }} />Tour van live location</b>
-    {vans.length === 0 ? <p style={{ fontSize: ".66rem", color: "var(--muted2)", lineHeight: 1.5, margin: 0 }}>You have no active tour listing yet. Open Ndai, then Tours, then Register, add your licence number, and pay the listing fee.</p> : <>
+    {vans.length === 0 ? <p style={{ fontSize: ".66rem", color: "var(--muted2)", lineHeight: 1.5, margin: 0 }}>No active tour listing. Open Ndai, then Tours, then Register.</p> : <>
       <select className="finput" value={vanId} onChange={event => setVanId(event.target.value)} disabled={live}>{vans.map(van => <option key={van.id} value={van.id}>{van.name}</option>)}</select>
       {live ? <button className="btn btn-stop" onClick={() => void stop()}><Radio size={13} /> Stop showing my van</button> : <button className="btn btn-go" onClick={start}><Radio size={13} /> Go live</button>}
-      <small style={{ color: "var(--muted2)", lineHeight: 1.45 }}>Travellers see a van icon only while you are live, and it disappears about 2 minutes after you stop. No trip history is kept.</small>
+      <small style={{ color: "var(--muted2)", lineHeight: 1.45 }}>Travellers see your van only while you are live. No history is kept.</small>
     </>}
   </section>;
 }

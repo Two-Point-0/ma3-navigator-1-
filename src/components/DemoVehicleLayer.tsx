@@ -129,12 +129,12 @@ export default function DemoVehicleLayer({ map, legs, onStatus }: Props) {
     const board = leg?.fromName ?? "Anywhere on the route";
     const left = v.seats_total - v.seats_taken;
     const box = document.createElement("div");
-    box.style.cssText = "font:600 12px system-ui;color:#111;min-width:190px";
+    box.style.cssText = "font:600 12px system-ui;color:#f8fafc;min-width:190px";
     const route = ROUTES.get(v.route_id);
     box.innerHTML = `<div style="font-weight:800;font-size:13px">${v.plate} <span style="background:#f59e0b;color:#111;border-radius:6px;padding:1px 5px;font-size:10px">DEMO</span></div>
       <div>Route ${route?.sn ?? ""} → heading to <b>${headingName(v.route_id, v.direction)}</b></div>
       <div>${left} of ${v.seats_total} seats free</div>
-      <div style="color:#555;margin:3px 0 6px">Board at: ${board}</div>`;
+      <div style="color:#cbd5e1;margin:3px 0 6px">Board at: ${board}</div>`;
     const btn = document.createElement("button");
     btn.textContent = left > 0 ? "Book 1 seat (practice)" : "Full";
     btn.disabled = left <= 0;

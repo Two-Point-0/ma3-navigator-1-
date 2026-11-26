@@ -2,6 +2,8 @@
 -- Owner = the first account created. Pictures: upload <slug>.jpg files to Storage > business-images > demo/ (see docs/local-business-posters.md).
 -- Re-running is safe: it removes the old demo rows first.
 delete from public.local_businesses where payment_ref = 'demo-seed';
+-- Tours and transport normally need a licence number, so the check is paused for this demo insert only.
+alter table public.local_businesses disable trigger local_businesses_licence_trg;
 insert into public.local_businesses (owner_id, name, category, description, services, address, latitude, longitude, image_paths, status, paid_until, payment_ref)
 values
 ((select id from auth.users order by created_at limit 1), 'Mama Njeri Mboga', 'mboga', 'Fresh vegetables picked every morning. Based in Kawangware, Nairobi.', array['Sukuma wiki', 'Spinach', 'Tomatoes and onions', 'Cabbage', 'Delivery on request'], 'Kawangware, Nairobi', -1.28511, 36.73981, array['demo/mama-njeri-mboga.png'], 'active', now() + interval '365 days', 'demo-seed'),
@@ -104,3 +106,4 @@ values
 ((select id from auth.users order by created_at limit 1), 'Mara Escapes', 'tours', 'Safaris planned for you. Based in Karen, Nairobi.', array['Maasai Mara safaris', 'Amboseli', 'Lake Nakuru', 'Custom itineraries'], 'Karen, Nairobi', -1.31851, 36.7128, array['demo/mara-escapes.png'], 'active', now() + interval '365 days', 'demo-seed'),
 ((select id from auth.users order by created_at limit 1), 'Ngong Hills Guide', 'other', 'Guided hikes at Ngong Hills. Based in Ngong Road, Nairobi.', array['Hiking guide', 'Group hikes', 'Photo stops'], 'Ngong Road, Nairobi', -1.29591, 36.77975, array['demo/ngong-hills-guide.png'], 'active', now() + interval '365 days', 'demo-seed'),
 ((select id from auth.users order by created_at limit 1), 'Print and Brand', 'other', 'Printing and branding. Based in Eastleigh, Nairobi.', array['T-shirt printing', 'Banners', 'Stickers', 'Branding'], 'Eastleigh, Nairobi', -1.27256, 36.8544, array['demo/print-and-brand.png'], 'active', now() + interval '365 days', 'demo-seed');
+alter table public.local_businesses enable trigger local_businesses_licence_trg;

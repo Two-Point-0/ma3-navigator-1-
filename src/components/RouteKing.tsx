@@ -52,7 +52,7 @@ export default function RouteKing({ refreshKey }: { refreshKey: number }) {
 
   return <div className="ios-glass" style={{ padding: 11, marginBottom: 12 }}>
     <b style={{ display: "flex", alignItems: "center", gap: 7, fontSize: ".76rem" }}><Crown size={15} style={{ color: "#f5b301" }} />Route King</b>
-    <p style={{ color: "var(--muted2)", fontSize: ".6rem", lineHeight: 1.5, margin: "5px 0 8px" }}>Pick your route, then play. Lead a game on your route to hold its crown. Bronze medal for 1 crown, silver for 2, gold for 3 or more. The board covers 5 days and weekend points count double. A new king is shielded for 15 minutes so they can enjoy the crown. Points have no cash value.</p>
+    <p style={{ color: "var(--muted2)", fontSize: ".6rem", lineHeight: 1.5, margin: "5px 0 8px" }}>Pick your route and play. Lead a game on it to hold the crown. New kings are shielded for 15 minutes.</p>
     <select className="finput" value={route} onChange={event => { setRoute(event.target.value); localStorage.setItem(KING_ROUTE_KEY, event.target.value); }}>
       <option value="">Choose your route</option>
       {MA3_GTFS.routes.map(item => <option key={item.id} value={item.id}>{item.sn}</option>)}
@@ -62,7 +62,7 @@ export default function RouteKing({ refreshKey }: { refreshKey: number }) {
       <button className={`btn ${mode === "challenge" ? "btn-ready" : "btn-ghost"}`} style={{ padding: "5px 9px", fontSize: ".58rem" }} onClick={() => pickMode("challenge")}><Swords size={11} /> Challenge the king</button>
       {youHoldACrown && <button className={`btn ${mode === "defend" ? "btn-ready" : "btn-ghost"}`} style={{ padding: "5px 9px", fontSize: ".58rem" }} onClick={() => pickMode("defend")}><ShieldCheck size={11} /> Defend my crown</button>}
     </div>}
-    {mode === "challenge" && route && <small style={{ display: "block", color: "var(--muted2)", marginTop: 5, lineHeight: 1.4 }}>Your next game is a challenge: beat the king's best single game and you take the crown at once, even during their shield, plus 25 bonus points.</small>}
+    {mode === "challenge" && route && <small style={{ display: "block", color: "var(--muted2)", marginTop: 5, lineHeight: 1.4 }}>Beat the king's best game to take the crown and 25 bonus points.</small>}
     {mode === "defend" && route && <small style={{ display: "block", color: "var(--muted2)", marginTop: 5, lineHeight: 1.4 }}>Defend: score 60 or more and you earn 10 bonus points for showing up for your crown.</small>}
     {rematch && <small style={{ display: "block", color: "var(--ready)", marginTop: 5 }}>You lost the {GAME_NAME[rematch.game_id]} crown. You have a rematch open for 24 hours. A win earns a comeback bonus.</small>}
     {!isSupabaseConfigured || !signedIn ? <small style={{ display: "block", marginTop: 7, color: "var(--muted2)" }}>Sign in with Google or phone to join the board.</small>

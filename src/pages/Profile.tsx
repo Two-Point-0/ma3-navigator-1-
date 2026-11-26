@@ -111,11 +111,11 @@ function ProfileDetails() {
           <div className="sec-label" style={{ marginBottom: 8 }}>Recent Activity</div>
           <div className="card" style={{ padding: 14, marginBottom: 12 }}>
             <p style={{ fontSize: ".78rem", fontWeight: 700, marginBottom: 4 }}>No verified activity yet</p>
-            <p style={{ fontSize: ".64rem", color: "var(--muted2)", lineHeight: 1.5 }}>Trip, payment and price-contribution history will appear here only after a connected service confirms it.</p>
+            <p style={{ fontSize: ".64rem", color: "var(--muted2)", lineHeight: 1.5 }}>Your history will show here.</p>
           </div>
           <div className="sec-label" style={{ marginBottom: 8 }}>Achievements</div>
           <div className="card" style={{ padding: 14 }}>
-            <p style={{ fontSize: ".64rem", color: "var(--muted2)", lineHeight: 1.5 }}>Verified achievements will appear after the backend records the qualifying action. No sample badges are shown.</p>
+            <p style={{ fontSize: ".64rem", color: "var(--muted2)", lineHeight: 1.5 }}>Your badges will show here.</p>
           </div>
         </section>
 

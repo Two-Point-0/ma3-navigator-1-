@@ -150,7 +150,7 @@ export default function LudoGame({ onFinish, onStart, joinCode }: Props) {
   /* ─────────────── screens ─────────────── */
   if (screen === "menu") return <div style={{ display: "grid", gap: 12, alignContent: "start", maxWidth: 520, width: "100%", margin: "0 auto" }}>
     <div style={{ textAlign: "center" }}><div style={{ fontSize: "2.4rem" }}>🎲</div><h3 style={{ margin: "4px 0", fontFamily: "var(--font-display)" }}>Ludo · 2 to 4 players</h3>
-      <p style={{ margin: 0, fontSize: ".66rem", color: "var(--muted2)" }}>Roll a 6 to leave the base. Race all four pieces home. Land on a lone opponent to send it back, except on the star squares.</p></div>
+      <p style={{ margin: 0, fontSize: ".66rem", color: "var(--muted2)" }}>Roll a 6 to start. Get all four pieces home. Land on a lone piece to send it back (not on stars).</p></div>
     <div>
       <b style={{ fontSize: ".66rem" }}>How many players?</b>
       <div style={{ display: "flex", gap: 8, marginTop: 6 }}>{([2, 3, 4] as const).map(n => <button key={n} className={count === n ? "btn btn-ready" : "btn btn-ghost"} style={{ ...btn, flex: 1 }} onClick={() => setCount(n)}>{n} players</button>)}</div>

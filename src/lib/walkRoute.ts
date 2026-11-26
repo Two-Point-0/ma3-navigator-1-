@@ -21,3 +21,21 @@ export async function fetchWalkPath(a: [number, number], b: [number, number]): P
     return null; // not cached, so a later try can succeed
   } finally { clearTimeout(timer); }
 }
+
+const driveCache = new Map<string, [number, number][] | null>();
+/** Street-following DRIVING path (for demo cars and bodas). a and b are [lat, lon]. */
+export async function fetchDrivePath(a: [number, number], b: [number, number]): Promise<[number, number][] | null> {
+  const k = key(a, b);
+  if (driveCache.has(k)) return driveCache.get(k) ?? null;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 8000);
+  try {
+    const response = await fetch(`https://routing.openstreetmap.de/routed-car/route/v1/driving/${a[1]},${a[0]};${b[1]},${b[0]}?overview=full&geometries=geojson`, { signal: controller.signal });
+    if (!response.ok) throw new Error(String(response.status));
+    const data = await response.json();
+    const coords = data?.routes?.[0]?.geometry?.coordinates as [number, number][] | undefined;
+    const path = coords && coords.length > 1 ? coords.map(([lon, lat]) => [lat, lon] as [number, number]) : null;
+    driveCache.set(k, path);
+    return path;
+  } catch { return null; } finally { clearTimeout(timer); }
+}

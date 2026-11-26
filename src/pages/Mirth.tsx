@@ -1,7 +1,7 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Gamepad2, Search, Heart, ThumbsUp, Users, X, Swords, MessageSquareQuote, Crown, Dices, Brain, Grid3x3, BusFront, LoaderCircle, Trophy, Star, MapPin, Sparkles, Shield, Volume2, Route, PlusCircle, ShoppingBag, Puzzle, Grid2x2, Target, Mic2, Hammer, Landmark } from "lucide-react";
-import CenterModal from "@/components/CenterModal";
+import GameShell from "@/components/GameShell";
 import { toast } from "sonner";
 import PageTabs from "@/components/PageTabs";
 import NganyaShop from "@/components/NganyaShop";
@@ -36,10 +36,11 @@ function geoLines(value: any): [number, number][][] {
 
 const GAMES: GameDef[] = [
   { id: "mchongwano", name: "Mchongwano Live", Icon: Mic2, desc: "Live roast battles and tournaments. The audience votes for the winner.", players: "Live · 2 fighters + crowd" },
-  { id: "tycoon", name: "Nganya Tycoon", Icon: Landmark, desc: "Buy Nairobi stages, build landmarks and collect fares.", players: "Single-player prototype · you vs bot" },
-  { id: "ludo", name: "Ludo", Icon: Dices, desc: "Race four tokens home on the board against the computer.", players: "Route King" },
+  { id: "tycoon", name: "Nairobi Tycoon", Icon: Landmark, desc: "The classic property-trading game on a Nairobi board: buy estates and stages, build towers, collect fares.", players: "You vs bot" },
+  { id: "ludo", name: "Ludo", Icon: Dices, desc: "2 to 4 players. Play the computer, pass the phone around, or join friends online with a room code.", players: "2–4 players · online" },
+  { id: "pool", name: "Pool", Icon: Target, desc: "8-ball pool. Drag back like a catapult and shoot. Play the computer or pass the phone.", players: "1–2 players" },
   { id: "chess", name: "Chess", Icon: Crown, desc: "Classic strategy: you play white against the computer.", players: "Route King" },
-  { id: "trivia", name: "Trivia", Icon: Brain, desc: "Kenya general knowledge, five questions.", players: "Route King" },
+  { id: "trivia", name: "Trivia", Icon: Brain, desc: "Pick Kenya or world categories and a level. Five questions a round.", players: "Route King" },
   { id: "memory", name: "Matatu Match", Icon: Puzzle, desc: "Flip cards and find all 8 pairs in the fewest moves.", players: "Route King" },
   { id: "snake", name: "Matatu Snake", Icon: Target, desc: "Collect matatus without hitting the walls or yourself.", players: "Route King" },
   { id: "whack", name: "Whack-a-Matatu", Icon: Hammer, desc: "30 seconds. Tap every matatu that pops up.", players: "Route King" },
@@ -49,6 +50,7 @@ const PLAYS_KEY = "ma3_game_plays";
 const readPlays = (): Record<string, number> => { try { return JSON.parse(localStorage.getItem(PLAYS_KEY) || "{}"); } catch { return {}; } };
 const playTone = (count: number) => count >= 3 ? { color: "var(--go)", label: "You play this a lot" } : count >= 1 ? { color: "var(--ready)", label: "Tried it" } : { color: "var(--stop)", label: "Not played yet" };
 const LazyTrivia = lazy(() => import("@/components/TriviaGame"));
+const LazyPool = lazy(() => import("@/components/PoolGame"));
 const LazyChess = lazy(() => import("@/components/ChessGame"));
 const LazyLudo = lazy(() => import("@/components/LudoGame"));
 const LazyMemory = lazy(() => import("@/components/MiniGames").then(m => ({ default: m.MemoryGame })));
@@ -90,6 +92,14 @@ export default function MirthPage() {
   const [routeFilter, setRouteFilter] = useState("all");
   const [onlyFavourites, setOnlyFavourites] = useState(false);
   const [selectedGame, setSelectedGame] = useState<GameDef | null>(null);
+  const [joinCode, setJoinCode] = useState<string | undefined>(undefined);
+  // A challenge link from the matatu chat opens straight into the online room: /mirth?game=ludo&room=ABCD
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const game = GAMES.find(item => item.id === params.get("game"));
+    const room = (params.get("room") ?? "").toUpperCase().slice(0, 4);
+    if (game && room.length === 4) { setJoinCode(room); setSelectedGame(game); window.history.replaceState(null, "", window.location.pathname); }
+  }, []);
   const [selectedNganya, setSelectedNganya] = useState<Nganya | null>(null);
   const [styleAverage, setStyleAverage] = useState<StyleAverage | null>(null);
   const [ratingForm, setRatingForm] = useState<Record<string, string>>({ artwork: "", sound: "", lighting: "", comfort: "", driving: "", service: "" });
@@ -330,7 +340,7 @@ export default function MirthPage() {
   const voteRoutesDone = new Set(dailyEvents.filter(event => event.activity === "nganya_vote").map(event => event.reference_key)).size;
   const visitedPlacesDone = dailyEvents.filter(event => event.activity === "poi_navigation").length;
   const pointsToday = dailyEvents.reduce((sum, event) => sum + Number(event.points), 0);
-  const statusMessage = loading ? "Loading registered Nganya…" : !backendReady ? "Nganya voting is temporarily unavailable." : matatus.length ? "One vote per route, per account, per Nairobi day. Every registered Nganya remains in the annual archive." : "No Nganya entries are listed yet.";
+  const statusMessage = loading ? "Loading registered Nganya…" : !backendReady ? "Nganya voting is temporarily unavailable." : matatus.length ? "One vote per route, per account, per day." : "No Nganya entries are listed yet.";
 
   const NganyaCard = ({ item }: { item: Nganya }) => {
     const saved = favourites.has(item.id);
@@ -373,7 +383,7 @@ export default function MirthPage() {
         <div style={{ display: "flex", gap: 8, alignItems: "center", fontSize: ".62rem" }}><Gamepad2 size={12} style={{ color: triviaStarted ? "var(--go)" : "var(--ready)" }} /><span style={{ flex: 1 }}>Start a Trivia round</span><b>{triviaStarted ? "1/1 · started" : "0/1"}</b></div>
         <div style={{ display: "flex", gap: 8, alignItems: "center", fontSize: ".62rem" }}><Target size={12} style={{ color: arcadeDone ? "var(--go)" : "var(--ready)" }} /><span style={{ flex: 1 }}>Finish one arcade round · Matatu Match, Snake or Whack</span><b>{arcadeDone ? "1/1 · done" : "0/1"}</b></div>
       </div>
-      <p style={{ color: "var(--muted)", fontSize: ".55rem", lineHeight: 1.4, margin: "8px 0 0" }}>Points are non-cash and have no monetary value. Demo wallet actions never count as paid bookings; points award only from verified backend actions.</p>
+      <p style={{ color: "var(--muted)", fontSize: ".55rem", lineHeight: 1.4, margin: "8px 0 0" }}>Points are not money.</p>
     </div>}
 
     {section === "games" && <section>
@@ -383,11 +393,12 @@ export default function MirthPage() {
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(2,1fr)", gap: 8 }}>{GAMES.map(game => {
         const tone = playTone(plays[game.id] ?? 0);
-        return <motion.button key={game.id} whileTap={{ scale: .97 }} onClick={() => { bumpPlay(game.id); setSelectedGame(game); if (game.id === "trivia") { sessionStorage.setItem(`mirth-trivia-start-${kenyaDate()}`, "1"); setTriviaStarted(true); } }} className="card" aria-label={`${game.name}. ${tone.label}`}
+        return <motion.button key={game.id} whileTap={{ scale: .97 }} onClick={() => { bumpPlay(game.id); setSelectedGame(game); }} className="card" aria-label={`${game.name}. ${tone.label}`}
           style={{ padding: 11, display: "flex", flexDirection: "column", gap: 6, textAlign: "left", color: "var(--white)", cursor: "pointer", gridColumn: game.id === "mchongwano" ? "1 / -1" : undefined, borderColor: tone.color, boxShadow: `0 0 14px color-mix(in srgb, ${tone.color} 30%, transparent), inset 0 0 0 1px color-mix(in srgb, ${tone.color} 25%, transparent)` }}>
           <span style={{ display: "flex", alignItems: "center", gap: 8 }}><span style={{ width: 34, height: 34, borderRadius: 10, background: `color-mix(in srgb, ${tone.color} 16%, transparent)`, display: "grid", placeItems: "center", color: tone.color }}><game.Icon size={17} /></span><b style={{ fontSize: ".76rem", flex: 1 }}>{game.name}</b><i style={{ width: 9, height: 9, borderRadius: 99, background: tone.color, boxShadow: `0 0 9px ${tone.color}`, flexShrink: 0 }} /></span>
           <small style={{ color: "var(--muted2)", lineHeight: 1.4, fontSize: ".58rem" }}>{game.desc}</small>
           <small style={{ color: tone.color, fontSize: ".54rem", fontWeight: 700 }}>{game.players} · {tone.label}</small>
+          {personalBests[game.id] !== undefined && <small style={{ color: "var(--muted2)", fontSize: ".52rem" }}>Personal best · {personalBests[game.id]}</small>}
         </motion.button>;
       })}</div>
     </section>}
@@ -397,7 +408,7 @@ export default function MirthPage() {
       <div style={{ display: "grid", gridTemplateColumns: "1fr auto", alignItems: "end", gap: 8, marginBottom: 10 }}><label>Route<select className="finput" value={routeFilter} onChange={event => setRouteFilter(event.target.value)}><option value="all">All routes</option>{routes.map(route => <option key={route} value={route}>{route}</option>)}</select></label><button className={`pill ${onlyFavourites ? "on" : ""}`} onClick={() => setOnlyFavourites(value => !value)}><Heart size={10} /> Favourites {favouriteNganyas.length}</button></div>
       <div className="ios-glass" style={{ padding: 12, marginBottom: 10, borderLeft: "3px solid var(--ready)" }}>
         <b style={{ display: "flex", alignItems: "center", gap: 7, fontSize: ".76rem" }}><Swords size={15} style={{ color: "var(--ready)" }} />Route face-off · {leaderboardYear}</b>
-        <p style={{ color: "var(--muted2)", fontSize: ".62rem", lineHeight: 1.5, marginTop: 6 }}>Pick two routes to compare annual support. Riders vote for a specific Nganya on its route; votes stay with that vehicle and route. Nobody gets eliminated, so every approved matatu remains in the all-years record.</p>
+        <p style={{ color: "var(--muted2)", fontSize: ".62rem", lineHeight: 1.5, marginTop: 6 }}>Pick two routes to compare votes. Vote for a specific Nganya on its route. Nobody is removed.</p>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 9 }}>
           <label>Route A<select className="finput" value={battleRouteA || routeA?.route_code || ""} onChange={event => setBattleRouteA(event.target.value)}><option value="">Choose route</option>{routeStandings.map(route => <option key={route.route_code} value={route.route_code}>{route.route_label}</option>)}</select></label>
           <label>Route B<select className="finput" value={battleRouteB || routeB?.route_code || ""} onChange={event => setBattleRouteB(event.target.value)}><option value="">Choose another</option>{routeStandings.filter(route => route.route_code !== (battleRouteA || routeA?.route_code)).map(route => <option key={route.route_code} value={route.route_code}>{route.route_label}</option>)}</select></label>
@@ -415,11 +426,11 @@ export default function MirthPage() {
       {!loading && !backendReady && <div className="ios-glass" style={{ padding: 14, color: "var(--muted2)", fontSize: ".68rem" }}>{statusMessage}</div>}
       {!loading && backendReady && filteredNganyas.length === 0 && <div className="ios-glass" style={{ padding: 14, textAlign: "center", color: "var(--muted2)", fontSize: ".7rem" }}>{matatus.length ? "No Nganya match this search, route or favourite filter." : "No Nganya entries are listed yet."}</div>}
       <div style={{ display: "grid", gap: 7 }}>{filteredNganyas.map(item => <NganyaCard key={item.id} item={item} />)}</div>
-      <p style={{ color: "var(--muted)", fontSize: ".58rem", lineHeight: 1.45, marginTop: 10 }}>Community favourites are not safety ratings. Votes use Supabase accounts and can be abused; use rate limits and moderation before awards. Vote totals are saved by calendar year and are never wiped when a new contest year starts.</p>
+      <p style={{ color: "var(--muted)", fontSize: ".58rem", lineHeight: 1.45, marginTop: 10 }}>Votes show favourites, not safety ratings.</p>
     </section>}
 
     {section === "nganya" && <section>
-      <div className="ios-glass" style={{ padding: 12, marginBottom: 10, borderLeft: "3px solid var(--ready)" }}><b style={{ display: "flex", alignItems: "center", gap: 7, fontSize: ".76rem" }}><Trophy size={15} style={{ color: "var(--ready)" }} />Nganya battle league · yearly votes</b><p style={{ color: "var(--muted2)", fontSize: ".63rem", lineHeight: 1.5, marginTop: 6 }}>Every approved Nganya stays in the archive. The annual board ranks the top through the rest by real recorded votes; the next year starts a new tally without deleting earlier years. Free predictions are optional and non-cash.</p></div>
+      <div className="ios-glass" style={{ padding: 12, marginBottom: 10, borderLeft: "3px solid var(--ready)" }}><b style={{ display: "flex", alignItems: "center", gap: 7, fontSize: ".76rem" }}><Trophy size={15} style={{ color: "var(--ready)" }} />Nganya battle league · yearly votes</b><p style={{ color: "var(--muted2)", fontSize: ".63rem", lineHeight: 1.5, marginTop: 6 }}>Every approved Nganya stays on the board. A new year starts a new tally.</p></div>
       <div style={{ position: "relative", marginBottom: 9 }}><Search size={13} style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "var(--ready)" }} /><input data-page-search className="finput" style={{ paddingLeft: 34 }} placeholder="Search yearly results by Nganya, SACCO or route…" value={leaderboardQuery} onChange={event => setLeaderboardQuery(event.target.value)} /></div>
       <div className="ios-glass" style={{ padding: 12, marginBottom: 12 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}><Shield size={14} style={{ color: "var(--ready)" }} /><p className="sec-label" style={{ flex: 1 }}>Year-end leaderboard · all vehicles</p><select aria-label="Leaderboard year" className="finput" value={leaderboardYear} onChange={event => setLeaderboardYear(Number(event.target.value))} style={{ width: 95, padding: "6px 7px" }}>{Array.from({ length: 6 }, (_, index) => Number(kenyaDate().slice(0, 4)) - index).map(year => <option key={year} value={year}>{year}</option>)}</select></div>
@@ -430,29 +441,29 @@ export default function MirthPage() {
       {season && <><p className="sec-label">{season.title} · {season.season_year} · free prediction</p><p style={{ color: "var(--muted2)", fontSize: ".61rem", marginBottom: 9 }}>One optional free prediction per account; cutoff {new Date(`${season.closes_on}T23:59:00`).toLocaleDateString()}. The yearly vote archive keeps every matatu, including those outside any prediction shortlist.</p>{seasonPick && <div className="ios-glass" style={{ padding: 9, marginBottom: 8, color: "var(--go)", fontSize: ".66rem" }}>Your free prediction is saved. It cannot be exchanged after voting closes.</div>}
         <div style={{ display: "grid", gap: 7 }}>{seasonCandidates.filter(item => season.status !== "finalists" || item.finalist).map(candidate => <div key={candidate.id} className="card" style={{ padding: 11, display: "flex", alignItems: "center", gap: 9 }}><BusFront size={18} style={{ color: "var(--ready)" }} /><div style={{ flex: 1, minWidth: 0 }}><b style={{ display: "block", fontSize: ".74rem" }}>{candidate.display_name}</b><small style={{ color: "var(--muted2)" }}>{candidate.route_label || candidate.route_code} · {candidate.voteCount} season votes</small></div>{seasonPick === candidate.id ? <span className="chip" style={{ color: "var(--go)" }}>Your pick</span> : <button className="btn btn-ready" disabled={!!seasonPick || !backendReady} onClick={() => void placeSeasonPick(candidate)} style={{ padding: "7px 9px" }}>Predict</button>}</div>)}{seasonCandidates.length === 0 && <p style={{ color: "var(--muted2)", fontSize: ".68rem", padding: 12 }}>The organiser has not published candidate entries yet.</p>}</div>
       </>}
-      <div className="ios-glass" style={{ padding: 11, marginTop: 10 }}><p style={{ fontSize: ".62rem", color: "var(--muted2)", lineHeight: 1.5 }}>Fair process recommendation: one vote per account per route/day; publish each round's dates, route representation and tie-break rule in advance; freeze and export each round's vote snapshot; publish the top-30 list and final-event rules. Have an independent moderator review suspicious account bursts before each cut. Do not add cash staking or payouts to this prototype.</p></div>
-      <div className="ios-glass" style={{ padding: 11, marginTop: 10 }}><b style={{ fontSize: ".7rem" }}>Real-money betting links are not enabled</b><p style={{ fontSize: ".61rem", color: "var(--muted2)", lineHeight: 1.5, margin: "6px 0 9px" }}>Before listing any operator or affiliate link, verify its current licence and ask the Gambling Regulatory Authority whether this app needs a licence or advert approval for referrals. No odds, stakes or bet placement are handled here.</p><a href="https://gra.go.ke/" target="_blank" rel="noopener noreferrer" style={{ color: "var(--ready)", fontSize: ".63rem", fontWeight: 700 }}>GRA licensing, advertising rules and contacts ↗</a></div>
+      <div className="ios-glass" style={{ padding: 11, marginTop: 10 }}><p style={{ fontSize: ".62rem", color: "var(--muted2)", lineHeight: 1.5 }}>Votes are one per account, per route, per day.</p></div>
+      <div className="ios-glass" style={{ padding: 11, marginTop: 10 }}><b style={{ fontSize: ".7rem" }}>Real-money betting links are not enabled</b><p style={{ fontSize: ".61rem", color: "var(--muted2)", lineHeight: 1.5, margin: "6px 0 9px" }}>No betting is handled here.</p><a href="https://gra.go.ke/" target="_blank" rel="noopener noreferrer" style={{ color: "var(--ready)", fontSize: ".63rem", fontWeight: 700 }}>GRA licensing, advertising rules and contacts ↗</a></div>
     </section>}
 
     {section === "shop" && <NganyaShop />}
 
-    <p style={{ color: "var(--muted)", fontSize: ".56rem", lineHeight: 1.45, marginTop: 13 }}>Points are not money, prizes or transferable value. Trivia plays as a single-player round; multiplayer game listings are concepts.</p>
+    <p style={{ color: "var(--muted)", fontSize: ".56rem", lineHeight: 1.45, marginTop: 13 }}>Points are not money. Trivia is single-player.</p>
       </div></div></motion.div>}</AnimatePresence>
 
     <AnimatePresence>{selectedNganya && <><motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setSelectedNganya(null)} style={{ position: "fixed", inset: 0, zIndex: 1100, background: "rgba(0,0,0,.56)", backdropFilter: "blur(7px)" }} /><motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} className="ios-glass" style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 1101, maxWidth: 640, margin: "0 auto", padding: "1.1rem 1rem 1.8rem", borderRadius: "22px 22px 0 0", maxHeight: "86vh", overflowY: "auto" }}><div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}><b style={{ display: "flex", alignItems: "center", gap: 7 }}><BusFront size={17} style={{ color: "var(--ready)" }} />{selectedNganya.display_name}</b><button className="icon-btn" onClick={() => setSelectedNganya(null)}><X size={15} /></button></div><p style={{ color: "var(--muted2)", fontSize: ".63rem", margin: "4px 0 12px" }}>{selectedNganya.route_label || selectedNganya.route_code}{selectedNganya.sacco ? ` · ${selectedNganya.sacco}` : ""}</p><p className="sec-label">Community style stats · 1–5</p>{RATING_FIELDS.map(field => { const value = styleAverage?.[field.key] ?? 0; return <div key={field.key} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}><span style={{ width: 58, fontSize: ".61rem", color: "var(--muted2)" }}>{field.label}</span><div style={{ flex: 1, height: 6, borderRadius: 99, background: "var(--glass2)" }}><div style={{ width: `${Math.min(100, value * 20)}%`, height: "100%", borderRadius: 99, background: "var(--ready)" }} /></div><span style={{ width: 32, textAlign: "right", color: "var(--muted2)", fontSize: ".59rem" }}>{value ? value.toFixed(1) : "—"}</span></div>; })}<p style={{ color: "var(--muted)", fontSize: ".55rem", margin: "3px 0 12px" }}>{styleAverage?.rating_count ? `${styleAverage.rating_count} community rating${styleAverage.rating_count === 1 ? "" : "s"} · subjective style, not safety data` : "No ratings yet. Scores appear only after community members submit them."}</p><div className="ios-glass" style={{ padding: 10 }}><p className="sec-label">Rate the style</p><div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>{RATING_FIELDS.map(field => <label key={field.key}>{field.label}<select className="finput" value={ratingForm[field.key]} onChange={event => setRatingForm(current => ({ ...current, [field.key]: event.target.value }))}><option value="">Choose 1–5</option>{[1,2,3,4,5].map(value => <option key={value} value={value}>{value}</option>)}</select></label>)}</div><button className="btn btn-ready" style={{ width: "100%", marginTop: 10 }} onClick={() => void submitRating()}><Star size={13} /> Save my style rating</button></div></motion.div></>}</AnimatePresence>
 
-    <CenterModal open={!!selectedGame} title={selectedGame?.name ?? ""} icon={selectedGame ? <selectedGame.Icon size={17} style={{ color: "var(--ready)" }} /> : undefined} onClose={() => setSelectedGame(null)}>
+    <GameShell open={!!selectedGame} title={selectedGame?.name ?? ""} subtitle={selectedGame?.desc} icon={selectedGame ? <selectedGame.Icon size={17} style={{ color: "var(--ready)" }} /> : undefined} onClose={() => { setSelectedGame(null); setJoinCode(undefined); }}>
       {selectedGame && <Suspense fallback={<p style={{ padding: 14, textAlign: "center", color: "var(--muted2)", fontSize: ".66rem" }}><LoaderCircle size={14} /> Loading game…</p>}>
-        <p style={{ color: "var(--muted2)", fontSize: ".66rem", margin: "0 0 10px" }}>{selectedGame.desc}</p>
         {selectedGame.id === "mchongwano" ? <LazyMchongwano /> :
          selectedGame.id === "tycoon" ? <LazyTycoon onStart={() => void beginKingGame("tycoon")} onFinish={points => submitFinishedScore("tycoon", points)} /> :
+         selectedGame.id === "pool" ? <LazyPool onStart={() => void beginKingGame("pool")} onFinish={points => submitFinishedScore("pool", points)} /> :
          selectedGame.id === "chess" ? <LazyChess onStart={() => void beginKingGame("chess")} onFinish={points => submitFinishedScore("chess", points)} /> :
-         selectedGame.id === "ludo" ? <LazyLudo onStart={() => void beginKingGame("ludo")} onFinish={points => submitFinishedScore("ludo", points)} /> :
+         selectedGame.id === "ludo" ? <LazyLudo joinCode={joinCode} onStart={() => void beginKingGame("ludo")} onFinish={points => submitFinishedScore("ludo", points)} /> :
          selectedGame.id === "trivia" ? <LazyTrivia onStart={markTriviaStarted} onFinish={(score, total) => submitFinishedScore("trivia", Math.round((score / Math.max(1, total)) * 100))} /> :
          selectedGame.id === "memory" ? <LazyMemory onStart={() => void beginKingGame("memory")} onFinish={points => submitFinishedScore("memory", points)} /> :
          selectedGame.id === "snake" ? <LazySnake onStart={() => void beginKingGame("snake")} onFinish={points => submitFinishedScore("snake", points)} /> :
          selectedGame.id === "whack" ? <LazyWhack onStart={() => void beginKingGame("whack")} onFinish={points => submitFinishedScore("whack", points)} /> : null}
       </Suspense>}
-    </CenterModal>
+    </GameShell>
   </div>;
 }

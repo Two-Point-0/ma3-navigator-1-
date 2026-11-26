@@ -167,7 +167,7 @@ export default function NganyaShop() {
     {shown.length === 0 && <p style={{ textAlign: "center", color: "var(--muted2)", padding: 16, fontSize: ".7rem" }}>No product matches that search.</p>}
     <div className="ios-glass" style={{ padding: 11, marginTop: 12 }}>
       <b style={{ display: "flex", alignItems: "center", gap: 7, fontSize: ".74rem" }}><Users size={14} style={{ color: "var(--ready)" }} />Ma3 Community List</b>
-      <p style={{ color: "var(--muted2)", fontSize: ".6rem", lineHeight: 1.5, margin: "5px 0 8px" }}>A free interest list for people who want to be part of a future matatu-community sacco. It is not a registered sacco, takes no money and promises no benefits. Planned split of product sales: 70% app, 15% route group, 15% matatu owner, subject to signed agreements. Amounts are recorded and held, and nothing is paid out until the agreements are verified.</p>
+      <p style={{ color: "var(--muted2)", fontSize: ".6rem", lineHeight: 1.5, margin: "5px 0 8px" }}>Free interest list for a future matatu-community sacco. Not a registered sacco, no money taken.</p>
       {platform ? (joined.has(platform.id) ? <span className="chip" style={{ color: "var(--go)" }}><Check size={11} /> You are a member</span> : <button className="btn btn-ready" onClick={() => void join(platform.id)}>Join the interest list</button>) : <small style={{ color: "var(--muted2)" }}>Joining opens after the database update is applied.</small>}
     </div>
   </section>;

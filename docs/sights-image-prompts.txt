@@ -1,0 +1,104 @@
+MA3 SIGHT POSTERS: one picture per sight
+
+HOW TO USE
+1. Paste one prompt below into your image AI (or use it as a Canva / Figma brief). Make a landscape picture, 1200 x 800 pixels, JPG, under 300 KB.
+2. Save it with the exact file name shown.
+3. Put all files in the project folder: public/sights/
+4. Run: git add .  then git commit  then git push origin main. Vercel updates the site.
+Gates and entrances use their park's picture, so you do not need extra pictures for them.
+If a file is missing, the poster shows a blue background with the sight's icon.
+
+RULES FOR EVERY PICTURE
+- No text, no logos, no brand names, no recognisable faces. This keeps copyright safe.
+- Landscape 3:2. The bottom 35% should be calm (the title sits there).
+- Make your own original image. Do not copy a photographer's photo.
+
+1. FILE: public/sights/maasai-mara.jpg
+   PROMPT: Wide landscape photo of Maasai Mara National Reserve in Narok, Kenya. Kenya's most famous safari reserve: endless savannah, big cats all year, and the Great Migration of wildebeest crossing the Mara River. Natural light, rich colour, no text, no logos, no faces, photorealistic, 3:2, 1200x800.
+
+2. FILE: public/sights/amboseli.jpg
+   PROMPT: Wide landscape photo of Amboseli National Park in Kajiado, Kenya. Big elephant herds with Mount Kilimanjaro rising behind them. Natural light, rich colour, no text, no logos, no faces, photorealistic, 3:2, 1200x800.
+
+3. FILE: public/sights/nairobi-national-park.jpg
+   PROMPT: Wide landscape photo of Nairobi National Park in Nairobi, Kenya. A real wildlife park on the edge of the city: lions, rhinos and giraffes with skyscrapers in the background. Natural light, rich colour, no text, no logos, no faces, photorealistic, 3:2, 1200x800.
+
+4. FILE: public/sights/tsavo-east.jpg
+   PROMPT: Wide landscape photo of Tsavo East National Park in Taita-Taveta / Kilifi, Kenya. A huge, wild park known for red-dust elephants, the Galana River and the Yatta Plateau. Natural light, rich colour, no text, no logos, no faces, photorealistic, 3:2, 1200x800.
+
+5. FILE: public/sights/tsavo-west.jpg
+   PROMPT: Wide landscape photo of Tsavo West National Park in Taita-Taveta, Kenya. Volcanic hills, lava flows and Mzima Springs, where hippos and fish can be watched from an underwater viewing chamber. Natural light, rich colour, no text, no logos, no faces, photorealistic, 3:2, 1200x800.
+
+6. FILE: public/sights/lake-nakuru.jpg
+   PROMPT: Wide landscape photo of Lake Nakuru National Park in Nakuru, Kenya. A shallow soda lake with flamingos, plus a rhino sanctuary and Baboon Cliff viewpoint. Natural light, rich colour, no text, no logos, no faces, photorealistic, 3:2, 1200x800.
+
+7. FILE: public/sights/hells-gate.jpg
+   PROMPT: Wide landscape photo of Hell's Gate National Park in Nakuru, Kenya. Red cliffs, gorge walks and geothermal steam. Natural light, rich colour, no text, no logos, no faces, photorealistic, 3:2, 1200x800.
+
+8. FILE: public/sights/mount-kenya.jpg
+   PROMPT: Wide landscape photo of Mount Kenya National Park in Nyeri / Meru / Kirinyaga, Kenya. Africa's second-highest mountain (5,199 m), a UNESCO World Heritage Site with glaciers, moorland and giant lobelias. Natural light, rich colour, no text, no logos, no faces, photorealistic, 3:2, 1200x800.
+
+9. FILE: public/sights/aberdare.jpg
+   PROMPT: Wide landscape photo of Aberdare National Park in Nyandarua / Nyeri, Kenya. Cool moorland, waterfalls and forest where elephants, buffalo and bongo live. Natural light, rich colour, no text, no logos, no faces, photorealistic, 3:2, 1200x800.
+
+10. FILE: public/sights/samburu.jpg
+   PROMPT: Wide landscape photo of Samburu National Reserve in Samburu, Kenya. A dry northern reserve with species you rarely see elsewhere: Grevy's zebra, reticulated giraffe, gerenuk and Somali ostrich. Natural light, rich colour, no text, no logos, no faces, photorealistic, 3:2, 1200x800.
+
+11. FILE: public/sights/ol-pejeta.jpg
+   PROMPT: Wide landscape photo of Ol Pejeta Conservancy in Laikipia, Kenya. Home to the last northern white rhinos on Earth, plus a chimpanzee sanctuary and night drives. Natural light, rich colour, no text, no logos, no faces, photorealistic, 3:2, 1200x800.
+
+12. FILE: public/sights/meru.jpg
+   PROMPT: Wide landscape photo of Meru National Park in Meru, Kenya. A quiet, green park with rivers and swamps, where Joy Adamson released Elsa the lioness. Natural light, rich colour, no text, no logos, no faces, photorealistic, 3:2, 1200x800.
+
+13. FILE: public/sights/lake-naivasha.jpg
+   PROMPT: Wide landscape photo of Lake Naivasha in Nakuru, Kenya. A freshwater lake in the Rift Valley with hippos, boat rides and the walkable Crescent Island. Natural light, rich colour, no text, no logos, no faces, photorealistic, 3:2, 1200x800.
+
+14. FILE: public/sights/mount-longonot.jpg
+   PROMPT: Wide landscape photo of Mount Longonot in Nakuru, Kenya. A dormant volcano with a crater rim hike and a view over the Rift Valley. Natural light, rich colour, no text, no logos, no faces, photorealistic, 3:2, 1200x800.
+
+15. FILE: public/sights/lake-bogoria.jpg
+   PROMPT: Wide landscape photo of Lake Bogoria National Reserve in Baringo, Kenya. A hot-spring lake with geysers and large flamingo flocks. Natural light, rich colour, no text, no logos, no faces, photorealistic, 3:2, 1200x800.
+
+16. FILE: public/sights/kakamega-forest.jpg
+   PROMPT: Wide landscape photo of Kakamega Forest in Kakamega, Kenya. Kenya's last patch of equatorial rainforest, with monkeys, rare butterflies and hundreds of bird species. Natural light, rich colour, no text, no logos, no faces, photorealistic, 3:2, 1200x800.
+
+17. FILE: public/sights/mount-elgon.jpg
+   PROMPT: Wide landscape photo of Mount Elgon National Park in Bungoma / Trans Nzoia, Kenya. An ancient extinct volcano on the Uganda border with huge caves where elephants once mined salt. Natural light, rich colour, no text, no logos, no faces, photorealistic, 3:2, 1200x800.
+
+18. FILE: public/sights/lake-turkana.jpg
+   PROMPT: Wide landscape photo of Lake Turkana (Loiyangalani) in Marsabit / Turkana, Kenya. The 'Jade Sea': the world's largest desert lake, with a UNESCO-listed shoreline, wind farms and the Turkana, El Molo and Samburu peoples. Natural light, rich colour, no text, no logos, no faces, photorealistic, 3:2, 1200x800.
+
+19. FILE: public/sights/thomsons-falls.jpg
+   PROMPT: Wide landscape photo of Thomson's Falls in Nyandarua, Kenya. A 74-metre waterfall at Nyahururu, Kenya's highest town. Natural light, rich colour, no text, no logos, no faces, photorealistic, 3:2, 1200x800.
+
+20. FILE: public/sights/nairobi-national-museum.jpg
+   PROMPT: Wide landscape photo of Nairobi National Museum in Nairobi, Kenya. Kenya's main museum: human origins (Turkana Boy), art, culture, birds and a snake park. Natural light, rich colour, no text, no logos, no faces, photorealistic, 3:2, 1200x800.
+
+21. FILE: public/sights/karen-blixen-museum.jpg
+   PROMPT: Wide landscape photo of Karen Blixen Museum in Nairobi, Kenya. The farmhouse of the Danish writer of 'Out of Africa', preserved with its original furniture and gardens. Natural light, rich colour, no text, no logos, no faces, photorealistic, 3:2, 1200x800.
+
+22. FILE: public/sights/giraffe-centre.jpg
+   PROMPT: Wide landscape photo of Giraffe Centre in Nairobi, Kenya. A conservation centre where you can feed Rothschild's giraffes from a raised platform. Natural light, rich colour, no text, no logos, no faces, photorealistic, 3:2, 1200x800.
+
+23. FILE: public/sights/sheldrick-trust.jpg
+   PROMPT: Wide landscape photo of David Sheldrick Wildlife Trust in Nairobi, Kenya. The orphan elephant nursery, open for one hour a day so you can watch the baby elephants being fed. Natural light, rich colour, no text, no logos, no faces, photorealistic, 3:2, 1200x800.
+
+24. FILE: public/sights/bomas-of-kenya.jpg
+   PROMPT: Wide landscape photo of Bomas of Kenya in Nairobi, Kenya. Traditional homesteads of Kenya's communities with daily dance and music shows. Natural light, rich colour, no text, no logos, no faces, photorealistic, 3:2, 1200x800.
+
+25. FILE: public/sights/railway-museum.jpg
+   PROMPT: Wide landscape photo of Nairobi Railway Museum in Nairobi, Kenya. Old steam locomotives and carriages from the 'Lunatic Express' era. Natural light, rich colour, no text, no logos, no faces, photorealistic, 3:2, 1200x800.
+
+26. FILE: public/sights/fort-jesus.jpg
+   PROMPT: Wide landscape photo of Fort Jesus (Mombasa) in Mombasa, Kenya. A 16th-century Portuguese fort, UNESCO World Heritage Site, looking over Mombasa's Old Town. Natural light, rich colour, no text, no logos, no faces, photorealistic, 3:2, 1200x800.
+
+27. FILE: public/sights/diani-beach.jpg
+   PROMPT: Wide landscape photo of Diani Beach in Kwale, Kenya. A long white-sand beach with palm trees, reef snorkelling and kite-surfing. Natural light, rich colour, no text, no logos, no faces, photorealistic, 3:2, 1200x800.
+
+28. FILE: public/sights/lamu-old-town.jpg
+   PROMPT: Wide landscape photo of Lamu Old Town in Lamu, Kenya. Kenya's oldest living Swahili town: narrow streets, carved doors, dhows and no cars. Natural light, rich colour, no text, no logos, no faces, photorealistic, 3:2, 1200x800.
+
+29. FILE: public/sights/watamu-gedi.jpg
+   PROMPT: Wide landscape photo of Watamu & Gedi Ruins in Kilifi, Kenya. A marine park with coral gardens, plus the mysterious ruined Swahili town of Gedi hidden in the forest. Natural light, rich colour, no text, no logos, no faces, photorealistic, 3:2, 1200x800.
+
+30. FILE: public/sights/haller-park.jpg
+   PROMPT: Wide landscape photo of Haller Park (Bamburi) in Mombasa, Kenya. A restored quarry turned into a nature park with giraffes, hippos, crocodiles and a tortoise sanctuary. Natural light, rich colour, no text, no logos, no faces, photorealistic, 3:2, 1200x800.

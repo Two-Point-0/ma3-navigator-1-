@@ -26,7 +26,7 @@ export default function AdminPage() {
   if (!admin) return <div className="page-wrap"><div className="inner"><p style={{ color: "var(--muted2)", fontSize: ".74rem" }}>This page is for the app owner only.</p></div></div>;
   return <div className="page-wrap"><div className="inner">
     <h1 style={{ fontSize: "1.1rem", margin: "0 0 4px" }}><ShieldCheck size={16} style={{ verticalAlign: -2, color: "var(--ready)" }} /> Admin · drivers</h1>
-    <p style={{ color: "var(--muted2)", fontSize: ".64rem", margin: "0 0 12px", lineHeight: 1.5 }}>Phone the driver or check their plate before you approve. Approved drivers appear on rider maps only while they press Go online.</p>
+    <p style={{ color: "var(--muted2)", fontSize: ".64rem", margin: "0 0 12px", lineHeight: 1.5 }}>Call the driver or check the plate before approving.</p>
     {!drivers.length && <p style={{ color: "var(--muted2)", fontSize: ".7rem" }}>No driver has applied yet.</p>}
     <div style={{ display: "grid", gap: 8 }}>{drivers.map(driver => <div key={driver.user_id} className="card" style={{ padding: 11, borderColor: driver.status === "pending" ? "var(--ready)" : undefined }}>
       <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}><b style={{ fontSize: ".76rem" }}>{driver.full_name ?? "(no name)"}</b><small style={{ color: driver.status === "approved" ? "var(--go)" : driver.status === "pending" ? "var(--ready)" : "var(--stop)", fontWeight: 800, textTransform: "uppercase" }}>{driver.status}</small></div>

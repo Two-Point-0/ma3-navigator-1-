@@ -126,7 +126,7 @@ export default function WalletPage() {
       if (data.status === "succeeded") { await refresh(); setMessage("M-Pesa payment confirmed and wallet balance updated."); setStage("done"); toast.success("Wallet top-up confirmed."); return; }
       if (data.status === "failed" || data.status === "expired") { setMessage(data.result_description || "The M-Pesa transaction was not completed."); setStage("form"); toast.error("M-Pesa payment was not completed."); return; }
     }
-    setMessage("Still awaiting Safaricom confirmation. Do not start another top-up; check this request again shortly."); setStage("pending");
+    setMessage("Waiting for Safaricom. Check again shortly."); setStage("pending");
   };
 
   const sendMpesa = async () => {
