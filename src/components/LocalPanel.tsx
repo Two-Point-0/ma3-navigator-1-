@@ -7,6 +7,7 @@ import { ArrowLeft, Bus, Car, Check, ImagePlus, LocateFixed, MapPin, MessageCirc
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { useAuthContext } from "@/context/AuthContext";
 import { APP_MODE } from "@/lib/appMode";
+import PosterModal, { type PosterData } from "@/components/PosterModal";
 import { LOCAL_CATEGORIES, iconMarker, localCategoryIcon } from "@/lib/placeIcons";
 
 /** Placeholder fee until you decide the real price. It is only shown, nothing is charged while payments are in demo mode. */
@@ -173,27 +174,22 @@ export default function LocalPanel({ map, userLocation, requestLocation, fixedCa
   if (mode === "shop" && selected) {
     const wa = (selected.whatsapp || selected.phone || "").replace(/\D/g, "");
     const message = encodeURIComponent(`Hello ${selected.name}, I found you on Ma3 and would like to order / ask about: `);
-    return <div>
-      {back("shop")}
-      {selected.image_paths.length > 0 && <div style={{ display: "grid", gridTemplateColumns: selected.image_paths.length === 1 ? "1fr" : "repeat(2,1fr)", gap: 5, marginBottom: 10 }}>
-        {selected.image_paths.map((path, index) => <img key={path} src={imageUrl(path)} alt={`${selected.name} photo ${index + 1}`} loading="lazy" style={{ width: "100%", height: index === 0 && selected.image_paths.length % 2 === 1 ? 170 : 110, objectFit: "cover", borderRadius: 11, gridColumn: index === 0 && selected.image_paths.length % 2 === 1 ? "1 / -1" : undefined }} />)}
-      </div>}
-      <p style={{ fontFamily: "var(--font-display)", fontSize: ".95rem", fontWeight: 900, margin: 0 }}>{selected.name}</p>
-      <p style={{ margin: "3px 0 8px", fontSize: ".62rem", color: "var(--ready)" }}>{categoryLabel(selected.category)}{selected.distance_km != null ? ` · ${selected.distance_km.toFixed(1)} km away` : ""}</p>
-      <p style={{ fontSize: ".7rem", lineHeight: 1.55 }}>{selected.description}</p>
-      {selected.services.length > 0 && <div style={{ display: "flex", gap: 5, flexWrap: "wrap", margin: "8px 0" }}>{selected.services.map(item => <span key={item} className="chip" style={{ background: "var(--glass2)", border: "1px solid var(--border2)" }}>{item}</span>)}</div>}
-      {selected.address && <p style={{ fontSize: ".62rem", color: "var(--muted2)" }}><MapPin size={11} /> {selected.address}</p>}
-      <div style={{ display: "grid", gap: 7, marginTop: 10 }}>
-        {selected.phone && <a className="btn btn-go" style={{ padding: 10, textDecoration: "none" }} href={`tel:${selected.phone}`}><Phone size={13} /> Call {selected.phone}</a>}
-        {wa && <a className="btn btn-ready" style={{ padding: 10, textDecoration: "none" }} target="_blank" rel="noopener noreferrer" href={`https://wa.me/${wa}?text=${message}`}><MessageCircle size={13} /> Order on WhatsApp</a>}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 7 }}>
-          <button className="btn btn-ghost" style={{ padding: 9, fontSize: ".64rem" }} onClick={() => { sessionStorage.setItem("ma3_destination", JSON.stringify({ name: selected.name, lat: selected.latitude, lon: selected.longitude })); setLocation("/ma3"); }}><Bus size={12} /> Go by Ma3</button>
-          <button className="btn btn-ghost" style={{ padding: 9, fontSize: ".64rem" }} onClick={() => { sessionStorage.setItem("ndai_destination", JSON.stringify({ tab: "ride", name: selected.name, lat: selected.latitude, lon: selected.longitude })); setLocation("/ndai"); }}><Car size={12} /> Go by Ndai</button>
-        </div>
-        <a className="btn btn-ghost" style={{ padding: 9, fontSize: ".64rem", textDecoration: "none" }} target="_blank" rel="noopener noreferrer" href={`https://www.google.com/maps/dir/?api=1&destination=${selected.latitude},${selected.longitude}`}><Navigation size={12} /> Directions in Google Maps</a>
+    const poster: PosterData = {
+      id: selected.id, title: selected.name, subtitle: `${categoryLabel(selected.category)}${selected.distance_km != null ? ` · ${selected.distance_km.toFixed(1)} km away` : ""}`,
+      imageUrls: selected.image_paths.length ? [imageUrl(selected.image_paths[0]), imageUrl(selected.image_paths[0].replace(/\.(png|jpg)$/i, m => (m.toLowerCase() === ".png" ? ".jpg" : ".png")))] : undefined, icon: localCategoryIcon(selected.category),
+      summary: selected.description, highlights: selected.services,
+      facts: [...(selected.address ? [{ icon: MapPin, label: "Where", text: selected.address }] : []), ...(selected.phone ? [{ icon: Phone, label: "Phone", text: selected.phone }] : [])],
+      note: "Ma3 does not take payment for local businesses. You order and pay the seller directly.",
+    };
+    return <PosterModal poster={poster} onClose={() => setSelected(null)} actions={<>
+      {selected.phone && <a className="btn btn-go" style={{ padding: 11, textDecoration: "none", display: "flex", justifyContent: "center", gap: 6 }} href={`tel:${selected.phone}`}><Phone size={14} /> Call {selected.phone}</a>}
+      {wa && <a className="btn btn-ready" style={{ padding: 11, textDecoration: "none", display: "flex", justifyContent: "center", gap: 6 }} target="_blank" rel="noopener noreferrer" href={`https://wa.me/${wa}?text=${message}`}><MessageCircle size={14} /> Order on WhatsApp</a>}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+        <button className="btn btn-ghost" onClick={() => { sessionStorage.setItem("ma3_destination", JSON.stringify({ name: selected.name, lat: selected.latitude, lon: selected.longitude })); setLocation("/ma3"); }}><Bus size={13} /> Go by Ma3</button>
+        <button className="btn btn-ghost" onClick={() => { sessionStorage.setItem("ndai_destination", JSON.stringify({ tab: "ride", name: selected.name, lat: selected.latitude, lon: selected.longitude })); setLocation("/ndai"); }}><Car size={13} /> Go by Ndai</button>
       </div>
-      <p style={{ marginTop: 8, fontSize: ".55rem", color: "var(--muted2)", lineHeight: 1.45 }}>Ma3 does not take payment for local businesses. You order and pay the seller directly.</p>
-    </div>;
+      <a className="btn btn-ghost" style={{ textDecoration: "none", display: "flex", justifyContent: "center", gap: 6 }} target="_blank" rel="noopener noreferrer" href={`https://www.google.com/maps/dir/?api=1&destination=${selected.latitude},${selected.longitude}`}><Navigation size={13} /> Directions in Google Maps</a>
+    </>} />;
   }
 
   // ---- shop: search ----
@@ -208,7 +204,7 @@ export default function LocalPanel({ map, userLocation, requestLocation, fixedCa
     <button className="btn btn-ghost" style={{ padding: "6px 10px", fontSize: ".6rem", marginBottom: 8 }} onClick={requestLocation}><LocateFixed size={12} /> {userLocation ? "Nearest first (location on)" : "Use my location to sort by nearest"}</button>
     {results === null && <p style={{ fontSize: ".64rem", color: "var(--muted2)", lineHeight: 1.5 }}>Type what you need, or tap a category. Matching businesses appear on the map.</p>}
     {searching && <p style={{ fontSize: ".62rem", color: "var(--muted2)" }}>Searching…</p>}
-    {results && !searching && results.length === 0 && <p style={{ fontSize: ".64rem", color: "var(--muted2)" }}>No registered business matches yet. Know someone who sells this? Ask them to register on Local.</p>}
+    {results && !searching && results.length === 0 && <p style={{ fontSize: ".64rem", color: "var(--muted2)" }}>No match yet. Ask a seller to register on Local.</p>}
     {results?.map(item => { const Icon = localCategoryIcon(item.category); return <button key={item.id} className="card" onClick={() => { setSelected(item); map?.easeTo({ center: [item.longitude, item.latitude], zoom: 16, duration: 600 }); }} style={{ width: "100%", padding: 10, marginBottom: 7, display: "flex", gap: 10, alignItems: "center", textAlign: "left", color: "var(--white)", cursor: "pointer" }}>
       {item.image_paths[0] ? <img src={imageUrl(item.image_paths[0])} alt="" loading="lazy" style={{ width: 46, height: 46, borderRadius: 10, objectFit: "cover" }} /> : <span style={{ width: 46, height: 46, borderRadius: 10, display: "grid", placeItems: "center", background: "var(--glass2)" }}><Icon size={20} style={{ color: "var(--ready)" }} /></span>}
       <span style={{ flex: 1, minWidth: 0 }}><b style={{ display: "block", fontSize: ".72rem" }}>{item.name}</b><small style={{ color: "var(--muted2)" }}>{categoryLabel(item.category)}{item.distance_km != null ? ` · ${item.distance_km.toFixed(1)} km` : ""}</small></span></button>; })}
@@ -228,13 +224,13 @@ export default function LocalPanel({ map, userLocation, requestLocation, fixedCa
         <button className="btn btn-ghost" style={{ padding: "7px 11px", fontSize: ".62rem" }} onClick={() => remove(item)}><Trash2 size={12} /> Delete</button></div>
     </div>; })}
     <button className="btn btn-ready" style={{ width: "100%", justifyContent: "center", padding: 10, marginTop: 4 }} onClick={() => setMode("register")}><PlusCircle size={14} /> Register another business</button>
-    {!APP_MODE.realPayments && <p style={{ marginTop: 8, fontSize: ".55rem", color: "var(--muted2)", lineHeight: 1.45 }}>Payments are in demo mode: the Pay button switches the listing on for 30 days without charging. Real M-Pesa payment will replace it once it is tested.</p>}
+    {!APP_MODE.realPayments && <p style={{ marginTop: 8, fontSize: ".55rem", color: "var(--muted2)", lineHeight: 1.45 }}>Practice mode: Pay switches your listing on for 30 days without charging.</p>}
   </div>;
 
   // ---- register ----
   return <div>
     {back("choose")}
-    {!signedIn ? <div className="card" style={{ padding: 13 }}><p style={{ fontSize: ".7rem", margin: "0 0 8px" }}>Sign in with Google or your phone to register a business. Guests cannot, so that listings have a real owner.</p><Link href="/login" className="btn btn-go" style={{ padding: "9px 16px", textDecoration: "none" }}>Sign in</Link></div> : <>
+    {!signedIn ? <div className="card" style={{ padding: 13 }}><p style={{ fontSize: ".7rem", margin: "0 0 8px" }}>Sign in to register a business.</p><Link href="/login" className="btn btn-go" style={{ padding: "9px 16px", textDecoration: "none" }}>Sign in</Link></div> : <>
       <p className="sec-label">About your business</p>
       <input className="finput" placeholder="Business name (e.g. Mama Njeri Veggies)" value={form.name} maxLength={80} onChange={event => set("name", event.target.value)} />
       <select className="finput" style={{ marginTop: 7 }} value={form.category} onChange={event => set("category", event.target.value)}>{LOCAL_CATEGORIES.map(item => <option key={item.id} value={item.id}>{item.label}</option>)}</select>

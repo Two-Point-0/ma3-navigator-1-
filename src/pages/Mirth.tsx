@@ -1,7 +1,7 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Gamepad2, Search, Heart, ThumbsUp, Users, X, Swords, MessageSquareQuote, Crown, Dices, Brain, Grid3x3, BusFront, LoaderCircle, Trophy, Star, MapPin, Sparkles, Shield, Volume2, Route, PlusCircle, ShoppingBag, Puzzle, Grid2x2, Target, Mic2, Hammer, Landmark } from "lucide-react";
-import GameShell from "@/components/GameShell";
+import CenterModal from "@/components/CenterModal";
 import { toast } from "sonner";
 import PageTabs from "@/components/PageTabs";
 import NganyaShop from "@/components/NganyaShop";
@@ -36,11 +36,10 @@ function geoLines(value: any): [number, number][][] {
 
 const GAMES: GameDef[] = [
   { id: "mchongwano", name: "Mchongwano Live", Icon: Mic2, desc: "Live roast battles and tournaments. The audience votes for the winner.", players: "Live · 2 fighters + crowd" },
-  { id: "tycoon", name: "Nairobi Tycoon", Icon: Landmark, desc: "The classic property-trading game on a Nairobi board: buy estates and stages, build towers, collect fares.", players: "You vs bot" },
-  { id: "ludo", name: "Ludo", Icon: Dices, desc: "2 to 4 players. Play the computer, pass the phone around, or join friends online with a room code.", players: "2–4 players · online" },
-  { id: "pool", name: "Pool", Icon: Target, desc: "8-ball pool. Drag back like a catapult and shoot. Play the computer or pass the phone.", players: "1–2 players" },
+  { id: "tycoon", name: "Nganya Tycoon", Icon: Landmark, desc: "Buy Nairobi stages, build landmarks and collect fares.", players: "Single-player prototype · you vs bot" },
+  { id: "ludo", name: "Ludo", Icon: Dices, desc: "Race four tokens home on the board against the computer.", players: "Route King" },
   { id: "chess", name: "Chess", Icon: Crown, desc: "Classic strategy: you play white against the computer.", players: "Route King" },
-  { id: "trivia", name: "Trivia", Icon: Brain, desc: "Pick Kenya or world categories and a level. Five questions a round.", players: "Route King" },
+  { id: "trivia", name: "Trivia", Icon: Brain, desc: "Kenya general knowledge, five questions.", players: "Route King" },
   { id: "memory", name: "Matatu Match", Icon: Puzzle, desc: "Flip cards and find all 8 pairs in the fewest moves.", players: "Route King" },
   { id: "snake", name: "Matatu Snake", Icon: Target, desc: "Collect matatus without hitting the walls or yourself.", players: "Route King" },
   { id: "whack", name: "Whack-a-Matatu", Icon: Hammer, desc: "30 seconds. Tap every matatu that pops up.", players: "Route King" },
@@ -50,7 +49,6 @@ const PLAYS_KEY = "ma3_game_plays";
 const readPlays = (): Record<string, number> => { try { return JSON.parse(localStorage.getItem(PLAYS_KEY) || "{}"); } catch { return {}; } };
 const playTone = (count: number) => count >= 3 ? { color: "var(--go)", label: "You play this a lot" } : count >= 1 ? { color: "var(--ready)", label: "Tried it" } : { color: "var(--stop)", label: "Not played yet" };
 const LazyTrivia = lazy(() => import("@/components/TriviaGame"));
-const LazyPool = lazy(() => import("@/components/PoolGame"));
 const LazyChess = lazy(() => import("@/components/ChessGame"));
 const LazyLudo = lazy(() => import("@/components/LudoGame"));
 const LazyMemory = lazy(() => import("@/components/MiniGames").then(m => ({ default: m.MemoryGame })));
@@ -92,14 +90,6 @@ export default function MirthPage() {
   const [routeFilter, setRouteFilter] = useState("all");
   const [onlyFavourites, setOnlyFavourites] = useState(false);
   const [selectedGame, setSelectedGame] = useState<GameDef | null>(null);
-  const [joinCode, setJoinCode] = useState<string | undefined>(undefined);
-  // A challenge link from the matatu chat opens straight into the online room: /mirth?game=ludo&room=ABCD
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const game = GAMES.find(item => item.id === params.get("game"));
-    const room = (params.get("room") ?? "").toUpperCase().slice(0, 4);
-    if (game && room.length === 4) { setJoinCode(room); setSelectedGame(game); window.history.replaceState(null, "", window.location.pathname); }
-  }, []);
   const [selectedNganya, setSelectedNganya] = useState<Nganya | null>(null);
   const [styleAverage, setStyleAverage] = useState<StyleAverage | null>(null);
   const [ratingForm, setRatingForm] = useState<Record<string, string>>({ artwork: "", sound: "", lighting: "", comfort: "", driving: "", service: "" });
@@ -393,12 +383,11 @@ export default function MirthPage() {
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(2,1fr)", gap: 8 }}>{GAMES.map(game => {
         const tone = playTone(plays[game.id] ?? 0);
-        return <motion.button key={game.id} whileTap={{ scale: .97 }} onClick={() => { bumpPlay(game.id); setSelectedGame(game); }} className="card" aria-label={`${game.name}. ${tone.label}`}
+        return <motion.button key={game.id} whileTap={{ scale: .97 }} onClick={() => { bumpPlay(game.id); setSelectedGame(game); if (game.id === "trivia") { sessionStorage.setItem(`mirth-trivia-start-${kenyaDate()}`, "1"); setTriviaStarted(true); } }} className="card" aria-label={`${game.name}. ${tone.label}`}
           style={{ padding: 11, display: "flex", flexDirection: "column", gap: 6, textAlign: "left", color: "var(--white)", cursor: "pointer", gridColumn: game.id === "mchongwano" ? "1 / -1" : undefined, borderColor: tone.color, boxShadow: `0 0 14px color-mix(in srgb, ${tone.color} 30%, transparent), inset 0 0 0 1px color-mix(in srgb, ${tone.color} 25%, transparent)` }}>
           <span style={{ display: "flex", alignItems: "center", gap: 8 }}><span style={{ width: 34, height: 34, borderRadius: 10, background: `color-mix(in srgb, ${tone.color} 16%, transparent)`, display: "grid", placeItems: "center", color: tone.color }}><game.Icon size={17} /></span><b style={{ fontSize: ".76rem", flex: 1 }}>{game.name}</b><i style={{ width: 9, height: 9, borderRadius: 99, background: tone.color, boxShadow: `0 0 9px ${tone.color}`, flexShrink: 0 }} /></span>
           <small style={{ color: "var(--muted2)", lineHeight: 1.4, fontSize: ".58rem" }}>{game.desc}</small>
           <small style={{ color: tone.color, fontSize: ".54rem", fontWeight: 700 }}>{game.players} · {tone.label}</small>
-          {personalBests[game.id] !== undefined && <small style={{ color: "var(--muted2)", fontSize: ".52rem" }}>Personal best · {personalBests[game.id]}</small>}
         </motion.button>;
       })}</div>
     </section>}
@@ -452,18 +441,18 @@ export default function MirthPage() {
 
     <AnimatePresence>{selectedNganya && <><motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setSelectedNganya(null)} style={{ position: "fixed", inset: 0, zIndex: 1100, background: "rgba(0,0,0,.56)", backdropFilter: "blur(7px)" }} /><motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} className="ios-glass" style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 1101, maxWidth: 640, margin: "0 auto", padding: "1.1rem 1rem 1.8rem", borderRadius: "22px 22px 0 0", maxHeight: "86vh", overflowY: "auto" }}><div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}><b style={{ display: "flex", alignItems: "center", gap: 7 }}><BusFront size={17} style={{ color: "var(--ready)" }} />{selectedNganya.display_name}</b><button className="icon-btn" onClick={() => setSelectedNganya(null)}><X size={15} /></button></div><p style={{ color: "var(--muted2)", fontSize: ".63rem", margin: "4px 0 12px" }}>{selectedNganya.route_label || selectedNganya.route_code}{selectedNganya.sacco ? ` · ${selectedNganya.sacco}` : ""}</p><p className="sec-label">Community style stats · 1–5</p>{RATING_FIELDS.map(field => { const value = styleAverage?.[field.key] ?? 0; return <div key={field.key} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}><span style={{ width: 58, fontSize: ".61rem", color: "var(--muted2)" }}>{field.label}</span><div style={{ flex: 1, height: 6, borderRadius: 99, background: "var(--glass2)" }}><div style={{ width: `${Math.min(100, value * 20)}%`, height: "100%", borderRadius: 99, background: "var(--ready)" }} /></div><span style={{ width: 32, textAlign: "right", color: "var(--muted2)", fontSize: ".59rem" }}>{value ? value.toFixed(1) : "—"}</span></div>; })}<p style={{ color: "var(--muted)", fontSize: ".55rem", margin: "3px 0 12px" }}>{styleAverage?.rating_count ? `${styleAverage.rating_count} community rating${styleAverage.rating_count === 1 ? "" : "s"} · subjective style, not safety data` : "No ratings yet. Scores appear only after community members submit them."}</p><div className="ios-glass" style={{ padding: 10 }}><p className="sec-label">Rate the style</p><div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>{RATING_FIELDS.map(field => <label key={field.key}>{field.label}<select className="finput" value={ratingForm[field.key]} onChange={event => setRatingForm(current => ({ ...current, [field.key]: event.target.value }))}><option value="">Choose 1–5</option>{[1,2,3,4,5].map(value => <option key={value} value={value}>{value}</option>)}</select></label>)}</div><button className="btn btn-ready" style={{ width: "100%", marginTop: 10 }} onClick={() => void submitRating()}><Star size={13} /> Save my style rating</button></div></motion.div></>}</AnimatePresence>
 
-    <GameShell open={!!selectedGame} title={selectedGame?.name ?? ""} subtitle={selectedGame?.desc} icon={selectedGame ? <selectedGame.Icon size={17} style={{ color: "var(--ready)" }} /> : undefined} onClose={() => { setSelectedGame(null); setJoinCode(undefined); }}>
+    <CenterModal open={!!selectedGame} title={selectedGame?.name ?? ""} icon={selectedGame ? <selectedGame.Icon size={17} style={{ color: "var(--ready)" }} /> : undefined} onClose={() => setSelectedGame(null)}>
       {selectedGame && <Suspense fallback={<p style={{ padding: 14, textAlign: "center", color: "var(--muted2)", fontSize: ".66rem" }}><LoaderCircle size={14} /> Loading game…</p>}>
+        <p style={{ color: "var(--muted2)", fontSize: ".66rem", margin: "0 0 10px" }}>{selectedGame.desc}</p>
         {selectedGame.id === "mchongwano" ? <LazyMchongwano /> :
          selectedGame.id === "tycoon" ? <LazyTycoon onStart={() => void beginKingGame("tycoon")} onFinish={points => submitFinishedScore("tycoon", points)} /> :
-         selectedGame.id === "pool" ? <LazyPool onStart={() => void beginKingGame("pool")} onFinish={points => submitFinishedScore("pool", points)} /> :
          selectedGame.id === "chess" ? <LazyChess onStart={() => void beginKingGame("chess")} onFinish={points => submitFinishedScore("chess", points)} /> :
-         selectedGame.id === "ludo" ? <LazyLudo joinCode={joinCode} onStart={() => void beginKingGame("ludo")} onFinish={points => submitFinishedScore("ludo", points)} /> :
+         selectedGame.id === "ludo" ? <LazyLudo onStart={() => void beginKingGame("ludo")} onFinish={points => submitFinishedScore("ludo", points)} /> :
          selectedGame.id === "trivia" ? <LazyTrivia onStart={markTriviaStarted} onFinish={(score, total) => submitFinishedScore("trivia", Math.round((score / Math.max(1, total)) * 100))} /> :
          selectedGame.id === "memory" ? <LazyMemory onStart={() => void beginKingGame("memory")} onFinish={points => submitFinishedScore("memory", points)} /> :
          selectedGame.id === "snake" ? <LazySnake onStart={() => void beginKingGame("snake")} onFinish={points => submitFinishedScore("snake", points)} /> :
          selectedGame.id === "whack" ? <LazyWhack onStart={() => void beginKingGame("whack")} onFinish={points => submitFinishedScore("whack", points)} /> : null}
       </Suspense>}
-    </GameShell>
+    </CenterModal>
   </div>;
 }

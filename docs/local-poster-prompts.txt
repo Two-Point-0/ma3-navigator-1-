@@ -1,0 +1,306 @@
+MA3 LOCAL BUSINESS POSTERS: 100 demo businesses
+
+MASTER STYLE (paste once at the top of your Stitch / image AI chat, then give the lines below one by one)
+Create a landscape picture, 3:2, 1200x800. Bright, warm, friendly Nairobi street feel. Show the business place or its main goods clearly in the middle. Add the business name as large clean text across the top. Show the services as 3-5 small icons with short labels along the bottom. Colours: warm orange and deep navy with white. Do NOT include phone numbers, prices, real logos or real people's faces. Do not copy any brand. One picture per business.
+
+HOW TO USE: for each line make the picture, save it with the FILE name, upload all files to Supabase Storage > business-images > demo/ , then run supabase/seed/demo_local_businesses.sql.
+
+1. FILE: mama-njeri-mboga.png
+   PROMPT: Poster for "Mama Njeri Mboga", a vegetable stall in Kawangware, Nairobi. Tagline: "Fresh vegetables picked every morning." Services: Sukuma wiki, Spinach, Tomatoes and onions, Cabbage, Delivery on request.
+
+2. FILE: mama-wanjiru-fresh-greens.png
+   PROMPT: Poster for "Mama Wanjiru Fresh Greens", a vegetable stall in Githurai, Nairobi. Tagline: "Greens for the whole week, fair prices." Services: Kale and spinach, Managu and terere, Carrots and potatoes, Bundled family packs.
+
+3. FILE: mama-achieng-veggies.png
+   PROMPT: Poster for "Mama Achieng Veggies", a vegetable stall in Kibera, Nairobi. Tagline: "Your corner for everyday vegetables." Services: Sukuma wiki, Tomatoes, Onions, Dhania and spices.
+
+4. FILE: mama-atieno-stall.png
+   PROMPT: Poster for "Mama Atieno Stall", a vegetable stall in Umoja, Nairobi. Tagline: "Local produce, honest weight." Services: Vegetables, Arrowroots, Sweet potatoes, Cooking bananas.
+
+5. FILE: kamau-and-sons-greens.png
+   PROMPT: Poster for "Kamau and Sons Greens", a vegetable stall in Kasarani, Nairobi. Tagline: "Retail and wholesale vegetables." Services: Wholesale sacks, Retail bundles, Delivery to hotels.
+
+6. FILE: fruit-basket-corner.png
+   PROMPT: Poster for "Fruit Basket Corner", a fruit stand in CBD, Nairobi. Tagline: "Fresh fruit cut while you wait." Services: Bananas, Mangoes, Pineapples, Fruit salad cups.
+
+7. FILE: tropical-fruit-stand.png
+   PROMPT: Poster for "Tropical Fruit Stand", a fruit stand in Westlands, Nairobi. Tagline: "Seasonal fruit and cold juice." Services: Passion fruit, Watermelon, Avocados, Fresh juice.
+
+8. FILE: matunda-fresh.png
+   PROMPT: Poster for "Matunda Fresh", a fruit stand in Buruburu, Nairobi. Tagline: "Fruit for home, office and gifts." Services: Oranges, Apples, Pawpaw, Gift baskets.
+
+9. FILE: kamau-butchery.png
+   PROMPT: Poster for "Kamau Butchery", a butchery in Kawangware, Nairobi. Tagline: "Fresh cuts, cut to your order." Services: Beef and goat meat, Mutton, Sausages, Free cutting.
+
+10. FILE: choma-zone-butchery.png
+   PROMPT: Poster for "Choma Zone Butchery", a butchery in Ngong Road, Nairobi. Tagline: "Buy the meat, roast it here." Services: Beef, Goat, Nyama choma on site, Offals.
+
+11. FILE: mwangi-meat-hub.png
+   PROMPT: Poster for "Mwangi Meat Hub", a butchery in Embakasi, Nairobi. Tagline: "Quality meat for homes and events." Services: Beef, Chicken, Mutton, Bulk orders.
+
+12. FILE: fresh-cuts-butchery.png
+   PROMPT: Poster for "Fresh Cuts Butchery", a butchery in Rongai, Nairobi. Tagline: "Clean shop, fair prices." Services: Beef, Goat, Pork, Delivery.
+
+13. FILE: nyama-mtaani.png
+   PROMPT: Poster for "Nyama Mtaani", a butchery in Kasarani, Nairobi. Tagline: "Your neighbourhood meat shop." Services: Beef, Goat, Fresh liver, Fry and roast service.
+
+14. FILE: maziwa-fresh-dairy.png
+   PROMPT: Poster for "Maziwa Fresh Dairy", a dairy and eggs shop in Kikuyu, Nairobi. Tagline: "Fresh milk from local farms." Services: Fresh milk, Mala, Yoghurt, Home delivery.
+
+15. FILE: egg-basket.png
+   PROMPT: Poster for "Egg Basket", a dairy and eggs shop in Githurai, Nairobi. Tagline: "Eggs by the tray, delivered." Services: Eggs by tray, Kienyeji eggs, Chicken, Bulk deals.
+
+16. FILE: mama-pima-kibanda.png
+   PROMPT: Poster for "Mama Pima Kibanda", a local eatery in CBD, Nairobi. Tagline: "Hot home-style food all day." Services: Ugali and sukuma, Githeri, Chapati, Tea and mandazi.
+
+17. FILE: mama-oliech-fish-joint.png
+   PROMPT: Poster for "Mama Oliech Fish Joint", a local eatery in Kibera, Nairobi. Tagline: "Lake fish, fried fresh." Services: Fried tilapia, Ugali, Kachumbari, Takeaway.
+
+18. FILE: chapo-corner.png
+   PROMPT: Poster for "Chapo Corner", a local eatery in Eastleigh, Nairobi. Tagline: "Breakfast and chapati, early to late." Services: Chapati, Beans, Eggs and tea, Breakfast combos.
+
+19. FILE: nyama-choma-spot.png
+   PROMPT: Poster for "Nyama Choma Spot", a local eatery in Kasarani, Nairobi. Tagline: "Weekend roast spot." Services: Roast goat, Ugali, Kachumbari, Soft drinks.
+
+20. FILE: swahili-plate.png
+   PROMPT: Poster for "Swahili Plate", a local eatery in Eastleigh, Nairobi. Tagline: "Swahili and coastal plates." Services: Biryani, Pilau, Samosas, Mahamri.
+
+21. FILE: githeri-point.png
+   PROMPT: Poster for "Githeri Point", a local eatery in Umoja, Nairobi. Tagline: "Local plates at fair prices." Services: Githeri, Mukimo, Chapati, Takeaway.
+
+22. FILE: oven-fresh-bakery.png
+   PROMPT: Poster for "Oven Fresh Bakery", a bakery in Buruburu, Nairobi. Tagline: "Baked fresh every morning." Services: Bread, Buns, Birthday cakes, Wedding cakes on order.
+
+23. FILE: mandazi-house.png
+   PROMPT: Poster for "Mandazi House", a bakery in Ruaka, Nairobi. Tagline: "Warm mandazi and tea." Services: Mandazi, Cakes, Samosas, Tea.
+
+24. FILE: sweet-crumbs.png
+   PROMPT: Poster for "Sweet Crumbs", a bakery in Karen, Nairobi. Tagline: "Custom cakes for every occasion." Services: Cupcakes, Custom cakes, Cookies, Delivery.
+
+25. FILE: baraka-kiosk.png
+   PROMPT: Poster for "Baraka Kiosk", a neighbourhood shop in Githurai, Nairobi. Tagline: "Everything you need nearby." Services: Milk and bread, Airtime, Soft drinks, Gas refill, M-Pesa.
+
+26. FILE: jirani-shop.png
+   PROMPT: Poster for "Jirani Shop", a neighbourhood shop in Donholm, Nairobi. Tagline: "Your convenience shop around the corner." Services: Groceries, Airtime, Toiletries, Credit on request.
+
+27. FILE: twende-mini-mart.png
+   PROMPT: Poster for "Twende Mini Mart", a neighbourhood shop in South B, Nairobi. Tagline: "Open early, closes late." Services: Snacks, Drinks, Cereals, Airtime, M-Pesa.
+
+28. FILE: mama-fua-wholesale.png
+   PROMPT: Poster for "Mama Fua Wholesale", a neighbourhood shop in Embakasi, Nairobi. Tagline: "Wholesale and retail basics." Services: Flour and sugar, Cooking oil, Rice, Retail packs.
+
+29. FILE: duka-la-mtaa.png
+   PROMPT: Poster for "Duka la Mtaa", a neighbourhood shop in Roysambu, Nairobi. Tagline: "Daily needs, fast service." Services: Daily groceries, Airtime, Water, Eggs.
+
+30. FILE: pesa-point-m-pesa-and-bank-agent.png
+   PROMPT: Poster for "Pesa Point M-Pesa and Bank Agent", a M-Pesa and bank agent shop in CBD, Nairobi. Tagline: "Cash services made easy." Services: M-Pesa deposit and withdrawal, Bank deposits, Pay bills, Buy KPLC tokens, Airtime.
+
+31. FILE: haraka-agent.png
+   PROMPT: Poster for "Haraka Agent", a M-Pesa and bank agent shop in Kawangware, Nairobi. Tagline: "Deposits, withdrawals and bills." Services: M-Pesa, Equity agent, KCB agent, Pay bills, Lipa na M-Pesa setup.
+
+32. FILE: salama-cash-agent.png
+   PROMPT: Poster for "Salama Cash Agent", a M-Pesa and bank agent shop in Umoja, Nairobi. Tagline: "Safe, quick and open late." Services: M-Pesa, Bank deposits, Airtime, KPLC tokens, Withdraw cash.
+
+33. FILE: mtaani-pesa.png
+   PROMPT: Poster for "Mtaani Pesa", a M-Pesa and bank agent shop in Kasarani, Nairobi. Tagline: "Your neighbourhood bank agent." Services: M-Pesa, Co-op Bank agent, Pay bills, Money transfers.
+
+34. FILE: eastleigh-money-hub.png
+   PROMPT: Poster for "Eastleigh Money Hub", a M-Pesa and bank agent shop in Eastleigh, Nairobi. Tagline: "Money services and airtime." Services: M-Pesa, Airtime, Remittance, Pay bills.
+
+35. FILE: safi-maji-water-vendor.png
+   PROMPT: Poster for "Safi Maji Water Vendor", a water vendor in Kibera, Nairobi. Tagline: "Clean drinking water, delivered." Services: 20 litre refills, Bottled water, Delivery by handcart.
+
+36. FILE: maji-hub-refill-station.png
+   PROMPT: Poster for "Maji Hub Refill Station", a water vendor in Kasarani, Nairobi. Tagline: "Purified water refill station." Services: 20 litre refill, Bulk delivery, Dispenser rental.
+
+37. FILE: mama-maji.png
+   PROMPT: Poster for "Mama Maji", a water vendor in Githurai, Nairobi. Tagline: "Clean water at your door." Services: Refill 20L, Water delivery, Bottled water.
+
+38. FILE: blue-drop-water-depot.png
+   PROMPT: Poster for "Blue Drop Water Depot", a water vendor in Ruiru, Nairobi. Tagline: "Purified water depot." Services: Purified water, Bulk orders, Free delivery within 2 km.
+
+39. FILE: shine-car-wash.png
+   PROMPT: Poster for "Shine Car Wash", a car wash in Westlands, Nairobi. Tagline: "Your car, sparkling clean." Services: Body wash, Interior cleaning, Engine wash, Wax and polish.
+
+40. FILE: mtaani-car-wash.png
+   PROMPT: Poster for "Mtaani Car Wash", a car wash in Umoja, Nairobi. Tagline: "Quick wash, fair price." Services: Basic wash, Seat cleaning, Under wash, Motorbike wash.
+
+41. FILE: jet-wash-hub.png
+   PROMPT: Poster for "Jet Wash Hub", a car wash in Mombasa Road, Nairobi. Tagline: "Wash and detail in one stop." Services: Body wash, Vacuum, Detailing, Pickup service.
+
+42. FILE: kings-car-wash.png
+   PROMPT: Poster for "Kings Car Wash", a car wash in Kitengela, Nairobi. Tagline: "Careful hand wash." Services: Hand wash, Interior, Waxing, Seat shampoo.
+
+43. FILE: iron-house-gym.png
+   PROMPT: Poster for "Iron House Gym", a gym in Kilimani, Nairobi. Tagline: "Train hard, train close to home." Services: Weights, Cardio, Personal training, Monthly membership.
+
+44. FILE: fit-mtaani.png
+   PROMPT: Poster for "Fit Mtaani", a gym in Kasarani, Nairobi. Tagline: "Affordable fitness for everyone." Services: Aerobics, Weights, Boxing, Day pass.
+
+45. FILE: power-zone-gym.png
+   PROMPT: Poster for "Power Zone Gym", a gym in Rongai, Nairobi. Tagline: "Full gym, open early." Services: Weights, Treadmills, Group classes, Showers.
+
+46. FILE: core-fitness-studio.png
+   PROMPT: Poster for "Core Fitness Studio", a gym in Karen, Nairobi. Tagline: "Studio classes and personal coaching." Services: Yoga, Pilates, Personal training, Group classes.
+
+47. FILE: glam-ladies-salon.png
+   PROMPT: Poster for "Glam Ladies Salon", a salon or barbershop in Buruburu, Nairobi. Tagline: "Braids, weaves and nails." Services: Braiding, Weaves, Hair treatment, Manicure and pedicure.
+
+48. FILE: crown-salon-and-spa.png
+   PROMPT: Poster for "Crown Salon and Spa", a salon or barbershop in Kilimani, Nairobi. Tagline: "Hair and spa in one place." Services: Hair styling, Facials, Massage, Nails.
+
+49. FILE: mama-wambui-salon.png
+   PROMPT: Poster for "Mama Wambui Salon", a salon or barbershop in Kawangware, Nairobi. Tagline: "Affordable braids for the family." Services: Braiding, Relaxers, Cornrows, Kids styles.
+
+50. FILE: sharp-cuts-barbershop.png
+   PROMPT: Poster for "Sharp Cuts Barbershop", a salon or barbershop in CBD, Nairobi. Tagline: "Clean fades, every time." Services: Fade cuts, Shaving, Beard trim, Hair wash.
+
+51. FILE: kinyozi-king.png
+   PROMPT: Poster for "Kinyozi King", a salon or barbershop in Githurai, Nairobi. Tagline: "Your local barber." Services: Haircut, Shave, Kids cut, Dye.
+
+52. FILE: gentlemen-barber-lounge.png
+   PROMPT: Poster for "Gentlemen Barber Lounge", a salon or barbershop in Westlands, Nairobi. Tagline: "Premium barber lounge." Services: Haircut, Beard styling, Facial, Hot towel shave.
+
+53. FILE: mzee-cobbler.png
+   PROMPT: Poster for "Mzee Cobbler", a shoe repair workshop in CBD, Nairobi. Tagline: "Shoes repaired while you wait." Services: Shoe repair, New soles, Polish, Bag and belt repair.
+
+54. FILE: fundi-wa-viatu.png
+   PROMPT: Poster for "Fundi wa Viatu", a shoe repair workshop in Kawangware, Nairobi. Tagline: "Skilled shoe repair." Services: Resole, Stitching, Shoe polish, Leather repair.
+
+55. FILE: handmade-leather-sandals.png
+   PROMPT: Poster for "Handmade Leather Sandals", a shoe repair workshop in Ngong Road, Nairobi. Tagline: "Handmade leather sandals." Services: Handmade sandals, Custom sizes, Repairs, Belts.
+
+56. FILE: stitch-perfect-tailors.png
+   PROMPT: Poster for "Stitch Perfect Tailors", a tailor shop in Buruburu, Nairobi. Tagline: "Fits that look right." Services: Alterations, School uniforms, Suits, Kitenge outfits.
+
+57. FILE: mama-fatuma-tailor.png
+   PROMPT: Poster for "Mama Fatuma Tailor", a tailor shop in Eastleigh, Nairobi. Tagline: "Tailoring for every family event." Services: Dresses, Alterations, Curtains, Uniforms.
+
+58. FILE: kitenge-corner.png
+   PROMPT: Poster for "Kitenge Corner", a tailor shop in Kikuyu, Nairobi. Tagline: "Custom African prints." Services: Kitenge dresses, Shirts, Alterations, Wedding outfits.
+
+59. FILE: uniform-hub.png
+   PROMPT: Poster for "Uniform Hub", a tailor shop in Umoja, Nairobi. Tagline: "School uniforms made on time." Services: School uniforms, Sweaters, Embroidery, Bulk orders.
+
+60. FILE: fundi-garage.png
+   PROMPT: Poster for "Fundi Garage", a garage in Mombasa Road, Nairobi. Tagline: "Honest repairs, fair prices." Services: Servicing, Brakes, Engine repair, Diagnostics.
+
+61. FILE: jua-kali-auto.png
+   PROMPT: Poster for "Jua Kali Auto", a garage in Kasarani, Nairobi. Tagline: "Your jua kali car doctor." Services: Servicing, Suspension, Welding, Tyre fitting.
+
+62. FILE: boda-fix.png
+   PROMPT: Poster for "Boda Fix", a garage in Githurai, Nairobi. Tagline: "Quick fixes for bodas." Services: Boda repair, Puncture, Chain and brakes, Spare parts.
+
+63. FILE: quick-tyres-and-alignment.png
+   PROMPT: Poster for "Quick Tyres and Alignment", a garage in Westlands, Nairobi. Tagline: "Tyres and alignment in 30 minutes." Services: Tyres, Wheel alignment, Balancing, Battery.
+
+64. FILE: simu-fix.png
+   PROMPT: Poster for "Simu Fix", a phone repair shop in CBD, Nairobi. Tagline: "Phone repair in one hour." Services: Screen replacement, Battery change, Software repair, Airtime and data.
+
+65. FILE: mtaani-phone-shop.png
+   PROMPT: Poster for "Mtaani Phone Shop", a phone repair shop in Umoja, Nairobi. Tagline: "Phones, chargers and repairs." Services: Phone repair, Accessories, Airtime, Sim registration.
+
+66. FILE: digital-corner.png
+   PROMPT: Poster for "Digital Corner", a phone repair shop in Eastleigh, Nairobi. Tagline: "Phones and accessories." Services: New phones, Used phones, Repairs, Accessories.
+
+67. FILE: charge-and-go.png
+   PROMPT: Poster for "Charge and Go", a phone repair shop in Kasarani, Nairobi. Tagline: "Charge while you shop." Services: Phone charging, Airtime, Cases, Screen guards.
+
+68. FILE: msingi-hardware.png
+   PROMPT: Poster for "Msingi Hardware", a hardware shop in Embakasi, Nairobi. Tagline: "Everything for building." Services: Cement, Iron sheets, Paint, Plumbing and electrical.
+
+69. FILE: mabati-and-more.png
+   PROMPT: Poster for "Mabati and More", a hardware shop in Ruiru, Nairobi. Tagline: "Building materials delivered." Services: Iron sheets, Nails, Timber, Delivery.
+
+70. FILE: rafiki-hardware.png
+   PROMPT: Poster for "Rafiki Hardware", a hardware shop in Rongai, Nairobi. Tagline: "Tools and materials." Services: Paint, Tools, Pipes, Locks.
+
+71. FILE: afya-chemist.png
+   PROMPT: Poster for "Afya Chemist", a chemist in Buruburu, Nairobi. Tagline: "Your family chemist." Services: Prescription medicine, Over the counter, Vitamins, Blood pressure checks.
+
+72. FILE: jirani-pharmacy.png
+   PROMPT: Poster for "Jirani Pharmacy", a chemist in Kasarani, Nairobi. Tagline: "Medicines and care." Services: Medicine, Baby care, First aid, Free advice.
+
+73. FILE: zuri-chemist.png
+   PROMPT: Poster for "Zuri Chemist", a chemist in Kikuyu, Nairobi. Tagline: "Trusted chemist." Services: Prescriptions, Skin care, Supplements, Delivery.
+
+74. FILE: net-point-cyber.png
+   PROMPT: Poster for "Net Point Cyber", a cyber cafe and printing shop in CBD, Nairobi. Tagline: "Printing and online services." Services: Printing, Photocopy, KRA and eCitizen help, Scanning, Typing.
+
+75. FILE: click-cyber-cafe.png
+   PROMPT: Poster for "Click Cyber Cafe", a cyber cafe and printing shop in Kasarani, Nairobi. Tagline: "Internet and printing." Services: Internet browsing, Printing, CV typing, Passport photos.
+
+76. FILE: easy-print.png
+   PROMPT: Poster for "Easy Print", a cyber cafe and printing shop in Westlands, Nairobi. Tagline: "Printing for work and school." Services: Colour printing, Binding, Lamination, Business cards.
+
+77. FILE: safi-laundry.png
+   PROMPT: Poster for "Safi Laundry", a laundry in Kilimani, Nairobi. Tagline: "Fresh laundry, delivered." Services: Wash and fold, Dry cleaning, Ironing, Pickup and delivery.
+
+78. FILE: mama-fua.png
+   PROMPT: Poster for "Mama Fua", a laundry in Umoja, Nairobi. Tagline: "Laundry by weight." Services: Wash and iron, Duvets, School uniforms, Pickup.
+
+79. FILE: quick-dry-cleaners.png
+   PROMPT: Poster for "Quick Dry Cleaners", a laundry in Karen, Nairobi. Tagline: "Dry cleaning with care." Services: Dry cleaning, Suits, Curtains, Wedding dress cleaning.
+
+80. FILE: stage-boda-riders.png
+   PROMPT: Poster for "Stage Boda Riders", a boda stage in Githurai, Nairobi. Tagline: "Safe and quick boda rides." Services: Rides within the estate, Deliveries, Airport runs.
+
+81. FILE: kawangware-boda-stage.png
+   PROMPT: Poster for "Kawangware Boda Stage", a boda stage in Kawangware, Nairobi. Tagline: "Your stage boda riders." Services: Boda rides, Parcel delivery, Night rides.
+
+82. FILE: rongai-rides.png
+   PROMPT: Poster for "Rongai Rides", a boda stage in Rongai, Nairobi. Tagline: "Rides and deliveries." Services: Boda rides, Parcel delivery, School runs.
+
+83. FILE: corner-pub.png
+   PROMPT: Poster for "Corner Pub", a bar and lounge in Roysambu, Nairobi. Tagline: "Drinks and football." Services: Cold drinks, Nyama choma, Pool table, Live football.
+
+84. FILE: rhumba-lounge.png
+   PROMPT: Poster for "Rhumba Lounge", a bar and lounge in Westlands, Nairobi. Tagline: "Evenings with live music." Services: Cocktails, Live music, Bites, Hookah.
+
+85. FILE: shamba-direct.png
+   PROMPT: Poster for "Shamba Direct", a farm produce stand in Kikuyu, Nairobi. Tagline: "From our shamba to your door." Services: Farm vegetables, Kienyeji chicken, Eggs, Milk.
+
+86. FILE: green-valley-produce.png
+   PROMPT: Poster for "Green Valley Produce", a farm produce stand in Ruiru, Nairobi. Tagline: "Farm-fresh produce, bulk and retail." Services: Avocados, Tomatoes, Onions, Bulk supply.
+
+87. FILE: umeme-fundi.png
+   PROMPT: Poster for "Umeme Fundi", a electrician in Embakasi, Nairobi. Tagline: "Safe and certified wiring." Services: House wiring, Token meter fixing, Repairs, Lighting.
+
+88. FILE: bright-sparks-electricals.png
+   PROMPT: Poster for "Bright Sparks Electricals", a electrician in Kasarani, Nairobi. Tagline: "Wiring and solar installation." Services: Wiring, Solar installation, Security lights, Repairs.
+
+89. FILE: jiko-gas-refill.png
+   PROMPT: Poster for "Jiko Gas Refill", a gas refill shop in Githurai, Nairobi. Tagline: "Gas refill and delivery." Services: 6kg and 13kg refill, Cylinder swap, Delivery.
+
+90. FILE: moto-gas.png
+   PROMPT: Poster for "Moto Gas", a gas refill shop in Umoja, Nairobi. Tagline: "Cooking gas, delivered." Services: Cooking gas, Burners, Cylinder swap, Same-day delivery.
+
+91. FILE: mtaani-gas-depot.png
+   PROMPT: Poster for "Mtaani Gas Depot", a gas refill shop in Kitengela, Nairobi. Tagline: "Gas at fair prices." Services: Gas refill, New cylinders, Delivery.
+
+92. FILE: picha-studio.png
+   PROMPT: Poster for "Picha Studio", a photo studio in CBD, Nairobi. Tagline: "Photos for every occasion." Services: Passport photos, Weddings, Events, Photo printing.
+
+93. FILE: moment-photography.png
+   PROMPT: Poster for "Moment Photography", a photo studio in Kilimani, Nairobi. Tagline: "Portraits and event photography." Services: Portraits, Events, Product photos, Video.
+
+94. FILE: tent-and-chairs-hire.png
+   PROMPT: Poster for "Tent and Chairs Hire", a tent and chair hire business in Ruiru, Nairobi. Tagline: "Everything for your event." Services: Tents, Chairs, Tables, Public address system.
+
+95. FILE: little-stars-daycare.png
+   PROMPT: Poster for "Little Stars Daycare", a daycare in Buruburu, Nairobi. Tagline: "Safe care and early learning." Services: Daycare, Early learning, Meals, After-school care.
+
+96. FILE: afya-bora-clinic.png
+   PROMPT: Poster for "Afya Bora Clinic", a small clinic in Githurai, Nairobi. Tagline: "Local clinic for the family." Services: Consultation, Lab tests, Vaccinations, Maternal care.
+
+97. FILE: savannah-day-trips.png
+   PROMPT: Poster for "Savannah Day Trips", a tour company in Westlands, Nairobi. Tagline: "Day trips from Nairobi." Services: Nairobi National Park, Giraffe Centre, Sheldrick Trust, Hell's Gate.
+
+98. FILE: mara-escapes.png
+   PROMPT: Poster for "Mara Escapes", a tour company in Karen, Nairobi. Tagline: "Safaris planned for you." Services: Maasai Mara safaris, Amboseli, Lake Nakuru, Custom itineraries.
+
+99. FILE: ngong-hills-guide.png
+   PROMPT: Poster for "Ngong Hills Guide", a small business in Ngong Road, Nairobi. Tagline: "Guided hikes at Ngong Hills." Services: Hiking guide, Group hikes, Photo stops.
+
+100. FILE: print-and-brand.png
+   PROMPT: Poster for "Print and Brand", a small business in Eastleigh, Nairobi. Tagline: "Printing and branding." Services: T-shirt printing, Banners, Stickers, Branding.
