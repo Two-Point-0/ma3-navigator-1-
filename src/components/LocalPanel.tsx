@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { hideSheets, showSheets } from "@/lib/useSheet";
 import { Link, useLocation } from "wouter";
 import maplibregl from "maplibre-gl";
@@ -22,6 +22,13 @@ type Mode = "choose" | "shop" | "register" | "mine";
 type Coords = { latitude: number; longitude: number };
 
 const imageUrl = (path: string) => supabase!.storage.from("business-images").getPublicUrl(path).data.publicUrl;
+const swapExt = (path: string) => path.replace(/\.(png|jpg)$/i, match => (match.toLowerCase() === ".png" ? ".jpg" : ".png"));
+/** Small square picture for the list. A tall poster is cropped from the top, where its photo is. */
+function Thumb({ path, fallback }: { path: string; fallback: ReactNode }) {
+  const [tries, setTries] = useState(0);
+  if (tries >= 2) return <>{fallback}</>;
+  return <img src={imageUrl(tries === 0 ? path : swapExt(path))} alt="" loading="lazy" onError={() => setTries(count => count + 1)} style={{ width: 52, height: 52, borderRadius: 10, objectFit: "cover", objectPosition: "top", flexShrink: 0 }} />;
+}
 const categoryLabel = (id: string) => LOCAL_CATEGORIES.find(item => item.id === id)?.label ?? id;
 
 function cleanPhone(value: string) {
@@ -206,7 +213,7 @@ export default function LocalPanel({ map, userLocation, requestLocation, fixedCa
     {searching && <p style={{ fontSize: ".62rem", color: "var(--muted2)" }}>Searching…</p>}
     {results && !searching && results.length === 0 && <p style={{ fontSize: ".64rem", color: "var(--muted2)" }}>No match yet. Ask a seller to register on Local.</p>}
     {results?.map(item => { const Icon = localCategoryIcon(item.category); return <button key={item.id} className="card" onClick={() => { setSelected(item); map?.easeTo({ center: [item.longitude, item.latitude], zoom: 16, duration: 600 }); }} style={{ width: "100%", padding: 10, marginBottom: 7, display: "flex", gap: 10, alignItems: "center", textAlign: "left", color: "var(--white)", cursor: "pointer" }}>
-      {item.image_paths[0] ? <img src={imageUrl(item.image_paths[0])} alt="" loading="lazy" style={{ width: 46, height: 46, borderRadius: 10, objectFit: "cover" }} /> : <span style={{ width: 46, height: 46, borderRadius: 10, display: "grid", placeItems: "center", background: "var(--glass2)" }}><Icon size={20} style={{ color: "var(--ready)" }} /></span>}
+      {item.image_paths[0] ? <Thumb path={item.image_paths[1] ?? item.image_paths[0]} fallback={<span style={{ width: 52, height: 52, borderRadius: 10, display: "grid", placeItems: "center", background: "var(--glass2)", flexShrink: 0 }}><Icon size={20} style={{ color: "var(--ready)" }} /></span>} /> : <span style={{ width: 52, height: 52, borderRadius: 10, display: "grid", placeItems: "center", background: "var(--glass2)", flexShrink: 0 }}><Icon size={20} style={{ color: "var(--ready)" }} /></span>}
       <span style={{ flex: 1, minWidth: 0 }}><b style={{ display: "block", fontSize: ".72rem" }}>{item.name}</b><small style={{ color: "var(--muted2)" }}>{categoryLabel(item.category)}{item.distance_km != null ? ` · ${item.distance_km.toFixed(1)} km` : ""}</small></span></button>; })}
   </div>;
 

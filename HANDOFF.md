@@ -32,3 +32,10 @@ Lucide vehicle icons (no circles); curved animated flight/SGR/train paths with p
 4. Run `demo_catalog.sql`; `make_roast_admin.sql` phone -> 254712345678; test login 0712345678 / 123456.
 5. Check `select count(*) from explore_pois;` (87k import via `scripts/import-kenya-pois.mjs` may never have run).
 6. Verify approximate park-gate coordinates.
+
+## Added 2026-11-27
+- Local list: thumbnail = top crop of the poster (`image_paths[1]` if present). Local sheet opens at half height; `.market-page > .inner` no longer blocks map touches.
+- `src/components/MatatuRateCard.tsx`: StatBars (game bars), RateCardModal, FaceOffModal. Used in `DemoVehicleLayer` popup ("Rate card" button) and the Mirth nganya detail. Matatu pictures: Storage `posters/matatus/<plate-slug>.png`.
+- `src/data/basketTemplates.ts` + table `basket_templates`: 14 ready-made baskets in Market > Compare. `ListCompare` has an item-by-item colour table (green cheapest, red dearest, amber same, remove products).
+- Migration `20261127000000_rate_cards_basket_templates.sql` must be pushed (`npx.cmd supabase db push --remote`).
+- Saved baskets, sharing by code and Boda Basket already existed (Market > Basket > My lists).

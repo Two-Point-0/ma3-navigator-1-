@@ -1,5 +1,7 @@
-import { useMemo, useState } from "react";
-import { Check, ListChecks, LoaderCircle, LocateFixed } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
+import { Check, ListChecks, LoaderCircle, LocateFixed, Search, Table2, X } from "lucide-react";
+import { BASKET_TEMPLATES, type BasketTemplate } from "@/data/basketTemplates";
 import { supabase } from "@/lib/supabase";
 
 type Coordinates = { latitude: number; longitude: number };
@@ -9,7 +11,7 @@ export type ListLine = { productId: string; sku: string; name: string; unit: str
 type Candidate = { id: string; sku: string; name: string; unit: string; category: string; brand: string | null; score: number };
 type Price = { key: string; store: string; branch: string; region: string; lat: number | null; lon: number | null; amount: number };
 type Row = { raw: string; term: string; qty: number; candidates: Candidate[]; picked: number };
-type Option = ListChoice & { complete: boolean; missing: string[]; distanceKm: number | null; lines: { name: string; qty: number; unit: string; each: number | null }[] };
+type Option = ListChoice & { complete: boolean; missing: string[]; distanceKm: number | null; lines: { name: string; qty: number; unit: string; each: number | null; skip: boolean }[] };
 
 const STOP = new Set(["of", "the", "a", "an", "and", "pack", "packet", "pkt", "bottle", "tin", "bag", "for", "some", "pcs", "piece", "pieces"]);
 const SIZE = /^\d+(\.\d+)?(kg|g|gm|ml|l|ltr|ltrs|litre|litres|pcs)?$/;
@@ -85,10 +87,23 @@ export default function ListCompare({ userLocation, requestLocation, locating, o
   const [ignoreDistance, setIgnoreDistance] = useState(true);
   const [openKey, setOpenKey] = useState<string | null>(null);
   const [notFound, setNotFound] = useState<string[]>([]);
+  const [excluded, setExcluded] = useState<Set<number>>(new Set());
+  const [table, setTable] = useState(false);
+  const [templates, setTemplates] = useState<BasketTemplate[]>(BASKET_TEMPLATES);
+  const [templateQuery, setTemplateQuery] = useState("");
+  useEffect(() => {
+    if (!supabase) return;
+    void supabase.from("basket_templates").select("id,name,blurb,items").eq("active", true).order("sort").then(({ data }) => {
+      if (data?.length) setTemplates(data.map(row => ({ id: String(row.id), name: row.name, blurb: row.blurb ?? "", items: row.items ?? [] })));
+    });
+  }, []);
+  const shownTemplates = templates.filter(template => !templateQuery.trim() || `${template.name} ${template.blurb} ${template.items.join(" ")}`.toLowerCase().includes(templateQuery.trim().toLowerCase()));
+  const useTemplate = (template: BasketTemplate) => { const filled = template.items.join("\n"); setText(filled); void run(filled); };
 
-  const run = async () => {
+  const run = async (override?: string) => {
     if (!supabase) { setError("Connect Supabase to compare prices."); return; }
-    const items = parseList(text);
+    setExcluded(new Set());
+    const items = parseList(override ?? text);
     if (!items.length) { setError("Paste or type at least one item, one per line."); return; }
     setBusy(true); setError(""); setRows([]); setNotFound([]); onResults([]);
     try {
@@ -130,18 +145,19 @@ export default function ListCompare({ userLocation, requestLocation, locating, o
     const list: Option[] = [];
     branches.forEach((branch, key) => {
       let total = 0; const missing: string[] = []; const lines: Option["lines"] = [];
-      rows.forEach(row => {
-        const product = row.candidates[row.picked];
+      rows.forEach((row, rowIndex) => {
+        const product = row.candidates[row.picked]; const skip = excluded.has(rowIndex);
         const price = (prices.get(product.id) ?? []).find(item => item.key === key);
-        if (!price) { missing.push(product.name); lines.push({ name: product.name, qty: row.qty, unit: product.unit, each: null }); return; }
-        total += price.amount * row.qty; lines.push({ name: product.name, qty: row.qty, unit: product.unit, each: price.amount });
+        if (!price) { if (!skip) missing.push(product.name); lines.push({ name: product.name, qty: row.qty, unit: product.unit, each: null, skip }); return; }
+        if (!skip) total += price.amount * row.qty;
+        lines.push({ name: product.name, qty: row.qty, unit: product.unit, each: price.amount, skip });
       });
       const hasPoint = branch.lat !== null && branch.lon !== null;
       const km = userLocation && hasPoint ? haversine(userLocation, { latitude: branch.lat!, longitude: branch.lon! }) : null;
       list.push({ key, store: branch.store, branchName: branch.branch, region: branch.region, latitude: branch.lat, longitude: branch.lon, totalKes: Math.round(total * 100) / 100, complete: missing.length === 0, missing, distanceKm: km, lines });
     });
     return list;
-  }, [rows, prices, userLocation]);
+  }, [rows, prices, userLocation, excluded]);
 
   const complete = options.filter(option => option.complete);
   const ranked = useMemo(() => {
@@ -160,12 +176,13 @@ export default function ListCompare({ userLocation, requestLocation, locating, o
   const average = complete.length ? complete.reduce((sum, option) => sum + option.totalKes, 0) / complete.length : 0;
   const swap = (rowIndex: number, picked: number) => setRows(current => current.map((row, index) => index === rowIndex ? { ...row, picked } : row));
   const setQty = (rowIndex: number, delta: number) => setRows(current => current.map((row, index) => index === rowIndex ? { ...row, qty: Math.max(1, Math.min(99, row.qty + delta)) } : row));
-  const toLines = (): ListLine[] => rows.map(row => { const product = row.candidates[row.picked]; return { productId: product.id, sku: product.sku, name: product.name, unit: product.unit, category: product.category, quantity: row.qty }; });
+  const toLines = (): ListLine[] => rows.filter((_, index) => !excluded.has(index)).map(row => { const product = row.candidates[row.picked]; return { productId: product.id, sku: product.sku, name: product.name, unit: product.unit, category: product.category, quantity: row.qty }; });
 
   // Which items made the winner cheaper or dearer than the average of the complete stores.
   const why = (option: Option) => {
     if (!complete.length || complete.length < 2) return [];
     return rows.map((row, index) => {
+      if (excluded.has(index)) return null;
       const product = row.candidates[row.picked];
       const others = complete.map(c => c.lines[index].each).filter((value): value is number => value !== null);
       const mine = option.lines[index].each;
@@ -176,6 +193,9 @@ export default function ListCompare({ userLocation, requestLocation, locating, o
   };
 
   return <div>
+    <p className="sec-label">Ready-made baskets</p>
+    <div style={{ position: "relative", marginBottom: 7 }}><Search size={13} style={{ position: "absolute", left: 11, top: "50%", transform: "translateY(-50%)", color: "var(--ready)" }} /><input className="finput" style={{ paddingLeft: 32 }} placeholder="Search baskets: student, baby, party, cleaning…" value={templateQuery} onChange={event => setTemplateQuery(event.target.value)} /></div>
+    <div style={{ display: "flex", gap: 7, overflowX: "auto", paddingBottom: 8 }}>{shownTemplates.map(template => <button key={template.id} className="card" disabled={busy} onClick={() => useTemplate(template)} style={{ flex: "0 0 150px", padding: 9, textAlign: "left", color: "var(--white)", cursor: "pointer" }}><b style={{ display: "block", fontSize: ".66rem", lineHeight: 1.25 }}>{template.name}</b><small style={{ display: "block", color: "var(--muted2)", fontSize: ".55rem", marginTop: 3 }}>{template.items.length} items · {template.blurb}</small></button>)}{!shownTemplates.length && <small style={{ color: "var(--muted2)" }}>No basket matches. Type your own list below.</small>}</div>
     <p style={{ color: "var(--muted2)", fontSize: ".61rem", lineHeight: 1.45, margin: "0 0 8px" }}>Paste or type your whole shopping list, one item per line (you can add a number, like "2 sugar"). We total the <b>whole list</b> at each single supermarket, so you never have to run between shops.</p>
     <textarea className="finput" rows={5} style={{ resize: "vertical", lineHeight: 1.5 }} placeholder={"salt\nsugar 2kg\n2 cooking oil\nmaize flour\nmilk"} value={text} onChange={event => setText(event.target.value)} />
     <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
@@ -191,6 +211,7 @@ export default function ListCompare({ userLocation, requestLocation, locating, o
       </div>
       <p className="sec-label">{complete.length ? `3 best stores for your whole list${!ignoreDistance && userLocation ? " (nearest)" : ""}` : "No single store has everything"}</p>
       {!complete.length && <p style={{ color: "var(--muted2)", fontSize: ".61rem", lineHeight: 1.45 }}>No branch prices every item. These are the closest. Try swapping an item.</p>}
+      {complete.length > 1 && <button className="btn btn-ready" style={{ width: "100%", justifyContent: "center", marginTop: 6 }} onClick={() => setTable(true)}><Table2 size={13} /> Compare item by item</button>}
       {ranked.map((option, index) => {
         const reasons = index === 0 || option.complete ? why(option) : [];
         const open = openKey === option.key;
@@ -224,6 +245,7 @@ export default function ListCompare({ userLocation, requestLocation, locating, o
     </>}
     {!!notFound.length && <p style={{ color: "var(--ready)", fontSize: ".6rem", marginTop: 9, lineHeight: 1.45 }}>Not found in the catalogue, so left out: {notFound.join(", ")}.</p>}
     <p style={{ color: "var(--muted2)", fontSize: ".55rem", lineHeight: 1.45, marginTop: 10 }}>Prices are recent observations, not live shelf prices.</p>
+    {table && <CompareTable options={ranked} rows={rows} excluded={excluded} toggle={index => setExcluded(current => { const next = new Set(current); if (next.has(index)) next.delete(index); else next.add(index); return next; })} onClose={() => setTable(false)} />}
   </div>;
 }
 
@@ -232,4 +254,35 @@ function haversine(a: Coordinates, b: Coordinates) {
   const dLat = rad(b.latitude - a.latitude), dLon = rad(b.longitude - a.longitude);
   const h = Math.sin(dLat / 2) ** 2 + Math.cos(rad(a.latitude)) * Math.cos(rad(b.latitude)) * Math.sin(dLon / 2) ** 2;
   return 6371 * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
+}
+
+/** Stores across the top, products down the side. Per row: cheapest green, dearest red, all equal amber. Remove a product to see how the totals change. */
+function CompareTable({ options, rows, excluded, toggle, onClose }: { options: Option[]; rows: Row[]; excluded: Set<number>; toggle: (index: number) => void; onClose: () => void }) {
+  const GREEN = "rgba(22,163,74,.34)", RED = "rgba(220,38,38,.36)", AMBER = "rgba(245,158,11,.30)";
+  const shade = (value: number | null, all: (number | null)[]) => {
+    const present = all.filter((v): v is number => v !== null);
+    if (value === null || present.length < 2) return value === null ? "transparent" : AMBER;
+    const lo = Math.min(...present), hi = Math.max(...present);
+    if (lo === hi) return AMBER;
+    return value === lo ? GREEN : value === hi ? RED : "transparent";
+  };
+  const totals = options.map(option => option.totalKes);
+  const cell: React.CSSProperties = { padding: "7px 6px", borderBottom: "1px solid var(--border)", textAlign: "right", fontFamily: "var(--font-mono)", whiteSpace: "nowrap" };
+  return createPortal(<div role="dialog" aria-modal="true" onClick={onClose} style={{ position: "fixed", inset: 0, zIndex: 9998, background: "rgba(2,6,16,.78)", display: "grid", placeItems: "center", padding: 10 }}>
+    <div onClick={event => event.stopPropagation()} style={{ width: "min(100%, 720px)", maxHeight: "92dvh", overflow: "auto", borderRadius: 18, background: "#0a0e1c", border: "1px solid var(--border2)", padding: 12, color: "var(--white)" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}><b style={{ fontSize: ".8rem" }}>Item by item</b><button className="icon-btn" aria-label="Close" onClick={onClose}><X size={15} /></button></div>
+      <p style={{ fontSize: ".58rem", color: "var(--muted2)", lineHeight: 1.5, margin: "0 0 8px" }}><span style={{ background: GREEN, padding: "1px 6px", borderRadius: 5 }}>cheapest</span> <span style={{ background: RED, padding: "1px 6px", borderRadius: 5 }}>dearest</span> <span style={{ background: AMBER, padding: "1px 6px", borderRadius: 5 }}>same price</span> &nbsp;Tap × to leave a product out and see the new totals.</p>
+      <div style={{ overflowX: "auto" }}><table style={{ width: "100%", borderCollapse: "collapse", fontSize: ".62rem" }}>
+        <thead><tr><th style={{ textAlign: "left", padding: "6px 6px", position: "sticky", left: 0, background: "#0a0e1c" }}>Product</th>{options.map(option => <th key={option.key} style={{ padding: "6px 6px", textAlign: "right", verticalAlign: "bottom" }}><b>{option.store}</b><small style={{ display: "block", color: "var(--muted2)", fontWeight: 500 }}>{option.branchName}</small></th>)}</tr></thead>
+        <tbody>{rows.map((row, index) => {
+          const product = row.candidates[row.picked]; const skip = excluded.has(index);
+          const values = options.map(option => { const line = option.lines[index]; return line && line.each !== null ? line.each * row.qty : null; });
+          return <tr key={index} style={{ opacity: skip ? .38 : 1 }}>
+            <td style={{ padding: "7px 6px", borderBottom: "1px solid var(--border)", position: "sticky", left: 0, background: "#0a0e1c", maxWidth: 170 }}><button aria-label={skip ? "Add back" : "Leave out"} onClick={() => toggle(index)} style={{ marginRight: 6, border: 0, background: "transparent", color: skip ? "var(--go)" : "var(--stop)", cursor: "pointer", fontWeight: 800 }}>{skip ? "+" : "×"}</button><span style={{ textDecoration: skip ? "line-through" : "none" }}>{row.qty > 1 ? `${row.qty} × ` : ""}{product.name}{product.unit ? ` · ${product.unit}` : ""}</span></td>
+            {values.map((value, column) => <td key={column} style={{ ...cell, background: skip ? "transparent" : shade(value, values) }}>{value === null ? "—" : Math.round(value).toLocaleString()}</td>)}
+          </tr>; })}
+          <tr><td style={{ padding: "8px 6px", fontWeight: 800, position: "sticky", left: 0, background: "#0a0e1c" }}>Total (KES)</td>{totals.map((total, column) => <td key={column} style={{ ...cell, fontWeight: 800, background: shade(total, totals), borderBottom: 0 }}>{Math.round(total).toLocaleString()}</td>)}</tr>
+        </tbody></table></div>
+    </div>
+  </div>, document.body);
 }

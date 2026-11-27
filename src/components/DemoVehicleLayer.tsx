@@ -5,11 +5,12 @@ import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 import { useAuthContext } from "@/context/AuthContext";
 import { MA3_GTFS } from "@/data/ma3_gtfs";
 import { vehicleElement } from "@/lib/vehicleIcons";
+import { RateCardModal, FaceOffModal, demoStats, type RateCardData } from "@/components/MatatuRateCard";
 
 /** One matatu the rider is going to use. With no from/to, vehicles in BOTH directions are shown. */
 export interface DemoLeg { routeId: string; fromId?: string; toId?: string; fromName?: string }
 
-type Row = { id: string; route_id: string; direction: "forward" | "reverse"; plate: string; label: string | null; seats_total: number; seats_taken: number; speed_kmh: number; phase: number };
+type Row = { id: string; route_id: string; direction: "forward" | "reverse"; plate: string; label: string | null; seats_total: number; seats_taken: number; speed_kmh: number; phase: number; image_path?: string | null; armour?: number | null; sound?: number | null; speed_score?: number | null; value_score?: number | null; fare_kes?: number | null };
 
 const SHAPES = MA3_GTFS.shapes as unknown as Record<string, [number, number][]>;
 const ROUTE_STOPS = MA3_GTFS.routeStops as Record<string, string[]>;
@@ -74,6 +75,8 @@ export default function DemoVehicleLayer({ map, legs, onStatus }: Props) {
   const markers = useRef<Map<string, maplibregl.Marker>>(new Map());
   const popup = useRef<maplibregl.Popup | null>(null);
   const rowsRef = useRef<Row[]>([]);
+  const [card, setCard] = useState<Row | null>(null);
+  const [faceOff, setFaceOff] = useState<[Row, Row] | null>(null);
   const legsRef = useRef<DemoLeg[]>([]);
   const signedInRef = useRef(false);
   signedInRef.current = signedIn;
@@ -94,7 +97,9 @@ export default function DemoVehicleLayer({ map, legs, onStatus }: Props) {
 
   const load = async () => {
     if (!supabase || !isSupabaseConfigured || !routeKey) { setRows([]); return; }
-    const { data, error } = await supabase.from("demo_vehicles").select("id,route_id,direction,plate,label,seats_total,seats_taken,speed_kmh,phase").eq("kind", "matatu").in("route_id", routeKey.split(","));
+    const base = "id,route_id,direction,plate,label,seats_total,seats_taken,speed_kmh,phase";
+    let { data, error }: { data: any; error: any } = await supabase.from("demo_vehicles").select(`${base},image_path,armour,sound,speed_score,value_score,fare_kes`).eq("kind", "matatu").in("route_id", routeKey.split(","));
+    if (error) ({ data, error } = await supabase.from("demo_vehicles").select(base).eq("kind", "matatu").in("route_id", routeKey.split(",")));
     if (error) { setRows([]); onStatus?.("Demo vehicles are not loaded yet. Run the latest database update."); return; }
     setRows((data ?? []) as Row[]);
   };
@@ -122,6 +127,20 @@ export default function DemoVehicleLayer({ map, legs, onStatus }: Props) {
     void load();
   };
 
+  const cardData = (v: Row): RateCardData => {
+    const fallback = demoStats(v.plate);
+    const slug = v.plate.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+    const base = isSupabaseConfigured && supabase ? (name: string) => supabase!.storage.from("posters").getPublicUrl(`matatus/${name}`).data.publicUrl : (name: string) => `/matatus/${name}`;
+    const urls = [...(v.image_path ? [base(v.image_path)] : []), base(`${slug}.png`), base(`${slug}.jpg`)];
+    const route = ROUTES.get(v.route_id);
+    return { id: v.id, plate: v.plate, title: v.label || v.plate, routeLine: `Route ${route?.sn ?? ""} · to ${headingName(v.route_id, v.direction)}`, imageUrls: urls, fareKes: v.fare_kes ?? null, demo: v.armour == null,
+      stats: { armour: v.armour ?? fallback.armour, sound: v.sound ?? fallback.sound, speed: v.speed_score ?? fallback.speed, value: v.value_score ?? fallback.value } };
+  };
+  const vote = (winner: RateCardData) => {
+    try { const key = "ma3_faceoff_votes"; const votes = JSON.parse(localStorage.getItem(key) ?? "{}"); votes[winner.id] = (votes[winner.id] ?? 0) + 1; localStorage.setItem(key, JSON.stringify(votes)); } catch { /* storage blocked */ }
+    toast.success(`Practice vote for ${winner.plate}. Real voting counts after you ride.`); setFaceOff(null);
+  };
+
   const openCard = (v: Row, lngLat: [number, number]) => {
     if (!map) return;
     popup.current?.remove();
@@ -141,6 +160,11 @@ export default function DemoVehicleLayer({ map, legs, onStatus }: Props) {
     btn.style.cssText = "width:100%;padding:8px;border:0;border-radius:9px;background:#d97706;color:#fff;font:800 12px system-ui;cursor:pointer";
     btn.onclick = () => { void book(v, board); };
     box.appendChild(btn);
+    const rate = document.createElement("button");
+    rate.textContent = "Rate card";
+    rate.style.cssText = "width:100%;margin-top:6px;padding:8px;border:1px solid #fbbf24;border-radius:9px;background:transparent;color:#fbbf24;font:800 12px system-ui;cursor:pointer";
+    rate.onclick = () => { popup.current?.remove(); setCard(v); };
+    box.appendChild(rate);
     popup.current = new maplibregl.Popup({ offset: 16, closeButton: true, maxWidth: "260px" }).setLngLat(lngLat).setDOMContent(box).addTo(map);
   };
 
@@ -179,5 +203,9 @@ export default function DemoVehicleLayer({ map, legs, onStatus }: Props) {
   useEffect(() => () => { markers.current.forEach(m => m.remove()); markers.current.clear(); popup.current?.remove(); }, []);
   useEffect(() => { if (!routeKey) popup.current?.remove(); }, [routeKey]);
 
-  return null;
+  const rivals = card ? rows.filter(other => other.route_id === card.route_id && other.id !== card.id) : [];
+  return <>
+    <RateCardModal card={card ? cardData(card) : null} onClose={() => setCard(null)} onFaceOff={rivals.length ? () => { if (card) { setFaceOff([card, rivals[0]]); setCard(null); } } : undefined} />
+    <FaceOffModal pair={faceOff ? [cardData(faceOff[0]), cardData(faceOff[1])] : null} onClose={() => setFaceOff(null)} onVote={vote} />
+  </>;
 }

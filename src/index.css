@@ -425,3 +425,7 @@ html.map-locked, html.map-locked body { overflow: hidden; height: 100%; overscro
 .maplibregl-popup-anchor-bottom .maplibregl-popup-tip{border-top-color:#0b1530}
 .maplibregl-popup-anchor-left .maplibregl-popup-tip{border-right-color:#0b1530}
 .maplibregl-popup-anchor-right .maplibregl-popup-tip{border-left-color:#0b1530}
+
+/* Market: the empty page layer must not block the map. Only the real panels catch touches. */
+.market-page > .inner { pointer-events: none; }
+.market-page > .inner > * { pointer-events: auto; }
