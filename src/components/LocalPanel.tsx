@@ -3,20 +3,22 @@ import { hideSheets, showSheets } from "@/lib/useSheet";
 import { Link, useLocation } from "wouter";
 import maplibregl from "maplibre-gl";
 import { toast } from "sonner";
-import { ArrowLeft, Bus, Car, Check, ImagePlus, LocateFixed, MapPin, MessageCircle, Navigation, Phone, PlusCircle, Search, Store, Trash2, X } from "lucide-react";
+import { ArrowLeft, Bus, Car, Check, ImagePlus, LocateFixed, MapPin, MessageCircle, Navigation, Phone, Pencil, PlusCircle, Search, Store, Trash2, X } from "lucide-react";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { useAuthContext } from "@/context/AuthContext";
 import { APP_MODE } from "@/lib/appMode";
-import PosterModal, { type PosterData } from "@/components/PosterModal";
+import BusinessPage from "@/components/BusinessPage";
+import BusinessEditor from "@/components/BusinessEditor";
+import { planOf, PLANS, type PageType } from "@/lib/localPlans";
 import { LOCAL_CATEGORIES, iconMarker, localCategoryIcon } from "@/lib/placeIcons";
 
 /** Placeholder fee until you decide the real price. It is only shown, nothing is charged while payments are in demo mode. */
-export const LOCAL_LISTING_FEE_KES = 50;
+export const LOCAL_LISTING_FEE_KES = 100;
 
 type Business = {
   id: string; name: string; category: string; description: string; services: string[]; phone: string | null; whatsapp: string | null;
   address: string | null; latitude: number; longitude: number; image_paths: string[]; distance_km?: number | null;
-  status?: string; paid_until?: string | null;
+  status?: string; paid_until?: string | null; owner_id?: string; tagline?: string | null; hours?: string | null; website?: string | null;
 };
 type Mode = "choose" | "shop" | "register" | "mine";
 type Coords = { latitude: number; longitude: number };
@@ -48,10 +50,13 @@ async function shrink(file: File): Promise<Blob> {
   return await new Promise<Blob>((resolve, reject) => canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error("Could not read that photo")), "image/jpeg", 0.82));
 }
 
-export default function LocalPanel({ map, userLocation, requestLocation, fixedCategory }: { map: maplibregl.Map | null; userLocation: Coords | null; requestLocation: () => void; fixedCategory?: string }) {
+type PanelProps = { map: maplibregl.Map | null; userLocation: Coords | null; requestLocation: () => void; fixedCategory?: string };
+function LocalPanelInner({ map, userLocation, requestLocation, fixedCategory, setEditing, tick }: PanelProps & { setEditing: (item: Business) => void; tick: number }) {
   const { user } = useAuthContext();
   const [, setLocation] = useLocation();
   const [mode, setMode] = useState<Mode>("choose");
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [adminAll, setAdminAll] = useState(false);
   const signedIn = Boolean(user && !user.is_anonymous);
 
   // ---- shop ----
@@ -91,10 +96,12 @@ export default function LocalPanel({ map, userLocation, requestLocation, fixedCa
   const [mine, setMine] = useState<Business[]>([]);
   const loadMine = async () => {
     if (!supabase || !signedIn) return;
-    const { data } = await supabase.from("local_businesses").select("*").eq("owner_id", user!.id).order("created_at", { ascending: false });
+    let query = supabase.from("local_businesses").select("*").order("created_at", { ascending: false });
+    if (!(isAdmin && adminAll)) query = query.eq("owner_id", user!.id);
+    const { data } = await query.limit(200);
     setMine((data ?? []) as Business[]);
   };
-  useEffect(() => { if (mode === "mine") void loadMine(); }, [mode, signedIn]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (mode === "mine") void loadMine(); }, [mode, signedIn, isAdmin, adminAll, tick]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const blank = { name: "", category: fixedCategory ?? "mboga", description: "", services: "", phone: "", whatsapp: "", address: "", licence: "" };
   const [form, setForm] = useState(blank);
@@ -165,6 +172,15 @@ export default function LocalPanel({ map, userLocation, requestLocation, fixedCa
     void loadMine();
   };
 
+  const [fees, setFees] = useState<Record<string, number>>({});
+  useEffect(() => {
+    if (!supabase) return;
+    void supabase.from("local_plans").select("page_type, fee_kes").then(({ data }) => { if (data) setFees(Object.fromEntries(data.map((row: { page_type: string; fee_kes: number }) => [row.page_type, row.fee_kes]))); });
+  }, []);
+  useEffect(() => { if (!supabase || !signedIn) return setIsAdmin(false); void supabase.rpc("local_is_admin").then(({ data }) => setIsAdmin(data === true)); }, [signedIn]);
+  const feeFor = (category: string) => { const type = (Object.keys(PLANS) as PageType[]).find(key => PLANS[key] === planOf(category)) ?? "basic"; return fees[type] ?? PLANS[type].fee; };
+  const editable = (item: Business) => Boolean(signedIn && (isAdmin || item.owner_id === user!.id));
+
   const back = (to: Mode) => <button className="btn btn-ghost" style={{ padding: "5px 10px", fontSize: ".6rem", marginBottom: 9 }} onClick={() => { setMode(to); setSelected(null); }}><ArrowLeft size={12} /> Back</button>;
   if (!isSupabaseConfigured) return <p style={{ color: "var(--muted2)", fontSize: ".66rem" }}>Local businesses need the Supabase backend. Add the two Supabase settings to .env.local.</p>;
 
@@ -179,24 +195,13 @@ export default function LocalPanel({ map, userLocation, requestLocation, fixedCa
 
   // ---- shop: business page ----
   if (mode === "shop" && selected) {
-    const wa = (selected.whatsapp || selected.phone || "").replace(/\D/g, "");
-    const message = encodeURIComponent(`Hello ${selected.name}, I found you on Ma3 and would like to order / ask about: `);
-    const poster: PosterData = {
-      id: selected.id, title: selected.name, subtitle: `${categoryLabel(selected.category)}${selected.distance_km != null ? ` · ${selected.distance_km.toFixed(1)} km away` : ""}`,
-      imageUrls: selected.image_paths.length ? [imageUrl(selected.image_paths[0]), imageUrl(selected.image_paths[0].replace(/\.(png|jpg)$/i, m => (m.toLowerCase() === ".png" ? ".jpg" : ".png")))] : undefined, icon: localCategoryIcon(selected.category),
-      summary: selected.description, highlights: selected.services,
-      facts: [...(selected.address ? [{ icon: MapPin, label: "Where", text: selected.address }] : []), ...(selected.phone ? [{ icon: Phone, label: "Phone", text: selected.phone }] : [])],
-      note: "Ma3 does not take payment for local businesses. You order and pay the seller directly.",
-    };
-    return <PosterModal poster={poster} onClose={() => setSelected(null)} actions={<>
-      {selected.phone && <a className="btn btn-go" style={{ padding: 11, textDecoration: "none", display: "flex", justifyContent: "center", gap: 6 }} href={`tel:${selected.phone}`}><Phone size={14} /> Call {selected.phone}</a>}
-      {wa && <a className="btn btn-ready" style={{ padding: 11, textDecoration: "none", display: "flex", justifyContent: "center", gap: 6 }} target="_blank" rel="noopener noreferrer" href={`https://wa.me/${wa}?text=${message}`}><MessageCircle size={14} /> Order on WhatsApp</a>}
+    return <BusinessPage business={selected} onClose={() => setSelected(null)} onEdit={editable(selected) ? () => setEditing(selected) : undefined}>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
         <button className="btn btn-ghost" onClick={() => { sessionStorage.setItem("ma3_destination", JSON.stringify({ name: selected.name, lat: selected.latitude, lon: selected.longitude })); setLocation("/ma3"); }}><Bus size={13} /> Go by Ma3</button>
         <button className="btn btn-ghost" onClick={() => { sessionStorage.setItem("ndai_destination", JSON.stringify({ tab: "ride", name: selected.name, lat: selected.latitude, lon: selected.longitude })); setLocation("/ndai"); }}><Car size={13} /> Go by Ndai</button>
       </div>
       <a className="btn btn-ghost" style={{ textDecoration: "none", display: "flex", justifyContent: "center", gap: 6 }} target="_blank" rel="noopener noreferrer" href={`https://www.google.com/maps/dir/?api=1&destination=${selected.latitude},${selected.longitude}`}><Navigation size={13} /> Directions in Google Maps</a>
-    </>} />;
+    </BusinessPage>;
   }
 
   // ---- shop: search ----
@@ -221,13 +226,15 @@ export default function LocalPanel({ map, userLocation, requestLocation, fixedCa
   if (mode === "mine") return <div>
     {back("choose")}
     {!signedIn && <p style={{ fontSize: ".66rem" }}><Link href="/login" style={{ color: "var(--ready)" }}>Sign in</Link> to see your businesses.</p>}
+    {isAdmin && <button className="btn btn-ghost" style={{ padding: "6px 10px", fontSize: ".6rem", marginBottom: 8 }} onClick={() => setAdminAll(!adminAll)}>{adminAll ? "Admin: showing ALL businesses" : "Admin: show ALL businesses"}</button>}
     {signedIn && mine.length === 0 && <p style={{ fontSize: ".66rem", color: "var(--muted2)" }}>You have not registered a business yet.</p>}
     {mine.map(item => { const live = item.status === "active" && item.paid_until && new Date(item.paid_until) > new Date(); return <div key={item.id} className="card" style={{ padding: 11, marginBottom: 8 }}>
       <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}><b style={{ fontSize: ".74rem" }}>{item.name}</b>
         <span className="chip" style={{ background: live ? "rgba(22,163,74,.18)" : "rgba(217,119,6,.18)", color: live ? "var(--go)" : "var(--ready)" }}>{live ? `Live until ${new Date(item.paid_until!).toLocaleDateString()}` : "Awaiting payment"}</span></div>
       <small style={{ color: "var(--muted2)" }}>{categoryLabel(item.category)}</small>
       <div style={{ display: "flex", gap: 7, marginTop: 8 }}>
-        <button className="btn btn-go" style={{ padding: "7px 11px", fontSize: ".62rem" }} onClick={() => activate(item)}><Check size={12} /> {live ? "Renew" : "Pay"} KES {LOCAL_LISTING_FEE_KES}{APP_MODE.realPayments ? "" : " (demo)"}</button>
+        <button className="btn btn-go" style={{ padding: "7px 11px", fontSize: ".62rem" }} onClick={() => activate(item)}><Check size={12} /> {live ? "Renew" : "Pay"} KES {feeFor(item.category)}{APP_MODE.realPayments ? "" : " (demo)"}</button>
+        <button className="btn btn-ready" style={{ padding: "7px 11px", fontSize: ".62rem" }} onClick={() => setEditing(item)}><Pencil size={12} /> Edit page</button>
         <button className="btn btn-ghost" style={{ padding: "7px 11px", fontSize: ".62rem" }} onClick={() => remove(item)}><Trash2 size={12} /> Delete</button></div>
     </div>; })}
     <button className="btn btn-ready" style={{ width: "100%", justifyContent: "center", padding: 10, marginTop: 4 }} onClick={() => setMode("register")}><PlusCircle size={14} /> Register another business</button>
@@ -257,9 +264,18 @@ export default function LocalPanel({ map, userLocation, requestLocation, fixedCa
       <label className="btn btn-ghost" style={{ padding: 10, cursor: "pointer", justifyContent: "center" }}><ImagePlus size={14} /> Choose photos ({photos.length}/5)
         <input type="file" accept="image/*" multiple hidden onChange={event => setPhotos(Array.from(event.target.files ?? []).slice(0, 5))} /></label>
       {photos.length > 0 && <div style={{ display: "flex", gap: 6, marginTop: 7, overflowX: "auto" }}>{photos.map((file, index) => <span key={file.name + index} style={{ position: "relative", flexShrink: 0 }}><img src={URL.createObjectURL(file)} alt="" style={{ width: 56, height: 56, objectFit: "cover", borderRadius: 9 }} /><button aria-label="Remove photo" onClick={() => setPhotos(photos.filter((_, i) => i !== index))} style={{ position: "absolute", top: -4, right: -4, width: 18, height: 18, borderRadius: "50%", border: 0, background: "var(--stop)", color: "#fff", display: "grid", placeItems: "center", cursor: "pointer" }}><X size={10} /></button></span>)}</div>}
-      <div className="card" style={{ padding: 11, marginTop: 12 }}><b style={{ fontSize: ".7rem" }}>Listing fee: KES {LOCAL_LISTING_FEE_KES} per month, per business</b>
-        <p style={{ margin: "4px 0 0", fontSize: ".58rem", color: "var(--muted2)", lineHeight: 1.45 }}>You save first, then pay on the next screen. {APP_MODE.realPayments ? "Pay with M-Pesa." : "Payments are in demo mode, so nothing is charged yet."}</p></div>
+      <div className="card" style={{ padding: 11, marginTop: 12 }}><b style={{ fontSize: ".7rem" }}>{planOf(form.category).label}: KES {feeFor(form.category)} per month</b>
+        <p style={{ margin: "4px 0 0", fontSize: ".58rem", color: "var(--muted2)", lineHeight: 1.45 }}>{planOf(form.category).blurb} You save first, then pay on the next screen. After paying you can edit your page and add items. {APP_MODE.realPayments ? "Pay with M-Pesa." : "Payments are in demo mode, so nothing is charged yet."}</p></div>
       <button className="btn btn-go" style={{ width: "100%", justifyContent: "center", padding: 12, marginTop: 10 }} disabled={saving} onClick={submit}>{saving ? "Saving…" : "Save and continue"}</button>
     </>}
   </div>;
+}
+
+export default function LocalPanel(props: PanelProps) {
+  const [editing, setEditing] = useState<Business | null>(null);
+  const [tick, setTick] = useState(0);
+  return <>
+    <LocalPanelInner {...props} setEditing={setEditing} tick={tick} />
+    {editing && <BusinessEditor business={editing} onClose={() => setEditing(null)} onSaved={() => setTick(value => value + 1)} />}
+  </>;
 }

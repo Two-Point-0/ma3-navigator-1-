@@ -40,3 +40,8 @@ Lucide vehicle icons (no circles); curved animated flight/SGR/train paths with p
 - Migration `20261127000000_rate_cards_basket_templates.sql` must be pushed (`npx.cmd supabase db push --remote`).
 - Saved baskets, sharing by code and Boda Basket already existed (Market > Basket > My lists).
 - 2026-11-27 later: Market > Basket has 3 views (Ready-made & compare / Build for me / My basket). `BasketBuilder.tsx` = 16-question wizard (rules only, no AI): answers become item lines + brand level (budget/standard/premium picks cheapest/middle/dearest matched product by average price). `ListCompare` got `seed`, brand chips, "+ New template" (saved in localStorage `ma3_my_templates`). `PosterModal` tall pages: tap to zoom (viewport blocks pinch).
+
+## 2026-11-28 Owner-editable business pages
+- Migration `20261128000000_local_pages.sql`: tagline/hours/website columns, `local_plans` (fee per page type, edit in Table Editor), `local_business_items`, `local_bookings`, admin policies (`local_is_admin()` = row in `roast_admins`), item-limit trigger, search finds item names.
+- `BusinessPage.tsx` (real-text page, "View full poster" opens old png, website button, booking form), `BusinessEditor.tsx` (owner/admin edit), `src/lib/localPlans.ts` (category -> page type), `bizImages.tsx`.
+- LocalPanel: Edit page button in My businesses, admin toggle to show ALL businesses, fee by type.
