@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { Check, ListChecks, LoaderCircle, LocateFixed, Search, Table2, X } from "lucide-react";
 import { BASKET_TEMPLATES, type BasketTemplate } from "@/data/basketTemplates";
+import type { Tier } from "@/components/BasketBuilder";
 import { supabase } from "@/lib/supabase";
 
 type Coordinates = { latitude: number; longitude: number };
@@ -75,7 +76,9 @@ async function fetchPrices(ids: string[]): Promise<Map<string, Price[]>> {
 }
 
 /** Paste a shopping list. The app finds each item, then totals the WHOLE list at each single supermarket branch. Items are never split across shops. */
-export default function ListCompare({ userLocation, requestLocation, locating, onResults, onChoose }: {
+export default function ListCompare({ userLocation, requestLocation, locating, onResults, onChoose, seed, onSeedUsed }: {
+  onSeedUsed?: () => void;
+  seed?: { text: string; tier: Tier; key: number } | null;
   userLocation: Coordinates | null; requestLocation: () => void; locating: boolean;
   onResults: (options: ListChoice[]) => void; onChoose: (lines: ListLine[], branch: ListChoice) => void;
 }) {
@@ -91,16 +94,27 @@ export default function ListCompare({ userLocation, requestLocation, locating, o
   const [table, setTable] = useState(false);
   const [templates, setTemplates] = useState<BasketTemplate[]>(BASKET_TEMPLATES);
   const [templateQuery, setTemplateQuery] = useState("");
+  const [tier, setTier] = useState<Tier>("any");
+  const [mine, setMine] = useState<BasketTemplate[]>(() => { try { return JSON.parse(localStorage.getItem("ma3_my_templates") ?? "[]"); } catch { return []; } });
+  const [making, setMaking] = useState(false); const [newName, setNewName] = useState(""); const [newItems, setNewItems] = useState("");
+  const saveMine = (next: BasketTemplate[]) => { setMine(next); try { localStorage.setItem("ma3_my_templates", JSON.stringify(next)); } catch { /* storage blocked */ } };
+  const addMine = () => {
+    const items = newItems.split(/\n|,/).map(line => line.trim()).filter(Boolean);
+    if (!newName.trim() || !items.length) return;
+    saveMine([{ id: `mine-${Date.now()}`, name: newName.trim().slice(0, 40), blurb: "My template", items, mine: true }, ...mine]);
+    setMaking(false); setNewName(""); setNewItems("");
+  };
   useEffect(() => {
     if (!supabase) return;
     void supabase.from("basket_templates").select("id,name,blurb,items").eq("active", true).order("sort").then(({ data }) => {
       if (data?.length) setTemplates(data.map(row => ({ id: String(row.id), name: row.name, blurb: row.blurb ?? "", items: row.items ?? [] })));
     });
   }, []);
-  const shownTemplates = templates.filter(template => !templateQuery.trim() || `${template.name} ${template.blurb} ${template.items.join(" ")}`.toLowerCase().includes(templateQuery.trim().toLowerCase()));
+  const shownTemplates = [...mine, ...templates].filter(template => !templateQuery.trim() || `${template.name} ${template.blurb} ${template.items.join(" ")}`.toLowerCase().includes(templateQuery.trim().toLowerCase()));
   const useTemplate = (template: BasketTemplate) => { const filled = template.items.join("\n"); setText(filled); void run(filled); };
+  useEffect(() => { if (!seed) return; setText(seed.text); setTier(seed.tier); void run(seed.text, seed.tier); onSeedUsed?.(); }, [seed?.key]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const run = async (override?: string) => {
+  const run = async (override?: string, tierOverride?: Tier) => {
     if (!supabase) { setError("Connect Supabase to compare prices."); return; }
     setExcluded(new Set());
     const items = parseList(override ?? text);
@@ -126,11 +140,16 @@ export default function ListCompare({ userLocation, requestLocation, locating, o
       found.sort((a, b) => items.findIndex(i => i.raw === a.raw) - items.findIndex(i => i.raw === b.raw));
       const priceMap = await fetchPrices([...new Set(found.flatMap(row => row.candidates.map(candidate => candidate.id)))]);
       // Among equally good matches, start with the one that has prices at the most branches.
+      // With a brand level chosen, take the cheapest (budget), middle (standard) or dearest (premium) of them.
+      const level = tierOverride ?? tier;
+      const average = (id: string) => { const list = priceMap.get(id) ?? []; return list.length ? list.reduce((sum, item) => sum + item.amount, 0) / list.length : null; };
       found.forEach(row => {
         const best = row.candidates[0].score;
         const tied = row.candidates.map((candidate, index) => ({ index, candidate })).filter(item => item.candidate.score >= best - 1);
         tied.sort((a, b) => (priceMap.get(b.candidate.id)?.length ?? 0) - (priceMap.get(a.candidate.id)?.length ?? 0));
-        row.picked = tied[0].index;
+        const priced = tied.filter(item => average(item.candidate.id) !== null).sort((a, b) => average(a.candidate.id)! - average(b.candidate.id)!);
+        if (level !== "any" && priced.length > 1) row.picked = (level === "budget" ? priced[0] : level === "premium" ? priced[priced.length - 1] : priced[Math.floor((priced.length - 1) / 2)]).index;
+        else row.picked = tied[0].index;
       });
       setPrices(priceMap); setRows(found); setNotFound(missed);
       if (!found.length) setError("None of those items were found in the catalogue. Try simpler names, like sugar or milk.");
@@ -195,7 +214,14 @@ export default function ListCompare({ userLocation, requestLocation, locating, o
   return <div>
     <p className="sec-label">Ready-made baskets</p>
     <div style={{ position: "relative", marginBottom: 7 }}><Search size={13} style={{ position: "absolute", left: 11, top: "50%", transform: "translateY(-50%)", color: "var(--ready)" }} /><input className="finput" style={{ paddingLeft: 32 }} placeholder="Search baskets: student, baby, party, cleaning…" value={templateQuery} onChange={event => setTemplateQuery(event.target.value)} /></div>
-    <div style={{ display: "flex", gap: 7, overflowX: "auto", paddingBottom: 8 }}>{shownTemplates.map(template => <button key={template.id} className="card" disabled={busy} onClick={() => useTemplate(template)} style={{ flex: "0 0 150px", padding: 9, textAlign: "left", color: "var(--white)", cursor: "pointer" }}><b style={{ display: "block", fontSize: ".66rem", lineHeight: 1.25 }}>{template.name}</b><small style={{ display: "block", color: "var(--muted2)", fontSize: ".55rem", marginTop: 3 }}>{template.items.length} items · {template.blurb}</small></button>)}{!shownTemplates.length && <small style={{ color: "var(--muted2)" }}>No basket matches. Type your own list below.</small>}</div>
+    <div style={{ display: "flex", gap: 7, overflowX: "auto", paddingBottom: 8 }}><button className="card" onClick={() => setMaking(value => !value)} style={{ flex: "0 0 110px", padding: 9, textAlign: "left", color: "var(--ready)", cursor: "pointer", border: "1px dashed var(--ready)" }}><b style={{ fontSize: ".66rem" }}>+ New template</b><small style={{ display: "block", color: "var(--muted2)", fontSize: ".55rem", marginTop: 3 }}>Name it and add items</small></button>{shownTemplates.map(template => <button key={template.id} className="card" disabled={busy} onClick={() => useTemplate(template)} style={{ flex: "0 0 150px", padding: 9, textAlign: "left", color: "var(--white)", cursor: "pointer" }}><b style={{ display: "block", fontSize: ".66rem", lineHeight: 1.25 }}>{template.name}{template.mine && <span role="button" aria-label="Delete template" onClick={event => { event.stopPropagation(); saveMine(mine.filter(item => item.id !== template.id)); }} style={{ float: "right", color: "var(--stop)", padding: "0 2px" }}>×</span>}</b><small style={{ display: "block", color: "var(--muted2)", fontSize: ".55rem", marginTop: 3 }}>{template.items.length} items · {template.blurb}</small></button>)}{!shownTemplates.length && <small style={{ color: "var(--muted2)" }}>No basket matches. Type your own list below.</small>}</div>
+    {making && <div className="card" style={{ padding: 10, marginBottom: 8, display: "grid", gap: 7 }}>
+      <input className="finput" maxLength={40} placeholder="Template name, e.g. Mama's weekend list" value={newName} onChange={event => setNewName(event.target.value)} />
+      <textarea className="finput" rows={4} placeholder={"One item per line:\nsugar 2kg\n2 cooking oil\nmilk"} value={newItems} onChange={event => setNewItems(event.target.value)} />
+      <div style={{ display: "flex", gap: 7 }}><button className="btn btn-ready" style={{ flex: 1, justifyContent: "center" }} disabled={!newName.trim() || !newItems.trim()} onClick={addMine}>Save template</button><button className="btn btn-ghost" onClick={() => setMaking(false)}>Cancel</button></div>
+      <small style={{ color: "var(--muted2)", fontSize: ".55rem" }}>Saved on this phone.</small>
+    </div>}
+    <div style={{ display: "flex", gap: 6, margin: "0 0 8px", flexWrap: "wrap", alignItems: "center" }}><small style={{ color: "var(--muted2)" }}>Brands:</small>{(["any", "budget", "standard", "premium"] as Tier[]).map(level => <button key={level} className={`btn ${tier === level ? "btn-ready" : "btn-ghost"}`} style={{ padding: "4px 9px", fontSize: ".58rem" }} onClick={() => { setTier(level); if (rows.length) void run(text || undefined, level); }}>{level === "any" ? "Any" : level[0].toUpperCase() + level.slice(1)}</button>)}</div>
     <p style={{ color: "var(--muted2)", fontSize: ".61rem", lineHeight: 1.45, margin: "0 0 8px" }}>Paste or type your whole shopping list, one item per line (you can add a number, like "2 sugar"). We total the <b>whole list</b> at each single supermarket, so you never have to run between shops.</p>
     <textarea className="finput" rows={5} style={{ resize: "vertical", lineHeight: 1.5 }} placeholder={"salt\nsugar 2kg\n2 cooking oil\nmaize flour\nmilk"} value={text} onChange={event => setText(event.target.value)} />
     <div style={{ display: "flex", gap: 8, marginTop: 8 }}>

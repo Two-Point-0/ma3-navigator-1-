@@ -1,6 +1,6 @@
 // Ready-made baskets. Each line is typed the way a shopper would write it, so the same matching used for pasted lists finds the products.
 // The database table `basket_templates` (see the 20261127 migration) can replace or add to these without a new app version.
-export interface BasketTemplate { id: string; name: string; blurb: string; items: string[] }
+export interface BasketTemplate { id: string; name: string; blurb: string; items: string[]; mine?: boolean }
 
 export const BASKET_TEMPLATES: BasketTemplate[] = [
   { id: "monthly-staples", name: "Monthly staples (family of 4)", blurb: "Flour, rice, sugar, oil and the basics", items: ["2 maize flour 2kg", "wheat flour 2kg", "rice pishori 2kg", "sugar 2kg", "cooking oil 2L", "salt", "beans 1kg", "tea leaves", "fresh milk", "eggs"] },

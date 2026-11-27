@@ -39,3 +39,4 @@ Lucide vehicle icons (no circles); curved animated flight/SGR/train paths with p
 - `src/data/basketTemplates.ts` + table `basket_templates`: 14 ready-made baskets in Market > Compare. `ListCompare` has an item-by-item colour table (green cheapest, red dearest, amber same, remove products).
 - Migration `20261127000000_rate_cards_basket_templates.sql` must be pushed (`npx.cmd supabase db push --remote`).
 - Saved baskets, sharing by code and Boda Basket already existed (Market > Basket > My lists).
+- 2026-11-27 later: Market > Basket has 3 views (Ready-made & compare / Build for me / My basket). `BasketBuilder.tsx` = 16-question wizard (rules only, no AI): answers become item lines + brand level (budget/standard/premium picks cheapest/middle/dearest matched product by average price). `ListCompare` got `seed`, brand chips, "+ New template" (saved in localStorage `ma3_my_templates`). `PosterModal` tall pages: tap to zoom (viewport blocks pinch).

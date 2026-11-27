@@ -6,6 +6,7 @@ import { SelectedMarketBranch, useShoppingBasket } from "@/lib/shoppingBasket";
 import PageTabs from "@/components/PageTabs";
 import MyLists from "@/components/MyLists";
 import ListCompare, { type ListChoice } from "@/components/ListCompare";
+import BasketBuilder, { type Tier } from "@/components/BasketBuilder";
 import LocalPanel from "@/components/LocalPanel";
 import { useSheet } from "@/lib/useSheet";
 import MapLibreView, { MapLibreHandle } from "@/components/MapLibreView";
@@ -83,6 +84,8 @@ export default function MarketPage() {
   const sheet = useSheet("peek");
   const [, setLocation] = useLocation();
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [basketView, setBasketView] = useState<"ready" | "build" | "mine">("ready");
+  const [seed, setSeed] = useState<{ text: string; tier: Tier; key: number } | null>(null);
   const [tab, setTab] = useState<MarketTab>("basket");
   const [listResults, setListResults] = useState<ListChoice[]>([]);
   const [template, setTemplate] = useState<TemplateId>("solo");
@@ -348,7 +351,7 @@ export default function MarketPage() {
     replaceItems(chosen); setTab("basket"); sheet.setSnap("half"); setSheetOpen(true);
   };
   const sheetStyle: React.CSSProperties = { ...sheet.panelProps.style, display: sheetOpen ? "block" : "none", borderRadius: "22px 22px 0 0", border: "1px solid var(--border2)", background: "linear-gradient(155deg,rgba(18,20,34,.62),rgba(10,12,22,.5))", backdropFilter: "blur(20px) saturate(155%)", padding: "0 12px 20px" };
-  const sheetGrip = <div style={{ position: "sticky", top: 0, zIndex: 2, background: "rgba(12,14,24,.58)", padding: "4px 4px 8px", margin: "0 -4px 9px" }}><button {...sheet.gripProps} style={{ ...sheet.gripProps.style, width: "100%", border: 0, background: "transparent", padding: "8px 0" }} /><div style={{ display: "flex", alignItems: "center", gap: 8 }}><span style={{ flex: 1, fontSize: ".55rem", color: "var(--muted2)" }}>Drag the bar to resize · {tab === "basket" ? "Compare branches" : tab === "planner" ? "Build a smart list" : tab === "local" ? "Local businesses" : "Compare products"}</span>{sharedItems.length > 0 && tab !== "basket" && <button className="btn btn-ready" style={{ padding: "4px 9px", fontSize: ".58rem" }} onClick={() => setTab("basket")}><ShoppingCart size={11} /> Basket · {sharedItems.length}</button>}<button className="icon-btn" aria-label="Close panel" onClick={() => setSheetOpen(false)}><X size={12} /></button></div></div>;
+  const sheetGrip = <div style={{ position: "sticky", top: 0, zIndex: 2, background: "rgba(12,14,24,.58)", padding: "4px 4px 8px", margin: "0 -4px 9px" }}><button {...sheet.gripProps} style={{ ...sheet.gripProps.style, width: "100%", border: 0, background: "transparent", padding: "8px 0" }} /><div style={{ display: "flex", alignItems: "center", gap: 8 }}><span style={{ flex: 1, fontSize: ".55rem", color: "var(--muted2)" }}>Drag the bar to resize · {tab === "basket" ? "Compare branches" : tab === "planner" ? "Build a smart list" : tab === "local" ? "Local businesses" : "Compare products"}</span>{sharedItems.length > 0 && tab !== "basket" && <button className="btn btn-ready" style={{ padding: "4px 9px", fontSize: ".58rem" }} onClick={() => { setBasketView("mine"); setTab("basket"); }}><ShoppingCart size={11} /> Basket · {sharedItems.length}</button>}<button className="icon-btn" aria-label="Close panel" onClick={() => setSheetOpen(false)}><X size={12} /></button></div></div>;
   const status = loading ? "Loading the shared catalogue…" : loadError ? "Product prices are temporarily unavailable." : products.length ? "Prices show their observation date, branch and pack size." : "No product listings are available right now.";
 
 
@@ -365,12 +368,15 @@ export default function MarketPage() {
       {!products.length && !loading && <p style={{ fontSize: ".61rem", color: "var(--muted2)", marginTop: 9 }}>{status}</p>}
     </section>}
 
-    {tab === "search" && <section className="led-edge" style={sheetStyle}>{sheetGrip}<ListCompare userLocation={userLocation} requestLocation={requestLocation} locating={locating} onResults={setListResults} onChoose={(lines, branch) => { replaceItems(lines); setSelectedBranch(branch); toast.success(`Your list is in the Basket, priced at ${branch.store} ${branch.branchName}`); setTab("basket"); }} />
+    {tab === "search" && <section className="led-edge" style={sheetStyle}>{sheetGrip}<ListCompare userLocation={userLocation} requestLocation={requestLocation} locating={locating} onResults={setListResults} onChoose={(lines, branch) => { replaceItems(lines); setSelectedBranch(branch); toast.success(`Your list is in the Basket, priced at ${branch.store} ${branch.branchName}`); setBasketView("mine"); setTab("basket"); }} />
       <button className="btn btn-ghost" style={{ display: "flex", margin: "12px auto 0" }} onClick={() => setTab("planner")}><GraduationCap size={13} /> Or plan a whole basket from a template</button>
     </section>}
 
     {tab === "local" && <section className="led-edge" style={sheetStyle}>{sheetGrip}<LocalPanel map={map} userLocation={userLocation} requestLocation={requestLocation} /></section>}
-    {tab === "basket" && <section className="led-edge" style={sheetStyle}>{sheetGrip}<p style={{ color: "var(--muted2)", fontSize: ".61rem", lineHeight: 1.45, margin: "0 0 8px" }}>Compare totals by branch. Amber pins show stores on the map. Prices are observations.</p><p role="status" style={{ color: "var(--muted2)", fontSize: ".55rem", lineHeight: 1.4, margin: "0 0 8px" }}>{status}</p>
+    {tab === "basket" && <section className="led-edge" style={sheetStyle}>{sheetGrip}<div style={{ display: "flex", gap: 6, marginBottom: 10 }}>{([["ready", "Ready-made & compare"], ["build", "Build for me"], ["mine", `My basket${sharedItems.length ? ` · ${sharedItems.length}` : ""}`]] as const).map(([id, label]) => <button key={id} className={`btn ${basketView === id ? "btn-ready" : "btn-ghost"}`} style={{ flex: 1, justifyContent: "center", padding: "7px 6px", fontSize: ".6rem" }} onClick={() => setBasketView(id)}>{label}</button>)}</div>
+      <div style={{ display: basketView === "ready" ? "block" : "none" }}><ListCompare seed={seed} onSeedUsed={() => setSeed(null)} userLocation={userLocation} requestLocation={requestLocation} locating={locating} onResults={setListResults} onChoose={(lines, branch) => { replaceItems(lines); setSelectedBranch(branch); toast.success(`Your list is in My basket, priced at ${branch.store} ${branch.branchName}`); setBasketView("mine"); }} /></div>
+      {basketView === "build" && <BasketBuilder onDone={(text, tier) => { setSeed({ text, tier, key: Date.now() }); setBasketView("ready"); }} />}
+      {basketView === "mine" && <><p style={{ color: "var(--muted2)", fontSize: ".61rem", lineHeight: 1.45, margin: "0 0 8px" }}>Compare totals by branch. Amber pins show stores on the map. Prices are observations.</p><p role="status" style={{ color: "var(--muted2)", fontSize: ".55rem", lineHeight: 1.4, margin: "0 0 8px" }}>{status}</p>
       <MyLists />
       <p className="sec-label">Compare your selected commodities across supermarket branches</p>
       <p style={{ color: "var(--muted2)", fontSize: ".6rem", lineHeight: 1.45, marginBottom: 8 }}>Add three or more items. A branch is totalled only when it prices every item.</p>
@@ -424,7 +430,7 @@ export default function MarketPage() {
           {!branchSchemaReady && <p style={{ marginTop: 10, color: "var(--muted2)", fontSize: ".59rem", lineHeight: 1.45 }}>Branch locations are not loaded yet. Only branch-name totals are available.</p>}
         </div>
       </>}
-    </section>}
+    </>}</section>}
 
     <AnimatePresence>{detail && <><motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setDetail(null)} style={{ position: "fixed", inset: 0, zIndex: 1100, background: "rgba(0,0,0,.55)", backdropFilter: "blur(7px)" }} /><motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} className="ios-glass" style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 1101, maxWidth: 640, margin: "0 auto", padding: "1.2rem 1.2rem 2rem", borderRadius: "22px 22px 0 0", maxHeight: "80vh", overflowY: "auto" }}><div style={{ display: "flex", alignItems: "center", gap: 12 }}><ProductImage product={detail} size={72} /><div style={{ flex: 1 }}><b>{detail.name}</b><small style={{ display: "block", color: "var(--muted2)" }}>{detail.sku} · {detail.unit}</small></div><button className="icon-btn" onClick={() => setDetail(null)}><X size={15} /></button></div><div style={{ display: "grid", gap: 7, margin: "15px 0" }}>{STORES.map(store => { const prices = detail.prices.filter(price => price.store === store); return prices.length ? prices.map(price => <div key={price.key} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "9px 10px", border: "1px solid var(--border2)", borderRadius: 10 }}><span><StoreBadge store={store} /><small style={{ display: "block", color: "var(--muted2)", marginTop: 4 }}>{price.branch || "Branch not supplied"}{price.region ? ` · ${price.region}` : ""}</small></span><span style={{ textAlign: "right" }}><b style={{ display: "block", fontFamily: "var(--font-mono)" }}>KES {price.amount.toLocaleString()}</b><small style={{ color: "var(--muted2)" }}>{new Date(price.observedAt).toLocaleDateString()} · {price.sourceType.replace(/_/g, " ")}</small></span></div>) : <div key={store} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "9px 10px", border: "1px solid var(--border2)", borderRadius: 10 }}><StoreBadge store={store} /><small style={{ color: "var(--muted2)" }}>No observation</small></div>; })}</div><button className="btn btn-ready" style={{ width: "100%" }} onClick={() => { addToBasket(detail); setDetail(null); }}><Plus size={14} /> Add to basket</button></motion.div></>}</AnimatePresence>
   </div></div>;

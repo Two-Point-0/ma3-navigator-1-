@@ -15,7 +15,8 @@ export interface PosterData {
 export default function PosterModal({ poster, onClose, actions, children }: { poster: PosterData | null; onClose: () => void; actions?: ReactNode; children?: ReactNode }) {
   const [failed, setFailed] = useState(0);
   const [tall, setTall] = useState(false);
-  useEffect(() => { setFailed(0); setTall(false); }, [poster?.id]);
+  const [zoomed, setZoomed] = useState(false);
+  useEffect(() => { setFailed(0); setTall(false); setZoomed(false); }, [poster?.id]);
   const urls = poster ? (poster.imageUrls?.length ? poster.imageUrls : [poster.imageUrl, poster.altImageUrl].filter((u): u is string => !!u)) : [];
   const current = urls[failed];
   useEffect(() => {
@@ -33,7 +34,8 @@ export default function PosterModal({ poster, onClose, actions, children }: { po
       {current && <img key={`probe-${failed}`} src={current} alt="" aria-hidden onLoad={event => setTall(event.currentTarget.naturalHeight / Math.max(1, event.currentTarget.naturalWidth) > 1.25)} onError={() => setFailed(count => count + 1)} style={{ position: "absolute", width: 1, height: 1, opacity: 0, pointerEvents: "none" }} />}
       {tall && current ? <div style={{ maxWidth: 560, margin: "0 auto", position: "relative" }}>
         <button aria-label="Close poster" onClick={onClose} style={{ position: "fixed", top: "max(14px, env(safe-area-inset-top))", right: 14, zIndex: 2, width: 42, height: 42, borderRadius: "50%", border: "1px solid #ffffff55", background: "#0b1530cc", color: "#fff", display: "grid", placeItems: "center", cursor: "pointer" }}><X size={20} /></button>
-        <img src={current} alt={poster.title} style={{ display: "block", width: "100%", height: "auto" }} />
+        <div style={{ overflowX: zoomed ? "auto" : "hidden" }}><img src={current} alt={poster.title} onClick={() => setZoomed(value => !value)} style={{ display: "block", width: zoomed ? "230%" : "100%", maxWidth: "none", height: "auto", cursor: zoomed ? "zoom-out" : "zoom-in" }} /></div>
+        <span style={{ position: "fixed", left: 14, bottom: "max(14px, env(safe-area-inset-bottom))", zIndex: 2, background: "#0b1530cc", color: "#fff", borderRadius: 99, padding: "5px 11px", fontSize: ".6rem", pointerEvents: "none" }}>{zoomed ? "Tap to zoom out" : "Tap picture to zoom"}</span>
         <div style={{ padding: "10px 16px calc(28px + env(safe-area-inset-bottom))" }}>
           {children}
           {actions && <div style={{ display: "grid", gap: 8, marginTop: 10 }}>{actions}</div>}
